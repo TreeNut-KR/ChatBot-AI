@@ -97,9 +97,3 @@ if __name__ == "__main__":
     response = ko_chat.generate_response(input_text, max_new_tokens=100)
 
     print("생성된 응답:", response)  # 생성된 응답 출력
-
-    # 추가 대화 예시
-    input_text = "네가 날 도와줄 수 있어?"
-    response = ko_chat.generate_response(input_text, max_new_tokens=100)
-
-    print("생성된 응답:", response)  # 생성된 응답 출력
