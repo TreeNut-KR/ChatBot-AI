@@ -1,5 +1,5 @@
 import torch
-import os 
+import os
 import transformers
 import bitsandbytes as bnb
 from dotenv import load_dotenv
@@ -62,7 +62,7 @@ class KoChatModel:
         )
         return model
 
-    def generate_response(self, input_text: str, max_new_tokens: int = 100) -> str:
+    def generate_response(self, input_text: str, max_new_tokens: int = 500) -> str:
         '''
         주어진 입력 텍스트에 대한 응답을 생성합니다.
         :param input_text: 입력 텍스트
@@ -83,19 +83,25 @@ class KoChatModel:
                 input_ids,
                 max_new_tokens=max_new_tokens,
                 do_sample=True,
-                temperature=0.7,  # 텍스트 다양성 조정
-                top_k=50,         # top-k 샘플링 적용
-                top_p=0.9         # top-p 샘플링 적용
+                temperature=0.695,  # 텍스트 다양성 조정
+                top_k=50,            # top-k 샘플링 적용
+                top_p=0.88,          # top-p 샘플링 적용
+                eos_token_id=self.tokenizer.eos_token_id,  # 종료 토큰 설정
+                pad_token_id=self.tokenizer.eos_token_id,  # 패딩 토큰 설정
+                stopping_criteria=[transformers.StoppingCriteriaList([
+                    transformers.MaxLengthCriteria(max_length=max_new_tokens)
+                ])]  # 최대 길이 기준 설정
             )
 
         # 생성된 텍스트 디코딩
         response = self.tokenizer.decode(output[0], skip_special_tokens=True)
 
         # AI 응답을 대화 히스토리에 추가
-        self.conversation_history.append(f"AI: {response}")
+        self.conversation_history.append(f"AI: {response.strip()}")
 
         # AI의 응답만 반환
-        return response
+        return response.strip()
+
 
 if __name__ == "__main__":
     model_id = "meta-llama/Llama-3.2-3B-Instruct"  # LLaMA 대화 모델
@@ -105,7 +111,7 @@ if __name__ == "__main__":
     ko_chat = KoChatModel(model_id, cache_dir)
 
     # 입력 텍스트
-    input_text = "Python으로 MongoDB 연결하는 코드 짜줘."
-    response = ko_chat.generate_response(input_text, max_new_tokens=450)
+    input_text = "Python으로 MongoDB 연결하는 부분만 코드를 짜줘."
+    response = ko_chat.generate_response(input_text, max_new_tokens=500)
 
     print("생성된 응답:", response)  # 생성된 응답 출력
