@@ -157,3 +157,6 @@ cython_debug/
 # AI Model
 .locks/
 models--beomi--KoAlpaca-Polyglot-5.8B/
+ai_model/*
+# README.md 파일은 제외
+!ai_model/README.md
