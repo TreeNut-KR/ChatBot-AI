@@ -157,3 +157,4 @@ cython_debug/
 # AI Model
 .locks/
 models--beomi--KoAlpaca-Polyglot-5.8B/
+ai_model/*
