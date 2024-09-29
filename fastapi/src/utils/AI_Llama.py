@@ -12,14 +12,14 @@ load_dotenv(dotenv_path)
 
 
 class KoChatModel:
-    def __init__(self, model_id: str, cache_dir: str):
+    def __init__(self):
         '''
         KoChatModel 클래스 초기화
         :param model_id: 사용할 모델 ID
         :param cache_dir: 모델을 저장할 경로
         '''
-        self.model_id = model_id
-        self.cache_dir = cache_dir
+        self.model_id = model_id = "meta-llama/Llama-3.2-3B-Instruct"  # LLaMA 대화 모델
+        self.cache_dir = cache_dir = "./ai_model/"  # 모델을 저장할 경로
         self.model_kwargs = {
             "torch_dtype": torch.float32,  # FP16 사용 (LLaMA 지원)
             "trust_remote_code": True,
@@ -62,7 +62,7 @@ class KoChatModel:
         )
         return model
 
-    def generate_response(self, input_text: str, max_new_tokens: int = 500) -> str:
+    def response(self, input_text: str, max_new_tokens: int = 500) -> str:
         '''
         주어진 입력 텍스트에 대한 응답을 생성합니다.
         :param input_text: 입력 텍스트
@@ -102,16 +102,6 @@ class KoChatModel:
         # AI의 응답만 반환
         return response.strip()
 
-
-if __name__ == "__main__":
-    model_id = "meta-llama/Llama-3.2-3B-Instruct"  # LLaMA 대화 모델
-    cache_dir = "./ai_model/"  # 모델을 저장할 경로
-
-    # KoChatModel 인스턴스 생성
-    ko_chat = KoChatModel(model_id, cache_dir)
-
-    # 입력 텍스트
-    input_text = "Python으로 MongoDB 연결하는 부분만 코드를 짜줘."
-    response = ko_chat.generate_response(input_text, max_new_tokens=500)
-
-    print("생성된 응답:", response)  # 생성된 응답 출력
+    def request(self, input_text: str) -> str:
+        response = self.response(input_text, max_new_tokens=500)
+        return response
