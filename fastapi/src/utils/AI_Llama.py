@@ -1,6 +1,9 @@
+import os
 import torch
 import os
 import transformers
+from torch.cuda.amp import autocast, GradScaler
+from accelerate import Accelerator
 import bitsandbytes as bnb
 from dotenv import load_dotenv
 
@@ -10,18 +13,15 @@ parent_dir = os.path.dirname(current_dir)  # 부모 디렉토리
 dotenv_path = os.path.join(parent_dir, '.env')
 load_dotenv(dotenv_path)
 
-
 class KoChatModel:
     def __init__(self):
         '''
         KoChatModel 클래스 초기화
-        :param model_id: 사용할 모델 ID
-        :param cache_dir: 모델을 저장할 경로
         '''
-        self.model_id = model_id = "meta-llama/Llama-3.2-3B-Instruct"  # LLaMA 대화 모델
-        self.cache_dir = cache_dir = "./ai_model/"  # 모델을 저장할 경로
+        self.model_id = "meta-llama/Llama-3.2-3B-Instruct"
+        self.cache_dir = "./ai_model/"
         self.model_kwargs = {
-            "torch_dtype": torch.float32,  # FP16 사용 (LLaMA 지원)
+            "torch_dtype": torch.float32,
             "trust_remote_code": True,
         }
 
@@ -31,7 +31,11 @@ class KoChatModel:
         print("토크나이저 로드 중...")
         self.tokenizer = self.load_tokenizer()
         print("모델 로드 중...")
-        self.model = self.load_model()
+
+        # Accelerate 객체 초기화
+        self.accelerator = Accelerator()
+        self.model, self.optimizer = self.load_model_with_accelerator()
+        self.scaler = GradScaler()
         print("모델과 토크나이저 로드 완료!")
         self.conversation_history = []  # 대화 히스토리 초기화
 
@@ -43,57 +47,74 @@ class KoChatModel:
         tokenizer = transformers.AutoTokenizer.from_pretrained(
             self.model_id, 
             cache_dir=self.cache_dir, 
-            use_auth_token=self.hf_token
+            token=self.hf_token
         )
-        tokenizer.pad_token_id = tokenizer.eos_token_id  # pad_token_id 설정
+        tokenizer.pad_token_id = tokenizer.eos_token_id
         return tokenizer
 
-    def load_model(self) -> transformers.PreTrainedModel:
+    def load_model_with_accelerator(self) -> tuple:
         '''
-        대화 모델을 로드합니다. 8-bit 양자화 및 메모리 최적화 적용.
-        :return: 로드된 모델
+        모델을 Accelerator를 사용하여 로드하고 옵티마이저를 준비합니다.
+        :return: 모델과 옵티마이저
         '''
         model = transformers.AutoModelForCausalLM.from_pretrained(
             self.model_id,
-            load_in_8bit=True,  # 8-bit 양자화
             cache_dir=self.cache_dir,
-            use_auth_token=self.hf_token,
+            token=self.hf_token,
             **self.model_kwargs
         )
-        return model
+        optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5)
 
-    def response(self, input_text: str, max_new_tokens: int = 500) -> str:
+        # Accelerator로 모델과 옵티마이저 준비
+        model, optimizer = self.accelerator.prepare(model, optimizer)
+        return model, optimizer
+
+
+    def allocate_pinned_memory(self, tensor: torch.Tensor) -> torch.Tensor:
+        '''
+        페이지 잠금 메모리를 활용하여 Tensor를 GPU로 전송합니다.
+        :param tensor: CPU 상의 텐서
+        :return: 페이지 잠금 메모리로 전송된 텐서
+        '''
+        pinned_tensor = tensor.pin_memory()  # 페이지 잠금 메모리 할당
+        return pinned_tensor
+
+    def generate_response(self, input_text: str, max_new_tokens: int = 500) -> str:
         '''
         주어진 입력 텍스트에 대한 응답을 생성합니다.
         :param input_text: 입력 텍스트
         :param max_new_tokens: 생성할 최대 토큰 수
         :return: 생성된 응답 텍스트
         '''
-        # 대화 히스토리에 입력 텍스트 추가
-        self.conversation_history.append(f"User: {input_text}")
+        full_input = f"{input_text}"
+        input_ids = self.tokenizer.encode(full_input, return_tensors="pt").to(torch.device("cpu"))
+        attention_mask = (input_ids != self.tokenizer.pad_token_id).long()
 
-        # 대화 히스토리를 하나의 문자열로 결합
-        full_input = "\n".join(self.conversation_history) + "\nAI:"
+        # Pinned Memory로 전송
+        input_ids = self.allocate_pinned_memory(input_ids)
+        attention_mask = self.allocate_pinned_memory(attention_mask)
 
-        input_ids = self.tokenizer.encode(full_input, return_tensors="pt").to(self.model.device)
+        effective_max_tokens = min(max_new_tokens, 500)
 
-        # 텍스트 생성
-        with torch.no_grad():
-            output = self.model.generate(
-                input_ids,
-                max_new_tokens=max_new_tokens,
-                do_sample=True,
-                temperature=0.695,  # 텍스트 다양성 조정
-                top_k=50,            # top-k 샘플링 적용
-                top_p=0.88,          # top-p 샘플링 적용
-                eos_token_id=self.tokenizer.eos_token_id,  # 종료 토큰 설정
-                pad_token_id=self.tokenizer.eos_token_id,  # 패딩 토큰 설정
-                stopping_criteria=[transformers.StoppingCriteriaList([
-                    transformers.MaxLengthCriteria(max_length=max_new_tokens)
-                ])]  # 최대 길이 기준 설정
-            )
+        # Mixed Precision과 함께 generate 함수 직접 호출
+        with autocast():  # Mixed Precision 적용
+            with torch.no_grad():
+                output = self.model.generate(
+                    input_ids.to(self.accelerator.device), 
+                    attention_mask=attention_mask.to(self.accelerator.device),
+                    max_new_tokens=effective_max_tokens,
+                    do_sample=True,
+                    temperature=0.64,
+                    top_k=51,
+                    top_p=0.63,
+                    eos_token_id=self.tokenizer.eos_token_id,
+                    pad_token_id=self.tokenizer.eos_token_id,
+                    repetition_penalty=1.21,
+                    stopping_criteria=transformers.StoppingCriteriaList([
+                        self.CustomStoppingCriteria()
+                    ])
+                )
 
-        # 생성된 텍스트 디코딩
         response = self.tokenizer.decode(output[0], skip_special_tokens=True)
 
         # AI 응답을 대화 히스토리에 추가
@@ -102,6 +123,27 @@ class KoChatModel:
         # AI의 응답만 반환
         return response.strip()
 
-    def request(self, input_text: str) -> str:
-        response = self.response(input_text, max_new_tokens=500)
-        return response
+    class CustomStoppingCriteria(transformers.StoppingCriteria):
+        def __init__(self, min_length: int = 10, min_ending_tokens: int = 2):
+            self.min_length = min_length
+            self.min_ending_tokens = min_ending_tokens
+
+        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+            if input_ids.shape[1] > self.min_length and (
+                input_ids[0, -1] == self.min_ending_tokens or input_ids[0, -2] == self.min_ending_tokens):
+                return True
+            return False
+        
+'''
+테스트용 코드
+'''
+if __name__ == "__main__":
+    KCM = KoChatModel()
+    while True:
+        print("입력: ")
+        user_input = input("")  # 사용자로부터 입력 받기
+        if user_input.lower() == "exit":
+            print("종료합니다.")
+            break
+        response = KCM.generate_response(user_input)
+        print(f"응답: {response}")
