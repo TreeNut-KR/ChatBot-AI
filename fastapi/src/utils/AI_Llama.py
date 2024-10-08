@@ -1,6 +1,5 @@
 import os
 import torch
-import os
 import transformers
 from torch.cuda.amp import autocast, GradScaler
 from accelerate import Accelerator
@@ -9,7 +8,7 @@ from dotenv import load_dotenv
 
 # 현재 파일의 경로를 기준으로 부모 디렉토리의 .env 파일 경로 설정
 current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)  # 부모 디렉토리
+parent_dir = os.path.dirname(current_dir)
 dotenv_path = os.path.join(parent_dir, '.env')
 load_dotenv(dotenv_path)
 
@@ -21,7 +20,7 @@ class KoChatModel:
         self.model_id = "meta-llama/Llama-3.2-3B-Instruct"
         self.cache_dir = "./ai_model/"
         self.model_kwargs = {
-            "torch_dtype": torch.float32,
+            "torch_dtype": torch.float16,  # float16으로 변경
             "trust_remote_code": True,
         }
 
@@ -45,8 +44,8 @@ class KoChatModel:
         :return: 로드된 토크나이저
         '''
         tokenizer = transformers.AutoTokenizer.from_pretrained(
-            self.model_id, 
-            cache_dir=self.cache_dir, 
+            self.model_id,
+            cache_dir=self.cache_dir,
             token=self.hf_token
         )
         tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -76,7 +75,7 @@ class KoChatModel:
         :param tensor: CPU 상의 텐서
         :return: 페이지 잠금 메모리로 전송된 텐서
         '''
-        pinned_tensor = tensor.pin_memory()  # 페이지 잠금 메모리 할당
+        pinned_tensor = tensor.pin_memory()
         return pinned_tensor
 
     def generate_response(self, input_text: str, max_new_tokens: int = 500) -> str:
@@ -97,10 +96,10 @@ class KoChatModel:
         effective_max_tokens = min(max_new_tokens, 500)
 
         # Mixed Precision과 함께 generate 함수 직접 호출
-        with autocast():  # Mixed Precision 적용
+        with autocast(dtype=torch.float16):  # float16으로 변경
             with torch.no_grad():
                 output = self.model.generate(
-                    input_ids.to(self.accelerator.device), 
+                    input_ids.to(self.accelerator.device),
                     attention_mask=attention_mask.to(self.accelerator.device),
                     max_new_tokens=effective_max_tokens,
                     do_sample=True,
@@ -110,18 +109,16 @@ class KoChatModel:
                     eos_token_id=self.tokenizer.eos_token_id,
                     pad_token_id=self.tokenizer.eos_token_id,
                     repetition_penalty=1.21,
-                    stopping_criteria=transformers.StoppingCriteriaList([
-                        self.CustomStoppingCriteria()
-                    ])
+                    stopping_criteria=transformers.StoppingCriteriaList([self.CustomStoppingCriteria()])
                 )
 
+        # GPU 메모리 비우기
+        torch.cuda.empty_cache()
+
         response = self.tokenizer.decode(output[0], skip_special_tokens=True)
-
-        # AI 응답을 대화 히스토리에 추가
         self.conversation_history.append(f"AI: {response.strip()}")
-
-        # AI의 응답만 반환
         return response.strip()
+
 
     class CustomStoppingCriteria(transformers.StoppingCriteria):
         def __init__(self, min_length: int = 10, min_ending_tokens: int = 2):
