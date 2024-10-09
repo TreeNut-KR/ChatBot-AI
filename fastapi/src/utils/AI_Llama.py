@@ -18,7 +18,7 @@ class LlamaChatModel:
         LlamaChatModel 클래스 초기화
         '''
         self.model_id = "meta-llama/Llama-3.2-3B-Instruct"
-        self.cache_dir = "./ai_model/"
+        self.cache_dir = "./fastapi/ai_model/"
         self.model_kwargs = {
             "torch_dtype": torch.float16,  # float16으로 변경
             "trust_remote_code": True,
