@@ -27,7 +27,7 @@ LCM = LlamaChatModel()
 #     finally:
 #         await mysql_handler.disconnect()
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 ChatError.add_exception_handlers(app)  # 예외 핸들러 추가
 
 class ExceptionMiddleware(BaseHTTPMiddleware):
