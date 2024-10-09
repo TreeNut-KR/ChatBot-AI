@@ -1,6 +1,6 @@
-torch>=2.2.0,<=2.3.1+cu118
-torchvision>=0.18.0,<=0.18.1+cu118
-torchaudio>=2.2.0,<=2.3.1+cu118
+torch==2.3.1+cu118
+torchvision==0.18.1+cu118
+torchaudio==2.3.1+cu118
 -f https://download.pytorch.org/whl/torch_stable.html
 fastapi==0.112.0
 uvicorn==0.30.5

@@ -134,13 +134,13 @@ class LlamaChatModel:
 '''
 테스트용 코드
 '''
-# if __name__ == "__main__":
-#     LCM = LlamaChatModel()
-#     while True:
-#         print("입력: ")
-#         user_input = input("")  # 사용자로부터 입력 받기
-#         if user_input.lower() == "exit":
-#             print("종료합니다.")
-#             break
-#         response = LCM.generate_response(user_input)
-#         print(f"응답: {response}")
+if __name__ == "__main__":
+    LCM = LlamaChatModel()
+    while True:
+        print("입력: ")
+        user_input = input("")  # 사용자로부터 입력 받기
+        if user_input.lower() == "exit":
+            print("종료합니다.")
+            break
+        response = LCM.generate_response(user_input)
+        print(f"응답: {response}")
