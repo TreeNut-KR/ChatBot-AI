@@ -12,10 +12,10 @@ parent_dir = os.path.dirname(current_dir)
 dotenv_path = os.path.join(parent_dir, '.env')
 load_dotenv(dotenv_path)
 
-class KoChatModel:
+class LlamaChatModel:
     def __init__(self):
         '''
-        KoChatModel 클래스 초기화
+        LlamaChatModel 클래스 초기화
         '''
         self.model_id = "meta-llama/Llama-3.2-3B-Instruct"
         self.cache_dir = "./ai_model/"
@@ -134,13 +134,13 @@ class KoChatModel:
 '''
 테스트용 코드
 '''
-if __name__ == "__main__":
-    KCM = KoChatModel()
-    while True:
-        print("입력: ")
-        user_input = input("")  # 사용자로부터 입력 받기
-        if user_input.lower() == "exit":
-            print("종료합니다.")
-            break
-        response = KCM.generate_response(user_input)
-        print(f"응답: {response}")
+# if __name__ == "__main__":
+#     LCM = LlamaChatModel()
+#     while True:
+#         print("입력: ")
+#         user_input = input("")  # 사용자로부터 입력 받기
+#         if user_input.lower() == "exit":
+#             print("종료합니다.")
+#             break
+#         response = LCM.generate_response(user_input)
+#         print(f"응답: {response}")
