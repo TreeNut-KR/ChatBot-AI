@@ -12,4 +12,3 @@ pip install -r .\fastapi\requirements.txt
 
 echo 가상 환경이 성공적으로 설정되었습니다.
 ENDLOCAL
- 

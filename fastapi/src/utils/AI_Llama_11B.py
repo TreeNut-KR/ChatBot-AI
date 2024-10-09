@@ -16,11 +16,12 @@ class LlamaChatModel:
         '''
         LlamaChatModel 클래스 초기화
         '''
-        self.model_id = "unsloth/Llama-3.2-11B-Vision-Instruct"
+        self.model_id = "meta-llama/Llama-3.2-11B-Vision"
         self.cache_dir = "./fastapi/ai_model/"
         self.model_kwargs = {
-            "torch_dtype": torch.float16,  # float16으로 변경
+            "torch_dtype": torch.float16,  # float16으로 설정
             "trust_remote_code": True,
+            "load_in_8bit": True  # 양자화 적용
         }
 
         # Hugging Face Token 설정
@@ -31,10 +32,14 @@ class LlamaChatModel:
         print("모델 로드 중...")
 
         # Accelerate 객체 초기화
-        self.accelerator = Accelerator()
+        self.accelerator = Accelerator(mixed_precision="fp16")  # Mixed Precision 설정
         self.model, self.optimizer = self.load_model_with_accelerator()
         self.scaler = GradScaler()
         print("모델과 토크나이저 로드 완료!")
+
+        # Gradient Checkpointing 활성화
+        self.model.gradient_checkpointing_enable()
+
         self.conversation_history = []  # 대화 히스토리 초기화
 
     def load_tokenizer(self) -> transformers.PreTrainedTokenizerBase:
@@ -94,7 +99,7 @@ class LlamaChatModel:
         effective_max_tokens = min(max_new_tokens, 500)
 
         # Mixed Precision과 함께 generate 함수 직접 호출
-        with autocast(dtype=torch.float16):  # float16으로 변경
+        with autocast(dtype=torch.float16):  # Mixed Precision 사용
             with torch.no_grad():
                 output = self.model.generate(
                     input_ids.to(self.accelerator.device, non_blocking=True),  # 비동기로 전송

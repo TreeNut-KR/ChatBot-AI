@@ -162,3 +162,6 @@ fastapi/ai_model/*
 # README.md 파일은 제외
 !ai_model/README.md
 !fastapi/ai_model/README.md
+
+# setting
+.vscode
