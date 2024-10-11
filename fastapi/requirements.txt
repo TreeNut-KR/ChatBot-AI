@@ -1,6 +1,9 @@
+torch==2.3.1+cu118
+torchvision==0.18.1+cu118
+torchaudio==2.3.1+cu118
+-f https://download.pytorch.org/whl/torch_stable.html
 fastapi==0.112.0
 uvicorn==0.30.5
-pymongo
 databases
 aiomysql
 motor
@@ -25,5 +28,5 @@ pytest
 pytest-asyncio
 langchain-community
 transformers
-bitsandbytes
+bitsandbytes==0.44.1
 accelerate>=0.26.0
