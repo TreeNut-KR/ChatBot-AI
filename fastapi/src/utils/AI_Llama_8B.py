@@ -6,17 +6,16 @@ from accelerate import Accelerator
 from dotenv import load_dotenv
 from transformers import BitsAndBytesConfig, pipeline
 
-# 현재 파일의 경로를 기준으로 부모 디렉토리의 .env 파일 경로 설정
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-dotenv_path = os.path.join(parent_dir, '.env')
-load_dotenv(dotenv_path)
-
 class LlamaChatModel:
     def __init__(self):
         '''
         LlamaChatModel 클래스 초기화
         '''
+        # 현재 파일의 경로를 기준으로 부모 디렉토리의 .env 파일 경로 설정
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        parent_dir = os.path.dirname(current_dir)
+        dotenv_path = os.path.join(parent_dir, '.env')
+        load_dotenv(dotenv_path)
         self.cache_dir = "./fastapi/ai_model/"
         self.model_id = "meta-llama/Llama-3.1-8B-Instruct"  # 원하는 모델 ID 설정
         self.bart_model_id = "facebook/bart-large-mnli"  # 복잡도 분석용 BART 모델
@@ -151,13 +150,13 @@ class LlamaChatModel:
         return response
 
 
-if __name__ == "__main__":
-    LCM = LlamaChatModel()
-    while True:
-        print("입력: ")
-        user_input = input("")  # 사용자로부터 입력 받기
-        if user_input.lower() == "exit":
-            print("종료합니다.")
-            break
-        response = LCM.generate_response(user_input)
-        print(f"응답: {response}")
+# if __name__ == "__main__":
+#     LCM = LlamaChatModel()
+#     while True:
+#         print("입력: ")
+#         user_input = input("")  # 사용자로부터 입력 받기
+#         if user_input.lower() == "exit":
+#             print("종료합니다.")
+#             break
+#         response = LCM.generate_response(user_input)
+#         print(f"응답: {response}")
