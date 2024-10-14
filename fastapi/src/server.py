@@ -9,24 +9,13 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import JSONResponse
 from utils.AI_Llama_8B import LlamaChatModel
-# from utils.DB_mysql import MySQLDBHandler
-
 from fastapi import APIRouter, FastAPI, Request
 import uvicorn  # uvicorn 추가
 
-# mysql_handler = MySQLDBHandler()  # MySQL 핸들러 초기화
+# 모델 전역 변수
+llama_model = None
 
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     '''
-#     FastAPI 애플리케이션의 수명 주기를 관리하는 함수.
-#     '''
-#     await mysql_handler.connect()
-#     try:
-#         yield
-#     finally:
-#         await mysql_handler.disconnect()
-
+# FastAPI 애플리케이션 초기화
 app = FastAPI()
 ChatError.add_exception_handlers(app)  # 예외 핸들러 추가
 
@@ -86,14 +75,23 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
+@app.on_event("startup")
+async def load_llama_model():
+    '''
+    서버가 시작될 때 Llama 모델을 로드합니다.
+    '''
+    global llama_model
+    llama_model = LlamaChatModel()
+    print("Llama 모델 로드 완료")
+
 @app.post("/Llama", response_model=ChatModel.Llama_Response, summary="Llama 모델 답변 생성")
 async def Llama_(request: ChatModel.Llama_Request):
     '''
     Llama 모델에 질문 입력 시 답변 반환.
     '''
     try:
-        LCM = LlamaChatModel()
-        tables = LCM.generate_response(request.input_data)
+        # 글로벌 모델을 사용하여 응답 생성
+        tables = llama_model.generate_response(request.input_data)
         return {"output_data": tables}
     except Exception as e:
         raise ChatError.InternalServerErrorException(detail=str(e))
