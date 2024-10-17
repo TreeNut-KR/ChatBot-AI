@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 채팅방</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f3f3f3;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 600px;
+            height: 80vh;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            background-color: #ffffff;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            border: 1px solid #e0e0e0;
+        }
+
+        .chat-header {
+            padding: 20px;
+            background-color: #0078d4;
+            color: white;
+            text-align: center;
+            font-size: 1.75em;
+            font-weight: bold;
+            border-bottom: 1px solid #d1d1d1;
+        }
+
+        .chat-messages {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #f8f8fa;
+            border-bottom: 1px solid #d1d1d1;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.ai {
+            justify-content: flex-start;
+        }
+
+        .message .text {
+            padding: 12px;
+            border-radius: 16px;
+            max-width: 70%;
+            background-color: #e0e0e0;
+            color: #333;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .message.user .text {
+            background-color: #0078d4;
+            color: white;
+        }
+
+        .chat-input {
+            padding: 20px;
+            display: flex;
+            background-color: #f3f3f3;
+            border-top: 1px solid #d1d1d1;
+        }
+
+        .chat-input input {
+            flex-grow: 1;
+            padding: 12px;
+            border: 1px solid #d1d1d1;
+            border-radius: 16px;
+            font-size: 1em;
+            background-color: #ffffff;
+            outline: none;
+            transition: box-shadow 0.3s ease-in-out;
+        }
+
+        .chat-input input:focus {
+            box-shadow: 0 0 8px rgba(0, 120, 212, 0.5);
+        }
+
+        .chat-input button {
+            margin-left: 12px;
+            padding: 12px 24px;
+            background-color: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .chat-input button:hover {
+            background-color: #005ea2;
+        }
+
+        .chat-input button:disabled {
+            background-color: #a0c8f0;
+            cursor: not-allowed;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+
+    <div class="chat-container">
+        <div class="chat-header">AI 채팅방</div>
+        <div class="chat-messages" id="chat-messages">
+            <!-- 메시지 표시 -->
+        </div>
+        <div class="chat-input">
+            <input type="text" id="message-input" placeholder="메시지를 입력하세요..." />
+            <button id="send-button" onclick="sendMessage()">보내기</button>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const sendButton = document.getElementById('send-button');
+        const inputField = document.getElementById('message-input');
+
+        async function sendMessage() {
+            const messageText = inputField.value.trim();
+            if (messageText) {
+                appendMessage('나', messageText, 'user');
+                sendButton.disabled = true;
+                sendButton.textContent = '로딩 중...';
+                const aiResponse = await sendToServer(messageText);
+                appendMessage('AI', aiResponse.output_data, 'ai');
+                inputField.value = '';
+                sendButton.disabled = false;
+                sendButton.textContent = '보내기';
+            }
+        }
+
+        function appendMessage(user, text, role) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', role);
+            const htmlContent = marked.parse(text);
+            messageElement.innerHTML = `<span class="text">${htmlContent}</span>`;
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        async function sendToServer(inputText) {
+            try {
+                const response = await fetch('http://localhost:8000/Llama', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ input_data: inputText })
+                });
+
+                if (!response.ok) throw new Error('서버 요청 실패');
+                return await response.json();
+            } catch (error) {
+                appendMessage('시스템', '서버와의 연결 중 문제가 발생했습니다.', 'ai');
+                return { output_data: '오류 발생' };
+            }
+        }
+    </script>
+
+</body>
+</html>
