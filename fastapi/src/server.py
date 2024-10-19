@@ -114,14 +114,12 @@ async def root():
     return {"message": "Welcome to the API"}
 
 @app.post("/Llama", response_model=ChatModel.Llama_Response, summary="Llama 모델 답변 생성")
-async def Llama_(request: Request):
+async def Llama_(request: ChatModel.Llama_Request):
     '''
     Llama 모델에 질문 입력 시 답변 반환.
     '''
     try:
-        # 글로벌 모델을 사용하여 응답 생성
-        body = await request.json()
-        tables = llama_model.generate_response(body["input_data"])
+        tables = llama_model.generate_response(request.input_data)
         return {"output_data": tables}
     except ValidationError as e:
         raise ChatError.BadRequestException(detail=str(e))
@@ -129,3 +127,6 @@ async def Llama_(request: Request):
         raise e
     except Exception as e:
         raise ChatError.InternalServerErrorException(detail=str(e))
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
