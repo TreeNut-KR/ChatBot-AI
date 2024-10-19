@@ -66,7 +66,7 @@ def custom_openapi():
 
     openapi_schema = get_openapi(
         title="ChatBot-AI FastAPI",
-        version="v1.0.0",
+        version="v1.0.1",
         summary="AI 모델 관리 API",
         routes=app.routes,
         description=(
