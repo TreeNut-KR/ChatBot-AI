@@ -165,3 +165,4 @@ fastapi/ai_model/*
 
 # setting
 .vscode
+*.gpg
