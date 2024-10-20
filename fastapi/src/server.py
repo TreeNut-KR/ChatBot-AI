@@ -59,14 +59,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
 
     openapi_schema = get_openapi(
         title="ChatBot-AI FastAPI",
-        version="v1.0.0",
-        summary="AI 모델 관리 API (개발 중인 버전)",
+        version="v1.0.1",
+        summary="AI 모델 관리 API",
         routes=app.routes,
         description=(
             "이 API는 다음과 같은 기능을 제공합니다:\n\n"
@@ -78,6 +79,7 @@ def custom_openapi():
     }
     app.openapi_schema = openapi_schema
     return app.openapi_schema
+
 app.openapi = custom_openapi
 
 # 유효하지 않은 요청에 대한 핸들러 추가
