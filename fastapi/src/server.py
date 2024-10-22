@@ -1,6 +1,8 @@
 import os
 import uvicorn
+import asyncio
 from dotenv import load_dotenv
+from asyncio import TimeoutError
 from pydantic import ValidationError
 from contextlib import asynccontextmanager
 
@@ -8,6 +10,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import (APIRouter, Depends, FastAPI, HTTPException, Request)
 from starlette.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -77,7 +80,6 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
-# 봇 차단 미들웨어 추가
 @app.middleware("http")
 async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
     ip_string = os.getenv("IP")
@@ -86,8 +88,8 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
 
     # 봇의 User-Agent 패턴 목록 (필요에 따라 확장 가능)
     bot_user_agents = [
-        "Googlebot", "Bingbot", "Slurp", "DuckDuckBot", "Baiduspider",
-        "YandexBot", "Sogou", "Exabot", "facebot", "ia_archiver"
+        "googlebot", "bingbot", "slurp", "duckduckbot", "baiduspider",
+        "yandexbot", "sogou", "exabot", "facebot", "ia_archiver"
     ]
 
     user_agent = request.headers.get("User-Agent", "").lower()
@@ -99,8 +101,9 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
         
         # 봇 차단
         if any(bot in user_agent for bot in bot_user_agents):
-            raise ChatError.BadRequestException(detail="Bot access is not allowed.")
+            raise ChatError.BadRequestException(detail=f"{user_agent} Bot access is not allowed.")
 
+        # 봇이 아닌 경우에만 다음 처리를 진행 (Llama 호출 포함)
         response = await call_next(request)
         return response
 
@@ -131,14 +134,18 @@ async def Llama_(request: ChatModel.Llama_Request):
     Llama 모델에 질문 입력 시 답변 반환.
     '''
     try:
-        tables = llama_model.generate_response(request.input_data)
+        # 20초 내에 응답이 생성되지 않으면 TimeoutError 발생
+        tables = await asyncio.wait_for(run_in_threadpool(llama_model.generate_response, request.input_data), timeout=20.0)
         return {"output_data": tables}
+    except TimeoutError:
+        raise ChatError.InternalServerErrorException(detail="Llama model response timed out.")
     except ValidationError as e:
         raise ChatError.BadRequestException(detail=str(e))
     except HTTPException as e:
         raise e
     except Exception as e:
         raise ChatError.InternalServerErrorException(detail=str(e))
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
