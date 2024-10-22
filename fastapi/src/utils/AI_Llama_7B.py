@@ -17,7 +17,7 @@ class LlamaChatModel:
         dotenv_path = os.path.join(parent_dir, '.env')
         load_dotenv(dotenv_path)
         self.cache_dir = "./fastapi/ai_model/"
-        self.model_id = "meta-llama/Llama-3.2-3B"  # 원하는 모델 ID 설정
+        self.model_id = "meta-llama/Llama-2-7b-chat-hf"  # 원하는 모델 ID 설정
         self.bart_model_id = "facebook/bart-large-mnli"  # 복잡도 분석용 BART 모델
         self.model_kwargs = {
             "torch_dtype": torch.float16,  # float16으로 설정

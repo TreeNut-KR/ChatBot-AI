@@ -30,3 +30,4 @@ langchain-community
 transformers
 bitsandbytes==0.44.1
 accelerate>=0.26.0
+ua-parser
