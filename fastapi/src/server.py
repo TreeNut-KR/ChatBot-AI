@@ -1,22 +1,19 @@
-import base64
-import logging
 import os
-from contextlib import asynccontextmanager
-
-import utils.Error_handlers as ChatError  # Error_handlers 추가
-import utils.Models as ChatModel
 import uvicorn
 from dotenv import load_dotenv
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.openapi.utils import get_openapi
 from pydantic import ValidationError
+from contextlib import asynccontextmanager
+
+from fastapi.openapi.utils import get_openapi
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import (APIRouter, Depends, FastAPI, HTTPException, Request)
+from starlette.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.responses import JSONResponse
-from utils.AI_Llama_8B import LlamaChatModel
 
-from fastapi import (APIRouter, Depends, FastAPI, HTTPException, Request,
-                     Response)
+import utils.Models as ChatModel
+import utils.Error_handlers as ChatError
+from utils.AI_Llama_8B import LlamaChatModel
 
 llama_model = None  # 모델 전역 변수
 load_dotenv()
@@ -24,12 +21,10 @@ load_dotenv()
 # FastAPI 애플리케이션 초기화
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 애플리케이션 시작 시 실행할 로직 (예: 모델 로드)
     global llama_model
     llama_model = LlamaChatModel()
     print("Llama 모델 로드 완료")
     yield
-    # 애플리케이션 종료 시 실행할 로직 (예: 리소스 해제)
     llama_model = None
     print("Llama 모델 해제 완료")
 
@@ -82,16 +77,29 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
-# 유효하지 않은 요청에 대한 핸들러 추가
+# 봇 차단 미들웨어 추가
 @app.middleware("http")
-async def ip_restrict_and_catch_exceptions_middleware(request: Request, call_next):
+async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
     ip_string = os.getenv("IP")
     allowed_ips = ip_string.split(",") if ip_string else []
     client_ip = request.client.host
 
+    # 봇의 User-Agent 패턴 목록 (필요에 따라 확장 가능)
+    bot_user_agents = [
+        "Googlebot", "Bingbot", "Slurp", "DuckDuckBot", "Baiduspider",
+        "YandexBot", "Sogou", "Exabot", "facebot", "ia_archiver"
+    ]
+
+    user_agent = request.headers.get("User-Agent", "").lower()
+
     try:
+        # IP 제한
         if request.url.path in ["/Llama", "/docs", "/redoc", "/openapi.json"] and client_ip not in allowed_ips:
             raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
+        
+        # 봇 차단
+        if any(bot in user_agent for bot in bot_user_agents):
+            raise ChatError.BadRequestException(detail="Bot access is not allowed.")
 
         response = await call_next(request)
         return response
@@ -102,8 +110,10 @@ async def ip_restrict_and_catch_exceptions_middleware(request: Request, call_nex
     except ChatError.IPRestrictedException as e:
         return await ChatError.generic_exception_handler(request, e)
     
+    except ChatError.BadRequestException as e:
+        return await ChatError.generic_exception_handler(request, e)
+    
     except HTTPException as e:
-        # 405 에러를 MethodNotAllowedException으로 변환
         if e.status_code == 405:
             raise ChatError.MethodNotAllowedException(detail="The method used is not allowed.")
         raise e
