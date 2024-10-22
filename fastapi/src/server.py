@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from asyncio import TimeoutError
 from pydantic import ValidationError
 from contextlib import asynccontextmanager
+import yaml  # YAML 파일을 불러오기 위한 모듈
 
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,9 +22,20 @@ from utils.AI_Llama_8B import LlamaChatModel
 llama_model = None  # 모델 전역 변수
 load_dotenv()
 
-# FastAPI 애플리케이션 초기화
+
+def load_bot_list(file_path: str) -> list:
+    '''
+    YAML 파일에서 봇 리스트를 불러오는 함수
+    '''
+    with open(file_path, 'r', encoding='utf-8') as file:
+        data = yaml.safe_load(file)
+        return [bot['name'].lower() for bot in data.get('bot_user_agents', [])]
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    '''
+    FastAPI AI 모델 애플리케이션 초기화
+    '''
     global llama_model
     llama_model = LlamaChatModel()
     print("Llama 모델 로드 완료")
@@ -36,11 +48,13 @@ ChatError.add_exception_handlers(app)  # 예외 핸들러 추가
 
 class ExceptionMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        '''
+        예외를 Error_handlers에서 정의한 generic_exception_handler로 위임
+        '''
         try:
             response = await call_next(request)
             return response
         except Exception as e:
-            # 예외를 Error_handlers에서 정의한 generic_exception_handler로 위임
             return await ChatError.generic_exception_handler(request, e)
 
 app.add_middleware(ExceptionMiddleware)
@@ -64,7 +78,7 @@ def custom_openapi():
 
     openapi_schema = get_openapi(
         title="ChatBot-AI FastAPI",
-        version="v1.0.1",
+        version="v1.0.2",
         summary="AI 모델 관리 API",
         routes=app.routes,
         description=(
@@ -85,26 +99,18 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
     ip_string = os.getenv("IP")
     allowed_ips = ip_string.split(",") if ip_string else []
     client_ip = request.client.host
-
-    # 봇의 User-Agent 패턴 목록 (필요에 따라 확장 가능)
-    bot_user_agents = [
-        "googlebot", "bingbot", "slurp", "duckduckbot", "baiduspider",
-        "yandexbot", "sogou", "exabot", "facebot", "ia_archiver"
-    ]
-
+    
+    bot_user_agents = load_bot_list("fastapi/src/bot.yaml") # 봇의 User-Agent 패턴 목록을 YAML 파일에서 불러오기
     user_agent = request.headers.get("User-Agent", "").lower()
 
     try:
-        # IP 제한
-        if request.url.path in ["/Llama", "/docs", "/redoc", "/openapi.json"] and client_ip not in allowed_ips:
+        if request.url.path in ["/Llama", "/docs", "/redoc", "/openapi.json"] and client_ip not in allowed_ips: # IP 제한
             raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
         
-        # 봇 차단
-        if any(bot in user_agent for bot in bot_user_agents):
+        if any(bot in user_agent for bot in bot_user_agents): # 봇 차단
             raise ChatError.BadRequestException(detail=f"{user_agent} Bot access is not allowed.")
 
-        # 봇이 아닌 경우에만 다음 처리를 진행 (Llama 호출 포함)
-        response = await call_next(request)
+        response = await call_next(request) # 봇이 아닌 경우 다음 처리를 진행 (Llama 호출 포함)
         return response
 
     except ValidationError as e:
@@ -131,10 +137,10 @@ async def root():
 @app.post("/Llama", response_model=ChatModel.Llama_Response, summary="Llama 모델 답변 생성")
 async def Llama_(request: ChatModel.Llama_Request):
     '''
-    Llama 모델에 질문 입력 시 답변 반환.
+    Llama 모델에 질문 입력 시 답변 반환
+    20초 내에 응답이 생성되지 않으면 TimeoutError 발생
     '''
     try:
-        # 20초 내에 응답이 생성되지 않으면 TimeoutError 발생
         tables = await asyncio.wait_for(run_in_threadpool(llama_model.generate_response, request.input_data), timeout=20.0)
         return {"output_data": tables}
     except TimeoutError:

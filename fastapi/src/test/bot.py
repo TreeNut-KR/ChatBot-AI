@@ -1,14 +1,20 @@
+import yaml
 import httpx
 import asyncio
 
 # 서버의 URL 설정
 url = "http://127.0.0.1:8000/Llama"
 
+def load_bot_list(file_path: str) -> list:
+    '''
+    YAML 파일에서 봇 리스트를 불러오는 함수
+    '''
+    with open(file_path, 'r', encoding='utf-8') as file:
+        data = yaml.safe_load(file)
+        return [bot['name'].lower() for bot in data.get('bot_user_agents', [])]
+
 # 테스트할 봇 User-Agent 리스트
-bot_user_agents = [
-    "Googlebot", "Bingbot", "Slurp", "DuckDuckBot", "Baiduspider",
-    "YandexBot", "Sogou", "Exabot", "facebot", "ia_archiver"
-]
+bot_user_agents = load_bot_list("fastapi/src/bot.yaml") # 봇의 User-Agent 패턴 목록을 YAML 파일에서 불러오기
 
 async def test_bot_access(bot_agent: str):
     headers = {
