@@ -12,7 +12,7 @@ SET ENV_DIR=.venv
 "%PYTHON_PATH%" -m venv %ENV_DIR%
 
 echo 가상 환경 활성화 중...
-:: PowerShell을 사용하여 가상 환경 활성화
+:: PowerShell을 사용하여 가상 환경 활성화 (직접 사용 시 : powershell -NoExit -ExecutionPolicy Bypass -Command "& { .\.venv\Scripts\activate.ps1 }")
 powershell -NoExit -ExecutionPolicy Bypass -Command "& { .\%ENV_DIR%\Scripts\activate.ps1 }"
 
 ENDLOCAL

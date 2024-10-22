@@ -1,0 +1,129 @@
+bot_user_agents:
+  - name: "googlebot"
+    description: "Google 크롤러"
+
+  - name: "bingbot"
+    description: "Bing 크롤러"
+
+  - name: "slurp"
+    description: "Yahoo! 크롤러"
+
+  - name: "duckduckbot"
+    description: "DuckDuckGo 크롤러"
+
+  - name: "baiduspider"
+    description: "Baidu 크롤러"
+
+  - name: "yandexbot"
+    description: "Yandex 크롤러"
+
+  - name: "sogou"
+    description: "Sogou 크롤러"
+    
+  - name: "exabot"
+    description: "Exalead 크롤러"
+
+  - name: "facebot"
+    description: "Facebook 스크래핑 봇"
+
+  - name: "ia_archiver"
+    description: "Alexa 크롤러"
+
+  - name: "MJ12bot"
+    description: "Majestic-12 검색 엔진 크롤러"
+
+  - name: "semrushbot"
+    description: "Semrush SEO 도구 봇"
+    
+  - name: "ahrefsbot"
+    description: "Ahrefs SEO 도구 봇"
+
+  - name: "dotbot"
+    description: "Moz 링크 인덱서"
+
+  - name: "gigabot"
+    description: "Gigablast 크롤러"
+
+  - name: "rogerbot"
+    description: "SEOmoz 크롤러"
+
+  - name: "seznambot"
+    description: "Seznam 검색 엔진 크롤러"
+
+  - name: "buibot"
+    description: "웹 페이지를 대량으로 스크래핑하는 악성 봇"
+
+  - name: "spbot"
+    description: "Search Metrics 스크레이퍼 봇"
+
+  - name: "crawler4j"
+    description: "오픈 소스 웹 크롤러"
+
+  - name: "linkpadbot"
+    description: "LinkPad SEO 도구 봇"
+
+  - name: "siteexplorer"
+    description: "사이트 탐색기 봇"
+
+  - name: "DotBot"
+    description: "DotBot 크롤러"
+
+  - name: "ezooms"
+    description: "악성 크롤러로 분류된 봇"
+
+  - name: "Scrapy"
+    description: "Python 기반의 웹 크롤러 (스크래핑 라이브러리)"
+    
+  - name: "Python-urllib"
+    description: "Python urllib 모듈 기반 스크레이퍼"
+
+  - name: "curl"
+    description: "명령줄 도구 curl로 웹 서버에 직접 요청하는 경우"
+
+  - name: "Wget"
+    description: "명령줄 도구 wget으로 파일 다운로드 또는 스크래핑"
+
+  - name: "zgrab"
+    description: "네트워크 스캐너 도구"
+
+  - name: "masscan"
+    description: "네트워크 포트 스캐너"
+
+  - name: "sqlmap"
+    description: "SQL 인젝션 탐지 및 익스플로잇 도구"
+    
+  - name: "nikto"
+    description: "웹 서버 취약성 탐지 도구"
+
+  - name: "ZyBorg"
+    description: "악성 봇으로 분류된 웹 크롤러"
+
+  - name: "BLEXBot"
+    description: "성능이 좋지 않은 것으로 알려진 봇"
+
+  - name: "MegaIndex.ru"
+    description: "러시아 기반 SEO 분석 봇"
+
+  - name: "XoviBot"
+    description: "Xovi SEO 도구 봇"
+
+  - name: "DotBot"
+    description: "링크 분석 봇"
+
+  - name: "Cliqzbot"
+    description: "Cliqz 검색 엔진 봇"
+
+  - name: "spider"
+    description: "일반적인 악성 크롤러의 이름"
+
+  - name: "bot"
+    description: "여러 봇에서 공통적으로 사용되는 일반적인 용어"
+
+  - name: "crawler"
+    description: "일반적인 크롤러 이름"
+
+  - name: "scan"
+    description: "스캐너 관련 User-Agent 패턴"
+    
+  - name: "nmap"
+    description: "네트워크 맵핑 도구로 웹 서버 탐색 시"
