@@ -1,16 +1,16 @@
 import os
+import yaml
 import uvicorn
 import asyncio
 from dotenv import load_dotenv
 from asyncio import TimeoutError
 from pydantic import ValidationError
 from contextlib import asynccontextmanager
-import yaml  # YAML 파일을 불러오기 위한 모듈
 
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import (APIRouter, Depends, FastAPI, HTTPException, Request)
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -104,7 +104,7 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
     user_agent = request.headers.get("User-Agent", "").lower()
 
     try:
-        if request.url.path in ["/Llama", "/docs", "/redoc", "/openapi.json"] and client_ip not in allowed_ips: # IP 제한
+        if request.url.path in ["/Llama", "/Llama_stream","/docs", "/redoc", "/openapi.json"] and client_ip not in allowed_ips: # IP 제한
             raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
         
         if any(bot in user_agent for bot in bot_user_agents): # 봇 차단
@@ -138,10 +138,10 @@ async def root():
 async def Llama_(request: ChatModel.Llama_Request):
     '''
     Llama 모델에 질문 입력 시 답변 반환
-    20초 내에 응답이 생성되지 않으면 TimeoutError 발생
+    60초 내에 응답이 생성되지 않으면 TimeoutError 발생
     '''
     try:
-        tables = await asyncio.wait_for(run_in_threadpool(llama_model.generate_response, request.input_data), timeout=20.0)
+        tables = await asyncio.wait_for(run_in_threadpool(llama_model.generate_response, request.input_data), timeout=60.0)
         return {"output_data": tables}
     except TimeoutError:
         raise ChatError.InternalServerErrorException(detail="Llama model response timed out.")
@@ -152,6 +152,22 @@ async def Llama_(request: ChatModel.Llama_Request):
     except Exception as e:
         raise ChatError.InternalServerErrorException(detail=str(e))
 
+@app.post("/Llama_stream", summary="스트리밍 방식으로 Llama 모델 답변 생성")
+async def Llama_stream(request: ChatModel.Llama_Request):
+    '''
+    Llama 모델에 질문 입력 시 답변을 스트리밍 방식으로 반환
+    '''
+    try:
+        response_stream = llama_model.generate_response_stream(request.input_data)
+        return StreamingResponse(response_stream, media_type="text/plain")
+    except TimeoutError:
+        raise ChatError.InternalServerErrorException(detail="Llama model response timed out.")
+    except ValidationError as e:
+        raise ChatError.BadRequestException(detail=str(e))
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise ChatError.InternalServerErrorException(detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

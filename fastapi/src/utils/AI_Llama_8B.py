@@ -1,9 +1,12 @@
 import os
 import torch
 import transformers
-from torch.cuda.amp import autocast, GradScaler
-from accelerate import Accelerator
+from threading import Thread
 from dotenv import load_dotenv
+from accelerate import Accelerator
+
+from torch.cuda.amp import autocast, GradScaler
+from transformers import TextIteratorStreamer
 from transformers import BitsAndBytesConfig, pipeline
 
 class LlamaChatModel:
@@ -117,13 +120,12 @@ class LlamaChatModel:
             return 500  # 복잡한 질문일 경우 500토큰 제한
         return 250  # 중간 수준의 복잡도일 경우 250토큰
 
-    def generate_response(self, input_text: str) -> str:
+    def generate_response_stream(self, input_text: str):
         '''
-        주어진 입력 텍스트에 대한 응답을 생성합니다.
+        입력 텍스트에 대한 응답을 스트리밍 방식으로 생성합니다.
         :param input_text: 입력 텍스트
-        :return: 생성된 응답 텍스트
+        :yield: 생성된 텍스트의 스트림
         '''
-        # GTX 1050에서 복잡도 분석
         complexity = self.analyze_complexity(input_text)
         max_new_tokens = self.adjust_max_tokens(complexity)
 
@@ -131,23 +133,29 @@ class LlamaChatModel:
         input_ids = self.tokenizer.encode(full_input, return_tensors="pt").to(torch.device("cpu"))
         attention_mask = (input_ids != self.tokenizer.pad_token_id).long()
 
-        # Mixed Precision과 함께 generate 함수 직접 호출
-        with autocast(dtype=torch.float16):  # Mixed Precision 사용
-            with torch.no_grad():
-                output = self.model.generate(
-                    input_ids.to(self.device_2080),  # RTX 2080에서 Llama 모델 사용
-                    attention_mask=attention_mask.to(self.device_2080),
-                    max_new_tokens=max_new_tokens,
-                    do_sample=True,
-                    temperature=0.64,
-                    top_k=51,
-                    top_p=0.63,
-                    eos_token_id=self.tokenizer.eos_token_id,
-                    pad_token_id=self.tokenizer.eos_token_id,
-                    repetition_penalty=1.21,
-                )
-        response = self.tokenizer.decode(output[0], skip_special_tokens=True)
-        return response
+        streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True)
+        
+        # 모델을 실행할 스레드를 생성합니다.
+        generation_kwargs = {
+            "input_ids": input_ids.to(self.device_2080),
+            "attention_mask": attention_mask.to(self.device_2080),
+            "max_new_tokens": max_new_tokens,
+            "do_sample": True,
+            "temperature": 0.64,
+            "top_k": 51,
+            "top_p": 0.63,
+            "eos_token_id": self.tokenizer.eos_token_id,
+            "pad_token_id": self.tokenizer.eos_token_id,
+            "repetition_penalty": 1.21,
+            "streamer": streamer
+        }
+
+        thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
+        thread.start()
+
+        # 스트리머에서 텍스트가 생성될 때마다 이를 yield 합니다.
+        for new_text in streamer:
+            yield new_text
 
 
 # if __name__ == "__main__":
