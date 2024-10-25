@@ -156,15 +156,3 @@ class LlamaChatModel:
         # 스트리머에서 텍스트가 생성될 때마다 이를 yield 합니다.
         for new_text in streamer:
             yield new_text
-
-
-# if __name__ == "__main__":
-#     LCM = LlamaChatModel()
-#     while True:
-#         print("입력: ")
-#         user_input = input("")  # 사용자로부터 입력 받기
-#         if user_input.lower() == "exit":
-#             print("종료합니다.")
-#             break
-#         response = LCM.generate_response(user_input)
-#         print(f"응답: {response}")
