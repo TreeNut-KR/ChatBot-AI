@@ -37,9 +37,7 @@ FOR /F "tokens=*" %%i IN ('docker images -q --filter "dangling=false"') DO (
 echo.
 
 echo Removing old folders...
-IF EXIST .\fastapi\sources\logs rmdir /s /q .\fastapi\sources\logs
 IF EXIST .\mysql\data rmdir /s /q .\mysql\data
-IF EXIST .\mysql\logs rmdir /s /q .\mysql\logs
 echo.
 
 echo Removing __pycache__ folders in ./fastapi...

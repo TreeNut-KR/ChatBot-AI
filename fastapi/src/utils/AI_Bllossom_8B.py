@@ -1,18 +1,18 @@
 import os
+from threading import Thread
+
 import torch
 import transformers
-from threading import Thread
-from dotenv import load_dotenv
 from accelerate import Accelerator
+from dotenv import load_dotenv
+from torch.cuda.amp import GradScaler, autocast
+from transformers import BitsAndBytesConfig, TextIteratorStreamer
 
-from torch.cuda.amp import autocast, GradScaler
-from transformers import TextIteratorStreamer
-from transformers import BitsAndBytesConfig
 
-class LlamaChatModel:
+class BllossomChatModel:
     def __init__(self):
         '''
-        LlamaChatModel 클래스 초기화
+        BllossomChatModel 클래스 초기화
         '''
         # 현재 파일의 경로를 기준으로 부모 디렉토리의 .env 파일 경로 설정
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -20,7 +20,7 @@ class LlamaChatModel:
         dotenv_path = os.path.join(parent_dir, '.env')
         load_dotenv(dotenv_path)
         self.cache_dir = "./fastapi/ai_model/"
-        self.model_id = "meta-llama/Llama-3.1-8B-Instruct"  # 원하는 모델 ID 설정
+        self.model_id = "MLP-KTLim/llama-3-Korean-Bllossom-8B"  # 원하는 모델 ID 설정
         self.model_kwargs = {
             "torch_dtype": torch.float16,  # float16으로 설정
             "trust_remote_code": True,
@@ -32,7 +32,7 @@ class LlamaChatModel:
 
         # Accelerate 객체 초기화
         self.accelerator = Accelerator(mixed_precision="fp16")  # Mixed Precision 설정
-        self.device_2060 = torch.device("cuda:1")  # RTX 2060 GPU에 할당
+        self.device_3060 = torch.device("cuda:0")  # GTX 3060 GPU에 할당
 
         print("토크나이저 로드 중...")
         self.tokenizer = self.load_tokenizer()
@@ -74,8 +74,8 @@ class LlamaChatModel:
         # Accelerator로 모델과 옵티마이저 준비
         model, optimizer = self.accelerator.prepare(model, optimizer)
         
-        # 2060 GPU에 모델 전송
-        model.to(self.device_2060)
+        # 3060 GPU에 모델 전송
+        model.to(self.device_3060)
         return model, optimizer
 
     def generate_response_stream(self, input_text: str):
@@ -94,8 +94,8 @@ class LlamaChatModel:
         
         # 모델을 실행할 스레드를 생성합니다.
         generation_kwargs = {
-            "input_ids": input_ids.to(self.device_2060),
-            "attention_mask": attention_mask.to(self.device_2060),
+            "input_ids": input_ids.to(self.device_3060),
+            "attention_mask": attention_mask.to(self.device_3060),
             "max_new_tokens": max_new_tokens,
             "do_sample": True,
             "temperature": 0.64,

@@ -1,10 +1,11 @@
 import os
 import logging
-from logging.handlers import TimedRotatingFileHandler
+from logging.handlers import BaseRotatingHandler
 from typing import Callable, Dict, Type, Optional
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI, HTTPException, Request
-from datetime import datetime
+from datetime import datetime, timedelta
+
 
 # 현재 파일의 상위 디렉토리 경로
 current_directory = os.path.dirname(os.path.abspath(__file__))
@@ -21,24 +22,45 @@ if not os.path.exists(log_dir):
 logger = logging.getLogger("fastapi_error_handlers")
 logger.setLevel(logging.DEBUG)
 
-# 현재 날짜를 포함한 로그 파일 이름 설정
-current_date = datetime.now().strftime("%Y%m%d")
-log_file = os.path.join(log_dir, f"{current_date}.log")  # 현재 날짜로 파일 생성
+class DailyRotatingFileHandler(BaseRotatingHandler):
+    """
+    날짜별로 로그 파일을 회전시키는 핸들러.
+    """
+    def __init__(self, dir_path: str, date_format: str = "%Y%m%d", encoding=None):
+        # 로그 파일 디렉토리와 날짜 형식을 저장
+        self.dir_path = dir_path
+        self.date_format = date_format
+        self.current_date = datetime.now().strftime(self.date_format)
+        log_file = os.path.join(self.dir_path, f"{self.current_date}.log")
+        super().__init__(log_file, 'a', encoding)
 
-# TimedRotatingFileHandler 설정 (날짜별로 로그 파일을 분리)
-file_handler = TimedRotatingFileHandler(log_file, when='midnight', interval=1, encoding='utf-8', backupCount=30)
+    def shouldRollover(self, record):
+        # 로그의 날짜가 변경되었는지 확인
+        log_date = datetime.now().strftime(self.date_format)
+        return log_date != self.current_date
+
+    def doRollover(self):
+        # 로그 파일의 날짜가 변경되었을 때 롤오버 수행
+        self.current_date = datetime.now().strftime(self.date_format)
+        self.baseFilename = os.path.join(self.dir_path, f"{self.current_date}.log")
+        if self.stream:
+            self.stream.close()
+            self.stream = self._open()
+
+# DailyRotatingFileHandler 설정
+file_handler = DailyRotatingFileHandler(log_dir, encoding='utf-8')
 file_handler.setLevel(logging.DEBUG)
 
 # StreamHandler 설정 (터미널 출력용)
 stream_handler = logging.StreamHandler()
 stream_handler.setLevel(logging.DEBUG)
 
-# 로그 포맷 설정 (유니코드 문자열로 처리)
+# 로그 포맷 설정
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%H:%M:%S')
 file_handler.setFormatter(formatter)
 stream_handler.setFormatter(formatter)
 
-# Logger에 핸들러 추가 (중복 방지 조건 제거)
+# Logger에 핸들러 추가
 logger.addHandler(file_handler)
 logger.addHandler(stream_handler)
 
@@ -66,7 +88,7 @@ class ValueErrorException(HTTPException):
 class InternalServerErrorException(HTTPException):
     def __init__(self, detail: Optional[str] = None):
         super().__init__(status_code=500, detail=detail)
-        
+
 class DatabaseErrorException(HTTPException):
     def __init__(self, detail: str = "Database Error"):
         super().__init__(status_code=503, detail=detail)
@@ -74,7 +96,7 @@ class DatabaseErrorException(HTTPException):
 class IPRestrictedException(HTTPException):
     def __init__(self, detail: str = "Unauthorized IP address"):
         super().__init__(status_code=403, detail=detail)
-        
+
 class MethodNotAllowedException(HTTPException):
     def __init__(self, detail: str = "Method Not Allowed"):
         super().__init__(status_code=405, detail=detail)
@@ -126,7 +148,7 @@ async def generic_exception_handler(request: Request, exc: HTTPException) -> JSO
     요청 정보와 예외에 대한 세부 사항을 로그에 기록합니다.
     """
     handler = exception_handlers.get(type(exc), None)
-    
+
     # 요청 본문 읽기
     body = await request.body()
 
