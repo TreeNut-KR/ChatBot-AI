@@ -3,7 +3,7 @@ import httpx
 import asyncio
 
 # 서버의 URL 설정
-url = "http://127.0.0.1:8000/Llama"
+url = "http://127.0.0.1:8000/Llama_stream"
 
 def load_bot_list(file_path: str) -> list:
     '''
