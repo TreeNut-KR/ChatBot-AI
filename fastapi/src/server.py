@@ -17,11 +17,12 @@ from starlette.middleware.sessions import SessionMiddleware
 
 import utils.Models as ChatModel
 import utils.Error_handlers as ChatError
-from utils.AI_Llama_8B import LlamaChatModel
+from utils.AI_Llama_8B import LlamaChatModel as Llama_8B
+from utils.AI_Bllossom_8B import BllossomChatModel as Bllossom_8B
 
-llama_model = None  # 모델 전역 변수
+llama_model_8b = None  # Llama_8B 모델 전역 변수
+Bllossom_Model_8B = None  # Bllossom_8B 모델 전역 변수
 load_dotenv()
-
 
 def load_bot_list(file_path: str) -> list:
     '''
@@ -36,11 +37,13 @@ async def lifespan(app: FastAPI):
     '''
     FastAPI AI 모델 애플리케이션 초기화
     '''
-    global llama_model
-    llama_model = LlamaChatModel()
+    global llama_model_8b, Bllossom_Model_8B
+    llama_model_8b = Llama_8B()
+    Bllossom_Model_8B = Bllossom_8B()
     print("Llama 모델 로드 완료")
     yield
-    llama_model = None
+    llama_model_8b = None
+    Bllossom_Model_8B = None
     print("Llama 모델 해제 완료")
 
 app = FastAPI(lifespan=lifespan)  # 여기서 한 번만 app을 생성합니다.
@@ -61,7 +64,7 @@ app.add_middleware(ExceptionMiddleware)
 
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.getenv("SESSION_KEY", "default-secret")  # 시크릿 키 대신 세션 키만 유지
+    secret_key=os.getenv("SESSION_KEY", "default-secret")
 )
 
 app.add_middleware(
@@ -100,17 +103,17 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
     allowed_ips = ip_string.split(", ") if ip_string else []
     client_ip = request.client.host
     
-    bot_user_agents = load_bot_list("fastapi/src/bot.yaml") # 봇의 User-Agent 패턴 목록을 YAML 파일에서 불러오기
+    bot_user_agents = load_bot_list("fastapi/src/bot.yaml")
     user_agent = request.headers.get("User-Agent", "").lower()
 
     try:
-        if request.url.path in ["/Llama_stream","/docs", "/redoc", "/openapi.json"] and client_ip not in allowed_ips: # IP 제한
+        if request.url.path in ["/Llama_stream","/Llama_stream_sb", "/docs", "/redoc", "/openapi.json"] and client_ip not in allowed_ips:
             raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
         
-        if any(bot in user_agent for bot in bot_user_agents): # 봇 차단
+        if any(bot in user_agent for bot in bot_user_agents):
             raise ChatError.BadRequestException(detail=f"{user_agent} Bot access is not allowed.")
 
-        response = await call_next(request) # 봇이 아닌 경우 다음 처리를 진행 (Llama 호출 포함)
+        response = await call_next(request)
         return response
 
     except ValidationError as e:
@@ -134,13 +137,13 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
 async def root():
     return {"message": "Welcome to the API"}
 
-@app.post("/Llama_stream", summary="스트리밍 방식으로 Llama 모델 답변 생성")
+@app.post("/Llama_stream", summary="스트리밍 방식으로 Llama_8B 모델 답변 생성")
 async def Llama_stream(request: ChatModel.Llama_Request):
     '''
-    Llama 모델에 질문 입력 시 답변을 스트리밍 방식으로 반환
+    Llama_8B 모델에 질문 입력 시 답변을 스트리밍 방식으로 반환
     '''
     try:
-        response_stream = llama_model.generate_response_stream(request.input_data)
+        response_stream = llama_model_8b.generate_response_stream(request.input_data)
         return StreamingResponse(response_stream, media_type="text/plain")
     except TimeoutError:
         raise ChatError.InternalServerErrorException(detail="Llama model response timed out.")
@@ -150,6 +153,23 @@ async def Llama_stream(request: ChatModel.Llama_Request):
         raise e
     except Exception as e:
         raise ChatError.InternalServerErrorException(detail=str(e))
-  
+
+@app.post("/Bllossom_stream", summary="스트리밍 방식으로 Bllossom_8B 모델 답변 생성")
+async def Bllossom_stream(request: ChatModel.Bllossom_Request):
+    '''
+    Bllossom_8B 모델에 질문 입력 시 답변을 스트리밍 방식으로 반환
+    '''
+    try:
+        response_stream = Bllossom_Model_8B.generate_response_stream(request.input_data)
+        return StreamingResponse(response_stream, media_type="text/plain")
+    except TimeoutError:
+        raise ChatError.InternalServerErrorException(detail="Llama model response timed out.")
+    except ValidationError as e:
+        raise ChatError.BadRequestException(detail=str(e))
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise ChatError.InternalServerErrorException(detail=str(e))
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

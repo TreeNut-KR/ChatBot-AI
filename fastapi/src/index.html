@@ -179,7 +179,7 @@
 
         async function sendToServer(inputText) {
             try {
-                const response = await fetch('http://localhost:8000/Llama_stream', {
+                const response = await fetch('http://localhost:8000/Bllossom_stream', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ input_data: inputText })
