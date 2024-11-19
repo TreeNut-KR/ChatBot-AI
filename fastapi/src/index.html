@@ -28,37 +28,30 @@
             font-size: 1.5em;
         }
 
-        .sidebar {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 250px;
-            height: 100%;
-            background-color: #202123;
-            color: #ffffff;
-            overflow-y: auto;
-            padding-top: 20px;
+        .button-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+            gap: 20px;
         }
 
-        .sidebar ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .sidebar ul li {
+        .button-container button {
             padding: 10px 20px;
+            background-color: #56b4fc;
+            color: #ffffff;
+            border: none;
+            border-radius: 20px;
             cursor: pointer;
+            font-size: 1em;
         }
 
-        .sidebar ul li:hover {
-            background-color: #3c3f41;
+        .button-container button:hover {
+            background-color: #339edb;
         }
 
         main {
-            margin-left: 250px;
-            padding: 40px;
-            max-width: 800px;
+            padding: 0;
         }
 
         .chat-container {
@@ -66,6 +59,13 @@
             border-radius: 8px;
             padding: 20px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            height: calc(100vh - 200px); /* 화면 높이에 맞게 조정 */
+            box-sizing: border-box;
+            overflow-y: auto;
         }
 
         .message {
@@ -82,104 +82,100 @@
             color: #dcdcdc;
         }
 
+        .ai-message.markdown {
+            white-space: pre-wrap;
+        }
+
         footer {
             position: fixed;
             bottom: 0;
-            left: 250px;
-            width: calc(100% - 250px);
+            width: 100%;
             background-color: #40414f;
             padding: 10px;
             box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
         }
-
+        
+        footer form {
+            width: 100%; /* 폼 너비를 전체로 설정 */
+            margin: 0;
+            padding: 0;
+        }
+        
         footer input[type="text"] {
-            width: calc(100% - 100px);
+            width: 100%; /* 입력 필드 너비를 전체로 설정 */
             padding: 10px;
             border-radius: 20px;
             border: 1px solid #ccc;
             font-size: 1em;
             background-color: #565869;
             color: #ffffff;
-        }
-
-        footer button {
-            padding: 10px;
-            background-color: #56b4fc;
-            color: #ffffff;
-            border: none;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 1em;
-        }
-
-        footer button:hover {
-            background-color: #339edb;
+            box-sizing: border-box; /* 패딩 포함 */
         }
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <h2 style="text-align: center;">ChatGPT</h2>
-        <ul>
-            <li>챗GPT</li>
-            <li>GPT 탐색</li>
-            <li>HTML 템플릿 생성 요청</li>
-            <li>AI 채팅방 구현 코드</li>
-            <li>지난 7일</li>
-            <li>Docker Compose 설정 수정</li>
-            <li>npm 설치 및 오류 방지</li>
-            <li>스트리밍 데이터 처리 및 저장</li>
-        </ul>
-    </div>
     <header>
         <h1>ChatGPT 4o</h1>
     </header>
+    <div class="button-container">
+        <button id="llama-button">Llama</button>
+        <button id="bllossom-button">Bllossom</button>
+    </div>
     <main>
         <div class="chat-container" id="chat-container">
             <div class="message ai-message" style="text-align: center; font-size: 1.2em;">무엇을 도와드릴까요?</div>
         </div>
     </main>
     <footer>
-        <form id="chat-form">
+        <form id="chat-form" style="width: 99%; margin: 0; padding: 0;">
             <input type="text" id="user-input" placeholder="메시지를 입력하세요...">
-            <button type="submit" id="send-button">보내기</button>
         </form>
     </footer>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         const chatForm = document.getElementById('chat-form');
         const userInput = document.getElementById('user-input');
         const chatContainer = document.getElementById('chat-container');
-        const sendButton = document.getElementById('send-button');
+        const llamaButton = document.getElementById('llama-button');
+        const bllossomButton = document.getElementById('bllossom-button');
 
-        chatForm.addEventListener('submit', function(event) {
-            event.preventDefault();
-            sendMessage();
-        });
+        llamaButton.addEventListener('click', () => sendMessage('Llama_stream'));
+        bllossomButton.addEventListener('click', () => sendMessage('Bllossom_stream'));
 
-        async function sendMessage() {
+        async function sendMessage(apiEndpoint) {
             const userText = userInput.value.trim();
             if (userText !== '') {
                 appendMessage('나', userText, 'user-message');
                 userInput.value = '';
-                sendButton.disabled = true;
-                sendButton.textContent = '로딩 중...';
-                await sendToServer(userText);
-                sendButton.disabled = false;
-                sendButton.textContent = '보내기';
+                llamaButton.disabled = true;
+                bllossomButton.disabled = true;
+                try {
+                    await sendToServer(apiEndpoint, userText);
+                } finally {
+                    llamaButton.disabled = false;
+                    bllossomButton.disabled = false;
+                }
             }
         }
 
-        function appendMessage(user, text, className) {
+        function appendMessage(user, text, className, isMarkdown = false) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', className);
-            messageDiv.textContent = text;
+            if (isMarkdown) {
+                messageDiv.classList.add('markdown');
+                messageDiv.innerHTML = marked.parse(text);
+            } else {
+                messageDiv.textContent = text;
+            }
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-        async function sendToServer(inputText) {
+        async function sendToServer(apiEndpoint, inputText) {
             try {
-                const response = await fetch('http://localhost:8000/Bllossom_stream', {
+                const response = await fetch(`http://localhost:8000/${apiEndpoint}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ input_data: inputText })
@@ -198,11 +194,10 @@
                     receivedText += decoder.decode(value);
                     if (!messageElement) {
                         messageElement = document.createElement('div');
-                        messageElement.classList.add('message', 'ai-message');
-                        messageElement.innerHTML = `<span class="text"></span>`;
+                        messageElement.classList.add('message', 'ai-message', 'markdown');
                         chatContainer.appendChild(messageElement);
                     }
-                    messageElement.querySelector('.text').textContent = receivedText;
+                    messageElement.innerHTML = marked.parse(receivedText);
                     chatContainer.scrollTop = chatContainer.scrollHeight;
                 }
 

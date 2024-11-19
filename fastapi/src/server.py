@@ -21,7 +21,7 @@ from utils.AI_Llama_8B import LlamaChatModel as Llama_8B
 from utils.AI_Bllossom_8B import BllossomChatModel as Bllossom_8B
 
 llama_model_8b = None  # Llama_8B 모델 전역 변수
-Bllossom_Model_8B = None  # Bllossom_8B 모델 전역 변수
+bllossom_model_8b = None  # Bllossom_8B 모델 전역 변수
 load_dotenv()
 
 def load_bot_list(file_path: str) -> list:
@@ -37,13 +37,18 @@ async def lifespan(app: FastAPI):
     '''
     FastAPI AI 모델 애플리케이션 초기화
     '''
-    global llama_model_8b, Bllossom_Model_8B
-    llama_model_8b = Llama_8B()
-    Bllossom_Model_8B = Bllossom_8B()
-    print("Llama 모델 로드 완료")
+    global llama_model_8b, bllossom_model_8b
+    # server.py
+    llama_model_8b = Llama_8B()  # cuda:1
+    bllossom_model_8b = Bllossom_8B()  # cuda:0
+
+    # 디버깅용 출력
+    print(f"Llama 모델 로드 완료 (장치: {llama_model_8b.device})")
+    print(f"Bllossom 모델 로드 완료 (장치: {bllossom_model_8b.device})")
+
     yield
     llama_model_8b = None
-    Bllossom_Model_8B = None
+    bllossom_model_8b = None
     print("Llama 모델 해제 완료")
 
 app = FastAPI(lifespan=lifespan)  # 여기서 한 번만 app을 생성합니다.
@@ -138,7 +143,7 @@ async def root():
     return {"message": "Welcome to the API"}
 
 @app.post("/Llama_stream", summary="스트리밍 방식으로 Llama_8B 모델 답변 생성")
-async def Llama_stream(request: ChatModel.Llama_Request):
+async def llama_stream(request: ChatModel.Llama_Request):
     '''
     Llama_8B 모델에 질문 입력 시 답변을 스트리밍 방식으로 반환
     '''
@@ -152,23 +157,25 @@ async def Llama_stream(request: ChatModel.Llama_Request):
     except HTTPException as e:
         raise e
     except Exception as e:
+        print(f"Unhandled Exception: {e}")  # 디버깅 출력 추가
         raise ChatError.InternalServerErrorException(detail=str(e))
 
 @app.post("/Bllossom_stream", summary="스트리밍 방식으로 Bllossom_8B 모델 답변 생성")
-async def Bllossom_stream(request: ChatModel.Bllossom_Request):
+async def bllossom_stream(request: ChatModel.Bllossom_Request):
     '''
     Bllossom_8B 모델에 질문 입력 시 답변을 스트리밍 방식으로 반환
     '''
     try:
-        response_stream = Bllossom_Model_8B.generate_response_stream(request.input_data)
+        response_stream = bllossom_model_8b.generate_response_stream(request.input_data)
         return StreamingResponse(response_stream, media_type="text/plain")
     except TimeoutError:
-        raise ChatError.InternalServerErrorException(detail="Llama model response timed out.")
+        raise ChatError.InternalServerErrorException(detail="Bllossom model response timed out.")
     except ValidationError as e:
         raise ChatError.BadRequestException(detail=str(e))
     except HTTPException as e:
         raise e
     except Exception as e:
+        print(f"Unhandled Exception: {e}")  # 디버깅 출력 추가
         raise ChatError.InternalServerErrorException(detail=str(e))
 
 if __name__ == "__main__":
