@@ -61,7 +61,7 @@ class LlamaChatModel:
         return model
 
     def generate_response_stream(self, input_text: str):
-        max_new_tokens = 400
+        max_new_tokens = 200
         full_input = f"{input_text}"
         input_ids = self.tokenizer.encode(full_input, return_tensors="pt").to(self.device)
         attention_mask = (input_ids != self.tokenizer.pad_token_id).long().to(self.device)
@@ -72,12 +72,12 @@ class LlamaChatModel:
             "attention_mask": attention_mask.to(self.device),
             "max_new_tokens": max_new_tokens,
             "do_sample": True,
-            "temperature": 0.64,
-            "top_k": 51,
-            "top_p": 0.63,
+            "temperature": 0.5,
+            "top_k": 40,
+            "top_p": 0.7,
             "eos_token_id": self.tokenizer.eos_token_id,
             "pad_token_id": self.tokenizer.eos_token_id,
-            "repetition_penalty": 1.21,
+            "repetition_penalty": 1.5,
             "streamer": streamer
         }
 
