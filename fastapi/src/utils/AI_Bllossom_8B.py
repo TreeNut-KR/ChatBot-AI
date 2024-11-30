@@ -60,57 +60,36 @@ class BllossomChatModel:
             **self.model_kwargs
         )
         return model
-
-    def predict_response_length(self, input_text: str) -> int:
-        """
-        입력 텍스트를 기반으로 적절한 응답 길이를 예측합니다.
-        """
-        prompt = f"문장: {input_text}\n이 문장에 적절한 응답 길이를 예측하세요. 숫자로만 답하세요 (50~400):"
         
-        # 모델 응답 생성
-        predicted_length = self.generate_text(
-            prompt,
-            max_tokens=5,  # 간단한 숫자 예측만 필요
-            temperature=0.2
+    def generate_response_stream(self, input_text: str, character_settings: dict):
+        """
+        캐릭터 설정과 부정 라벨을 활용하여 스트리밍 응답 생성
+        """
+        # 캐릭터 설정 구성 If there is no request for an answer to a specific language, I will answer in Korean
+        prompt = (
+            f"캐릭터 설정:\n"
+            f"이름: {character_settings['character_name']}\n"
+            f"설명: {character_settings['description']}\n"
+            f"인사말: {character_settings['greeting']}\n"
+            f"성격: {character_settings['character_setting']}\n"
+            f"말투: {character_settings['tone']}\n"
+            f"에너지 레벨: {character_settings['energy_level']}\n"
+            f"공손함: {character_settings['politeness']}\n"
+            f"유머 감각: {character_settings['humor']}\n"
+            f"단호함: {character_settings['assertiveness']}\n"
+            f"액세스 수준: {'허용됨' if character_settings['access_level'] else '제한됨'}\n\n"
+            f"사용자 입력:\n\"{input_text}\"\n\n"
+            f"부정 라벨:\n"
+            f'''
+            If there is no request for an answer to a specific language, I will answer in Korean.
+            Avoid directly stating the character configuration.
+            Do not mention setup details like personality traits, energy levels, or styles directly in the response.
+            '''
+            f"\n\n답변:"
         )
 
-        # 모델 응답 디버깅 출력
-        print(f"Generated prediction: {predicted_length}")
-
-        # 숫자 추출 (정규식 활용)
-        match = re.search(r'\b\d+\b', predicted_length)
-        if match:
-            predicted_length = int(match.group())
-            print(f"Extracted length: {predicted_length}")
-            return min(400, max(50, predicted_length))  # 범위 제한
-        else:
-            print("Prediction failed, returning default value: 200")
-            return 200
-
-    def generate_text(self, prompt: str, max_tokens: int, temperature: float = 0.7) -> str:
+        max_new_tokens = 200
         input_ids = self.tokenizer.encode(prompt, return_tensors="pt").to(self.device)
-        generation_kwargs = {
-            "input_ids": input_ids,
-            "max_new_tokens": max_tokens,
-            "do_sample": True,
-            "temperature": temperature,
-            "top_k": 50,
-            "top_p": 0.9,
-            "eos_token_id": self.tokenizer.eos_token_id,
-            "pad_token_id": self.tokenizer.eos_token_id,
-        }
-
-        with torch.no_grad():
-            outputs = self.model.generate(**generation_kwargs)
-        generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-        return generated_text
-
-    
-    def generate_response_stream(self, input_text: str):
-        max_new_tokens = self.predict_response_length(input_text)
-        full_input = f"{input_text}"
-        input_ids = self.tokenizer.encode(full_input, return_tensors="pt").to(self.device)
         attention_mask = (input_ids != self.tokenizer.pad_token_id).long().to(self.device)
         streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True)
 
@@ -119,12 +98,12 @@ class BllossomChatModel:
             "attention_mask": attention_mask.to(self.device),
             "max_new_tokens": max_new_tokens,
             "do_sample": True,
-            "temperature": 0.5,
+            "temperature": 0.7,
             "top_k": 40,
-            "top_p": 0.7,
+            "top_p": 0.9,
             "eos_token_id": self.tokenizer.eos_token_id,
             "pad_token_id": self.tokenizer.eos_token_id,
-            "repetition_penalty": 1.5,
+            "repetition_penalty": 1.2,
             "streamer": streamer
         }
 
@@ -133,4 +112,5 @@ class BllossomChatModel:
 
         for new_text in streamer:
             yield new_text
+
 

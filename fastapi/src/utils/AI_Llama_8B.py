@@ -38,7 +38,7 @@ class LlamaChatModel:
         print("모델 로드 중...")
         self.model = self.load_model()
         print("모델과 토크나이저 로드 완료!")
-
+        
         self.model.to(self.device)
         self.model.gradient_checkpointing_enable()
         self.conversation_history = []

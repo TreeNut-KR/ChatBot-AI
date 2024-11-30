@@ -19,6 +19,7 @@ class LlamaChatModel:
         self.cache_dir = "./fastapi/ai_model/"
         self.model_id = "meta-llama/Llama-2-7b-chat-hf"  # 원하는 모델 ID 설정
         self.bart_model_id = "facebook/bart-large-mnli"  # 복잡도 분석용 BART 모델
+        # console.log('이스터에그 ㅋㅋㅋ')
         self.model_kwargs = {
             "torch_dtype": torch.float16,  # float16으로 설정
             "trust_remote_code": True,

@@ -46,7 +46,6 @@ input_data_set = Field(
 # Bllossom Request Field
 ## 숫자 타입 정의
 NATURAL_NUM: int = conint(ge=1, le=10)  # 1~10 범위의 자연수
-BOOL_NUM: int = conint(ge=0, le=1)      # 0(False) 또는 1(True)만 허용
 
 ## 각 필드에 대한 설정
 character_name_set = Field(
@@ -106,9 +105,9 @@ assertiveness_set = Field(
     description="봇의 단호함을 나타냅니다. 숫자가 높을수록 주장을 강하게 하거나 명확히 표현하는 경향이 있습니다. 1(매우 유연함) ~ 10(매우 단호함)."
 )
 access_level_set = Field(
-    examples=[0, 1],
+    examples=[True, False],
     title="케릭터 액세스",
-    description="봇의 액세스 수준을 나타냅니다. 1(True): 특정 기능이나 영역에 대한 접근 권한이 허용됨. 0(False): 제한됨."
+    description="봇의 액세스 수준을 나타냅니다. True: 특정 기능이나 영역에 대한 접근 권한이 허용됨. False: 제한됨."
 )
 
 # Common Response Field
@@ -148,7 +147,7 @@ class Bllossom_Request(BaseModel):
     politeness: NATURAL_NUM = politeness_set        # type: ignore
     humor: NATURAL_NUM = humor_set                  # type: ignore
     assertiveness: NATURAL_NUM = assertiveness_set  # type: ignore
-    access_level: BOOL_NUM = access_level_set       # type: ignore
+    access_level: bool = access_level_set
     
     @field_validator('image', mode='before')
     def check_img_url(cls, v):
@@ -160,7 +159,6 @@ class Bllossom_Request(BaseModel):
         필터링된 데이터만 반환하도록 수정할 수 있습니다.
         """
         return super().model_dump(**kwargs)
-    
     
 class Bllossom_Response(BaseModel):
     output_data: str = output_data_set
