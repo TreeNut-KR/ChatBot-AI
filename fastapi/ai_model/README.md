@@ -5,5 +5,4 @@
 > model의 크기가 크기 때문에 각각의 모델은 따로 추가해야 함.
 >
 
-- 사용 중인 모델 : [meta-llama/Llama-3.2-3B-Instruct](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct)
-- 사용 보류 모델 : [distilbert-base-uncased-finetuned-sst-2-english](https://huggingface.co/distilbert/distilbert-base-uncased-finetuned-sst-2-english), [beomi/KoAlpaca-llama-1-7b](https://huggingface.co/beomi/KoAlpaca-llama-1-7b)
+- 사용 중인 모델 : [meta-llama/Llama-3.2-8B-Instruct](https://huggingface.co/meta-llama/), [MLP-KTLim/llama-3-Korean-Bllossom-8B](https://huggingface.co/MLP-KTLim)

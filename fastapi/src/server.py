@@ -164,13 +164,13 @@ async def llama_stream(request: ChatModel.Llama_Request):
         response_stream = llama_model_8b.generate_response_stream(request.input_data)
         return StreamingResponse(response_stream, media_type="text/plain")
     except TimeoutError:
-        raise ChatError.InternalServerErrorException(detail="Llama model response timed out.")
+        raise ChatError.InternalServerErrorException(detail="Llama 모델 응답이 시간 초과되었습니다.")
     except ValidationError as e:
         raise ChatError.BadRequestException(detail=str(e))
     except HTTPException as e:
         raise e
     except Exception as e:
-        print(f"Unhandled Exception: {e}")  # 디버깅 출력 추가
+        print(f"Unhandled Exception: {e}")
         raise ChatError.InternalServerErrorException(detail=str(e))
 
 @app.post("/Bllossom_stream", summary="스트리밍 방식으로 Bllossom_8B 모델 답변 생성")
