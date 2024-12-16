@@ -3,204 +3,265 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatGPT 4o</title>
+    <title>TreeNut ChatBot</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Noto Sans KR', sans-serif;
-            background-color: #343541;
-            color: #dcdcdc;
+            background-color: #1e1e2f;
+            color: #ffffff;
             margin: 0;
             padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: #2b2e47;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            box-sizing: border-box;
+            border-right: 1px solid #353857;
+        }
+
+        .sidebar h2 {
+            font-size: 1.2em;
+            margin: 0 0 20px 0;
+        }
+
+        .menu-item {
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #353857;
+            color: #ffffff;
+            text-align: center;
+            transition: background-color 0.3s;
+        }
+
+        .menu-item:hover {
+            background-color: #4754c6;
+        }
+
+        .menu-item.active {
+            background-color: #5865f2;
+        }
+
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
 
         header {
-            background-color: #202123;
+            background-color: #1e1e2f;
             color: #ffffff;
-            padding: 10px 20px;
+            padding: 15px 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
         header h1 {
-            margin: 0;
             font-size: 1.5em;
+            margin: 0;
         }
 
-        .button-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 20px 0;
-            gap: 20px;
-        }
-
-        .button-container button {
-            padding: 10px 20px;
-            background-color: #56b4fc;
+        header select {
+            background-color: #2b2e47;
             color: #ffffff;
             border: none;
-            border-radius: 20px;
-            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 5px;
             font-size: 1em;
         }
 
-        .button-container button:hover {
-            background-color: #339edb;
-        }
-
         main {
-            padding: 0;
-        }
-
-        .chat-container {
-            background-color: #444654;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            flex: 1;
             display: flex;
             flex-direction: column;
             gap: 10px;
-            width: 100%;
-            height: calc(100vh - 200px); /* 화면 높이에 맞게 조정 */
+            padding: 20px;
             box-sizing: border-box;
             overflow-y: auto;
         }
 
+        .chat-container {
+            background-color: #1e1e2f;
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-height: calc(100% - 60px);
+            overflow-y: auto;
+        }
+
         .message {
-            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            line-height: 1.5;
+            max-width: 70%;
         }
 
         .user-message {
-            text-align: right;
-            color: #56b4fc;
+            background-color: #1e1e2f;
+            align-self: flex-end;
         }
 
         .ai-message {
-            text-align: left;
-            color: #dcdcdc;
-        }
-
-        .ai-message.markdown {
-            white-space: pre-wrap;
+            background-color: #353857;
+            align-self: flex-start;
         }
 
         footer {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            background-color: #40414f;
-            padding: 10px;
-            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+            background-color: #1e1e2f;
+            padding: 10px 20px;
             display: flex;
             align-items: center;
+            gap: 10px;
+            box-sizing: border-box;
         }
-        
+
         footer form {
-            width: 100%; /* 폼 너비를 전체로 설정 */
-            margin: 0;
-            padding: 0;
+            display: flex;
+            flex: 1;
+            gap: 10px;
         }
-        
+
         footer input[type="text"] {
-            width: 100%; /* 입력 필드 너비를 전체로 설정 */
-            padding: 10px;
-            border-radius: 20px;
-            border: 1px solid #ccc;
+            flex: 1;
+            padding: 12px;
+            border-radius: 25px;
+            border: none;
             font-size: 1em;
-            background-color: #565869;
+            background-color: #3c3f58;
             color: #ffffff;
-            box-sizing: border-box; /* 패딩 포함 */
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        footer button {
+            background-color: #5865f2;
+            color: #ffffff;
+            border: none;
+            border-radius: 25px;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            flex-shrink: 0;
+        }
+
+        footer button:hover {
+            background-color: #4754c6;
+        }
+
+        footer button:disabled {
+            background-color: #3c3f58;
+            cursor: not-allowed;
         }
     </style>
 </head>
 <body>
-    <header>
-        <h1>ChatGPT 4o</h1>
-    </header>
-    <div class="button-container">
-        <button id="llama-button">Llama</button>
-        <button id="bllossom-button">Bllossom</button>
+    <div class="sidebar">
+        <h2>메뉴</h2>
+        <div class="menu-item active">대화</div>
+        <div class="menu-item">설정</div>
+        <div class="menu-item">도움말</div>
     </div>
-    <main>
-        <div class="chat-container" id="chat-container">
-            <div class="message ai-message" style="text-align: center; font-size: 1.2em;">무엇을 도와드릴까요?</div>
-        </div>
-    </main>
-    <footer>
-        <form id="chat-form" style="width: 99%; margin: 0; padding: 0;">
-            <input type="text" id="user-input" placeholder="메시지를 입력하세요...">
-        </form>
-    </footer>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <div class="content">
+        <header>
+            <h1>TreeNut ChatBot</h1>
+            <label for="model-selector" style="display: none;">모델 선택</label>
+            <select id="model-selector" aria-label="모델 선택">
+                <option value="Llama">Llama</option>
+                <option value="Bllossom">Bllossom</option>
+            </select>
+        </header>
+        <main>
+            <div class="chat-container" id="chat-container">
+                <div class="message ai-message">무엇을 도와드릴까요?</div>
+            </div>
+        </main>
+        <footer>
+            <form id="chat-form">
+                <input type="text" id="user-input" placeholder="메시지를 입력하세요..." autocomplete="off">
+                <button type="submit" id="send-button">전송</button>
+            </form>
+        </footer>
+    </div>
     <script>
         const chatForm = document.getElementById('chat-form');
         const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
         const chatContainer = document.getElementById('chat-container');
-        const llamaButton = document.getElementById('llama-button');
-        const bllossomButton = document.getElementById('bllossom-button');
+        const modelSelector = document.getElementById('model-selector');
 
-        llamaButton.addEventListener('click', () => sendMessage('Llama_stream'));
-        bllossomButton.addEventListener('click', () => sendMessage('Bllossom_stream'));
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            sendMessage(modelSelector.value);
+        });
 
-        async function sendMessage(apiEndpoint) {
+        async function sendMessage(model) {
             const userText = userInput.value.trim();
             if (userText !== '') {
                 appendMessage('나', userText, 'user-message');
-                userInput.value = '';
-                llamaButton.disabled = true;
-                bllossomButton.disabled = true;
-                try {
-                    await sendToServer(apiEndpoint, userText);
-                } finally {
-                    llamaButton.disabled = false;
-                    bllossomButton.disabled = false;
-                }
+                disableInput();
+                await sendToServer(model, userText);
+                enableInput();
             }
         }
 
-        function appendMessage(user, text, className, isMarkdown = false) {
+        function appendMessage(user, text, className) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', className);
-            if (isMarkdown) {
-                messageDiv.classList.add('markdown');
-                messageDiv.innerHTML = marked.parse(text);
-            } else {
-                messageDiv.textContent = text;
-            }
+            messageDiv.textContent = text;
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
-        async function sendToServer(apiEndpoint, inputText) {
+        function disableInput() {
+            userInput.disabled = true;
+            sendButton.disabled = true;
+        }
+
+        function enableInput() {
+            userInput.disabled = false;
+            sendButton.disabled = false;
+            userInput.focus();
+        }
+
+        async function sendToServer(model, inputText) {
             try {
-                const response = await fetch(`http://localhost:8000/${apiEndpoint}`, {
+                const requestBody = model === 'Bllossom' 
+                    ? { input_data: inputText }
+                    : { input_data: inputText };
+
+                const response = await fetch(`http://localhost:8000/${model}_stream`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ input_data: inputText })
+                    body: JSON.stringify(requestBody)
                 });
 
                 if (!response.ok) throw new Error('서버 요청 실패');
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder('utf-8');
-                let receivedText = '';
-                let messageElement = null;
+                let aiMessageDiv = document.createElement('div');
+                aiMessageDiv.classList.add('message', 'ai-message');
+                chatContainer.appendChild(aiMessageDiv);
 
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    receivedText += decoder.decode(value);
-                    if (!messageElement) {
-                        messageElement = document.createElement('div');
-                        messageElement.classList.add('message', 'ai-message', 'markdown');
-                        chatContainer.appendChild(messageElement);
-                    }
-                    messageElement.innerHTML = marked.parse(receivedText);
+                    aiMessageDiv.textContent += decoder.decode(value);
                     chatContainer.scrollTop = chatContainer.scrollHeight;
                 }
-
             } catch (error) {
                 appendMessage('시스템', '서버와의 연결 중 문제가 발생했습니다.', 'ai-message');
             }

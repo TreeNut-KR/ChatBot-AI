@@ -1,5 +1,4 @@
 import os
-import re
 from threading import Thread
 
 import torch
@@ -37,7 +36,7 @@ class BllossomChatModel:
         self.tokenizer = self.load_tokenizer()
         print("모델 로드 중...")
         self.model = self.load_model()
-        print("모델과 토크나이저 로드 완료!")
+        print("모델과 토크나이저 로드 완료!") 
 
         self.model.gradient_checkpointing_enable()
         self.conversation_history = []
@@ -60,9 +59,6 @@ class BllossomChatModel:
         return model
         
     def generate_response_stream(self, input_text: str, character_settings: dict):
-        """
-        캐릭터 설정과 부정 라벨을 활용하여 스트리밍 응답 생성
-        """
         prompt = self._build_prompt(input_text, character_settings)
         input_ids = self.tokenizer.encode(
             text=input_text,
@@ -78,7 +74,7 @@ class BllossomChatModel:
             "input_ids": input_ids.to(self.device),
             "attention_mask": attention_mask.to(self.device),
             "min_new_tokens": 1,
-            "max_new_tokens": 200,
+            "max_new_tokens": 512,
             "do_sample": True,
             "temperature": 0.7,
             "top_k": 40,
