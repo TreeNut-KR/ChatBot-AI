@@ -1,7 +1,7 @@
 import os
 import yaml
+import torch
 import uvicorn
-import asyncio
 from dotenv import load_dotenv
 from asyncio import TimeoutError
 from pydantic import ValidationError
@@ -21,7 +21,7 @@ from utils.AI_Llama_8B import LlamaChatModel as Llama_8B
 from utils.AI_Bllossom_8B import BllossomChatModel as Bllossom_8B
 
 llama_model_8b = None  # Llama_8B 모델 전역 변수
-Bllossom_Model_8B = None  # Bllossom_8B 모델 전역 변수
+bllossom_model_8b = None  # Bllossom_8B 모델 전역 변수
 load_dotenv()
 
 def load_bot_list(file_path: str) -> list:
@@ -37,14 +37,32 @@ async def lifespan(app: FastAPI):
     '''
     FastAPI AI 모델 애플리케이션 초기화
     '''
-    global llama_model_8b, Bllossom_Model_8B
-    llama_model_8b = Llama_8B()
-    Bllossom_Model_8B = Bllossom_8B()
-    print("Llama 모델 로드 완료")
+    global llama_model_8b, bllossom_model_8b
+
+    # CUDA 디바이스 정보 가져오기 함수
+    def get_cuda_device_info(device_id: int) -> str:
+        device_name = torch.cuda.get_device_name(device_id)
+        device_properties = torch.cuda.get_device_properties(device_id)
+        total_memory = device_properties.total_memory / (1024 ** 3)  # GB 단위로 변환
+        return f"Device {device_id}: {device_name} (Total Memory: {total_memory:.2f} GB)"
+
+    # Llama 및 Bllossom 모델 로드
+    llama_model_8b = Llama_8B()  # cuda:1
+    bllossom_model_8b = Bllossom_8B()  # cuda:0
+
+    # 디버깅용 출력
+    llama_device_info = get_cuda_device_info(1)  # Llama 모델은 cuda:1
+    bllossom_device_info = get_cuda_device_info(0)  # Bllossom 모델은 cuda:0
+
+    print(f"Llama 모델 로드 완료 ({llama_device_info})")
+    print(f"Bllossom 모델 로드 완료 ({bllossom_device_info})")
+
     yield
+
+    # 모델 메모리 해제
     llama_model_8b = None
-    Bllossom_Model_8B = None
-    print("Llama 모델 해제 완료")
+    bllossom_model_8b = None
+    print("모델 해제 완료")
 
 app = FastAPI(lifespan=lifespan)  # 여기서 한 번만 app을 생성합니다.
 ChatError.add_exception_handlers(app)  # 예외 핸들러 추가
@@ -107,7 +125,7 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
     user_agent = request.headers.get("User-Agent", "").lower()
 
     try:
-        if request.url.path in ["/Llama_stream","/Llama_stream_sb", "/docs", "/redoc", "/openapi.json"] and client_ip not in allowed_ips:
+        if request.url.path in ["/Llama_stream","/Bllossom_stream", "/docs", "/redoc", "/openapi.json"] and client_ip not in allowed_ips:
             raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
         
         if any(bot in user_agent for bot in bot_user_agents):
@@ -138,7 +156,7 @@ async def root():
     return {"message": "Welcome to the API"}
 
 @app.post("/Llama_stream", summary="스트리밍 방식으로 Llama_8B 모델 답변 생성")
-async def Llama_stream(request: ChatModel.Llama_Request):
+async def llama_stream(request: ChatModel.Llama_Request):
     '''
     Llama_8B 모델에 질문 입력 시 답변을 스트리밍 방식으로 반환
     '''
@@ -146,29 +164,47 @@ async def Llama_stream(request: ChatModel.Llama_Request):
         response_stream = llama_model_8b.generate_response_stream(request.input_data)
         return StreamingResponse(response_stream, media_type="text/plain")
     except TimeoutError:
-        raise ChatError.InternalServerErrorException(detail="Llama model response timed out.")
+        raise ChatError.InternalServerErrorException(detail="Llama 모델 응답이 시간 초과되었습니다.")
     except ValidationError as e:
         raise ChatError.BadRequestException(detail=str(e))
     except HTTPException as e:
         raise e
     except Exception as e:
+        print(f"Unhandled Exception: {e}")
         raise ChatError.InternalServerErrorException(detail=str(e))
 
 @app.post("/Bllossom_stream", summary="스트리밍 방식으로 Bllossom_8B 모델 답변 생성")
-async def Bllossom_stream(request: ChatModel.Bllossom_Request):
+async def bllossom_stream(request: ChatModel.Bllossom_Request):
     '''
-    Bllossom_8B 모델에 질문 입력 시 답변을 스트리밍 방식으로 반환
+    Bllossom_8B 모델에 질문 입력 시 캐릭터 설정을 반영하여 답변을 스트리밍 방식으로 반환
     '''
     try:
-        response_stream = Bllossom_Model_8B.generate_response_stream(request.input_data)
+        character_settings = {
+            "character_name": request.character_name,
+            "description": request.description,
+            "greeting": request.greeting,
+            "character_setting": request.character_setting,
+            "tone": request.tone,
+            "energy_level": request.energy_level,
+            "politeness": request.politeness,
+            "humor": request.humor,
+            "assertiveness": request.assertiveness,
+            "access_level": request.access_level
+        }
+        
+        response_stream = bllossom_model_8b.generate_response_stream(
+            input_text=request.input_data,
+            character_settings=character_settings
+        )
         return StreamingResponse(response_stream, media_type="text/plain")
     except TimeoutError:
-        raise ChatError.InternalServerErrorException(detail="Llama model response timed out.")
+        raise ChatError.InternalServerErrorException(detail="Bllossom 모델 응답이 시간 초과되었습니다.")
     except ValidationError as e:
         raise ChatError.BadRequestException(detail=str(e))
     except HTTPException as e:
         raise e
     except Exception as e:
+        print(f"Unhandled Exception: {e}")  # 디버깅 출력 추가
         raise ChatError.InternalServerErrorException(detail=str(e))
 
 if __name__ == "__main__":
