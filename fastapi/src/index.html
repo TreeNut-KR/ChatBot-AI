@@ -201,12 +201,12 @@
         const sendButton = document.getElementById('send-button');
         const chatContainer = document.getElementById('chat-container');
         const modelSelector = document.getElementById('model-selector');
-
+    
         chatForm.addEventListener('submit', (e) => {
             e.preventDefault();
             sendMessage(modelSelector.value);
         });
-
+    
         async function sendMessage(model) {
             const userText = userInput.value.trim();
             if (userText !== '') {
@@ -216,7 +216,7 @@
                 enableInput();
             }
         }
-
+    
         function appendMessage(user, text, className) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', className);
@@ -224,38 +224,51 @@
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
-
+    
         function disableInput() {
             userInput.disabled = true;
             sendButton.disabled = true;
         }
-
+    
         function enableInput() {
             userInput.disabled = false;
             sendButton.disabled = false;
             userInput.focus();
         }
-
+    
         async function sendToServer(model, inputText) {
             try {
-                const requestBody = model === 'Bllossom' 
-                    ? { input_data: inputText }
+                const requestBody = model === 'Bllossom'
+                    ? {
+                        input_data: inputText,
+                        character_name: "KindBot",
+                        description: "친절한 도우미 봇",
+                        greeting: "안녕하세요! 무엇을 도와드릴까요?",
+                        image: "https://drive.google.com/thumbnail?id=12PqUS6bj4eAO_fLDaWQmoq94-771xfim",
+                        character_setting: "친절하고 공손한 봇",
+                        tone: "공손한",
+                        energy_level: 8,
+                        politeness: 10,
+                        humor: 5,
+                        assertiveness: 3,
+                        access_level: true
+                    }
                     : { input_data: inputText };
-
+    
                 const response = await fetch(`http://localhost:8000/${model}_stream`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(requestBody)
                 });
-
+    
                 if (!response.ok) throw new Error('서버 요청 실패');
-
+    
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder('utf-8');
                 let aiMessageDiv = document.createElement('div');
                 aiMessageDiv.classList.add('message', 'ai-message');
                 chatContainer.appendChild(aiMessageDiv);
-
+    
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
