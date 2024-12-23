@@ -2,6 +2,7 @@ import os
 import yaml
 import torch
 import uvicorn
+import httpx
 from dotenv import load_dotenv
 from asyncio import TimeoutError
 from pydantic import ValidationError
@@ -22,7 +23,11 @@ from utils.AI_Bllossom_8B import BllossomChatModel as Bllossom_8B
 
 llama_model_8b = None  # Llama_8B 모델 전역 변수
 bllossom_model_8b = None  # Bllossom_8B 모델 전역 변수
+
 load_dotenv()
+
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+SEARCH_ENGINE_ID = os.getenv("SEARCH_ENGINE_ID")
 
 def load_bot_list(file_path: str) -> list:
     '''
@@ -154,6 +159,24 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
 @app.get("/")
 async def root():
     return {"message": "Welcome to the API"}
+
+@app.get("/search")
+async def search(query: str):
+    try:
+        url = f"https://www.googleapis.com/customsearch/v1"
+        params = {
+            "key": GOOGLE_API_KEY,
+            "cx": SEARCH_ENGINE_ID,
+            "q": query
+        }
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, params=params)
+            response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=500, detail=f"HTTP 요청 오류: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
 
 @app.post("/Llama_stream", summary="스트리밍 방식으로 Llama_8B 모델 답변 생성")
 async def llama_stream(request: ChatModel.Llama_Request):
