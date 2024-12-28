@@ -1,3 +1,6 @@
+# Models.py
+# 파일은 FastAPI 애플리케이션에서 사용되는 Pydantic 모델을 정의하는 모듈입니다. 이 파일은 다음과 같은 기능을 제공합니다.
+
 import re
 import httpx
 from pydantic import BaseModel, Field, field_validator, conint
@@ -43,6 +46,12 @@ input_data_set = Field(
     min_length=1, max_length=500
 )
 
+google_access_set = Field(
+    examples=[False, True],
+    default=False,
+    title="검색 기반 액세스",
+    description="검색 기반 액세스 수준을 나타냅니다. True: 검색 기반 활성화. False: 검색 기반 제한됨."
+)
 # Bllossom Request Field
 ## 숫자 타입 정의
 NATURAL_NUM: int = conint(ge=1, le=10)  # 1~10 범위의 자연수
@@ -106,6 +115,7 @@ assertiveness_set = Field(
 )
 access_level_set = Field(
     examples=[True, False],
+    default=True,
     title="케릭터 액세스",
     description="봇의 액세스 수준을 나타냅니다. True: 특정 기능이나 영역에 대한 접근 권한이 허용됨. False: 제한됨."
 )
@@ -131,6 +141,7 @@ output_data_set = Field(
 
 class Llama_Request(BaseModel):
     input_data: str = input_data_set
+    google_access_set: bool = google_access_set # default=False
     
 class Llama_Response(BaseModel):
     output_data: str = output_data_set

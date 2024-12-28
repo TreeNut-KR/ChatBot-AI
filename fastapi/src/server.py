@@ -1,3 +1,6 @@
+# server.py
+# 파일은 FastAPI 서버를 구동하는 엔트리 포인트입니다.
+
 import os
 import yaml
 import torch
@@ -18,12 +21,13 @@ from starlette.middleware.sessions import SessionMiddleware
 
 import utils.Models as ChatModel
 import utils.Error_handlers as ChatError
+from utils.Language_handler import LanguageProcessor
 from utils.AI_Llama_8B import LlamaChatModel as Llama_8B
 from utils.AI_Bllossom_8B import BllossomChatModel as Bllossom_8B
 
 llama_model_8b = None  # Llama_8B 모델 전역 변수
 bllossom_model_8b = None  # Bllossom_8B 모델 전역 변수
-
+languageprocessor = LanguageProcessor()
 load_dotenv()
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -52,12 +56,12 @@ async def lifespan(app: FastAPI):
         return f"Device {device_id}: {device_name} (Total Memory: {total_memory:.2f} GB)"
 
     # Llama 및 Bllossom 모델 로드
-    llama_model_8b = Llama_8B()  # cuda:1
-    bllossom_model_8b = Bllossom_8B()  # cuda:0
+    llama_model_8b = Llama_8B()  # cuda:0
+    bllossom_model_8b = Bllossom_8B()  # cuda:1
 
     # 디버깅용 출력
-    llama_device_info = get_cuda_device_info(1)  # Llama 모델은 cuda:1
-    bllossom_device_info = get_cuda_device_info(0)  # Bllossom 모델은 cuda:0
+    llama_device_info = get_cuda_device_info(0)  # Llama 모델은 cuda:1
+    bllossom_device_info = get_cuda_device_info(1)  # Bllossom 모델은 cuda:0
 
     print(f"Llama 모델 로드 완료 ({llama_device_info})")
     print(f"Bllossom 모델 로드 완료 ({bllossom_device_info})")
@@ -156,6 +160,11 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
     except Exception as e:
         raise ChatError.InternalServerErrorException(detail="Internal server error occurred.")
 
+def stream_search_results(search_results: dict):
+    items = search_results.get("items", [])
+    for item in items[:3]:  # 최대 3개의 결과만 스트리밍
+        yield f"{item['title']}: {item['snippet']}\n"
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to the API"}
@@ -184,18 +193,58 @@ async def llama_stream(request: ChatModel.Llama_Request):
     Llama_8B 모델에 질문 입력 시 답변을 스트리밍 방식으로 반환
     '''
     try:
-        response_stream = llama_model_8b.generate_response_stream(request.input_data)
+        if not request.google_access_set:
+            # Google Access가 설정되지 않은 경우 바로 처리
+            response_stream = llama_model_8b.generate_response_stream(
+                input_text=request.input_data,
+                google_search=None
+            )
+            return StreamingResponse(response_stream, media_type="text/plain")
+
+        # 명사 추출
+        search_nouns = languageprocessor.process_sentence(request.input_data)
+        print(f"Extracted search nouns: {search_nouns}")
+
+        analysis_result = search_nouns.get("분석 결과", {})
+        if not isinstance(analysis_result, dict):
+            raise ValueError(f"Unexpected structure in '분석 결과': {analysis_result}")
+
+        nouns = analysis_result.get("명사", [])
+        if not isinstance(nouns, list):
+            raise ValueError(f"Unexpected type for '명사': {type(nouns)}")
+
+        result = " ".join(nouns)
+        print(f"Result: {result}")
+
+        # Google 검색 API 호출
+        url = f"https://www.googleapis.com/customsearch/v1"
+        params = {"key": GOOGLE_API_KEY, "cx": SEARCH_ENGINE_ID, "q": result}
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, params=params)
+            response.raise_for_status()
+
+        # 검색 결과를 스트리밍 방식으로 전달
+        search_stream = stream_search_results(response.json())
+        print(search_stream)
+
+        response_stream = llama_model_8b.generate_response_stream(
+            input_text=request.input_data,
+            google_search="".join(search_stream)
+        )
         return StreamingResponse(response_stream, media_type="text/plain")
+
     except TimeoutError:
         raise ChatError.InternalServerErrorException(detail="Llama 모델 응답이 시간 초과되었습니다.")
     except ValidationError as e:
         raise ChatError.BadRequestException(detail=str(e))
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=500, detail=f"HTTP 요청 오류: {str(e)}")
     except HTTPException as e:
         raise e
     except Exception as e:
         print(f"Unhandled Exception: {e}")
         raise ChatError.InternalServerErrorException(detail=str(e))
-
+    
 @app.post("/Bllossom_stream", summary="스트리밍 방식으로 Bllossom_8B 모델 답변 생성")
 async def bllossom_stream(request: ChatModel.Bllossom_Request):
     '''

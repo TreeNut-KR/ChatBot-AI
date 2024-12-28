@@ -1,12 +1,16 @@
+# AI_Llama_8B.py
+# 파일은 LlamaChatModel 클래스를 정의하고, 이 클래스는 Llama 8B 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
+
 import os
 from threading import Thread
 
 import torch
 import transformers
+from typing import Optional
 from accelerate import Accelerator
 from dotenv import load_dotenv
 from torch.cuda.amp import GradScaler
-from transformers import BitsAndBytesConfig, TextIteratorStreamer, StoppingCriteria, StoppingCriteriaList
+from transformers import BitsAndBytesConfig, TextIteratorStreamer
 
 class LlamaChatModel:
     def __init__(self):
@@ -19,13 +23,17 @@ class LlamaChatModel:
         load_dotenv(dotenv_path)
         self.cache_dir = "./fastapi/ai_model/"
         self.model_id = "meta-llama/Llama-3.1-8B-Instruct"
-        self.device = torch.device("cuda:1")  # 명확히 cuda:1로 지정
+        self.device = torch.device("cuda:0")  # 명확히 cuda:0로 지정
 
         self.model_kwargs = {
             "torch_dtype": torch.float16,
             "trust_remote_code": True,
             "device_map": {"": self.device},
-            "quantization_config": BitsAndBytesConfig(load_in_4bit=True)
+            "quantization_config": BitsAndBytesConfig(
+                load_in_4bit=True,
+                double_quant=True,  # 추가 양자화
+                compute_dtype=torch.float16
+            )
         }
 
         self.hf_token = os.getenv("HUGGING_FACE_TOKEN")
@@ -58,11 +66,10 @@ class LlamaChatModel:
         )
         return model
 
-    def generate_response_stream(self, input_text: str):
-        # prompt = self._build_prompt(input_text)
+    def generate_response_stream(self, input_text: str, google_search: Optional[str]):
         input_ids = self.tokenizer.encode(
-            text=input_text,
-            # text_pair=prompt,
+            text=f"{input_text} \n 다음 질문에 한국어로 답변해 주세요.",
+            text_pair=google_search,
             return_tensors="pt",
             padding=True,
             truncation=True

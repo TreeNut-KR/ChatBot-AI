@@ -177,11 +177,15 @@
     <div class="content">
         <header>
             <h1>TreeNut ChatBot</h1>
-            <label for="model-selector" style="display: none;">모델 선택</label>
-            <select id="model-selector" aria-label="모델 선택">
-                <option value="Llama">Llama</option>
-                <option value="Bllossom">Bllossom</option>
-            </select>
+            <div>
+                <label for="google-access-set">
+                    <input type="checkbox" id="google-access-set" disabled> Google Search 활성화
+                </label>
+                <select id="model-selector" aria-label="모델 선택">
+                    <option value="Llama">Llama</option>
+                    <option value="Bllossom">Bllossom</option>
+                </select>
+            </div>
         </header>
         <main>
             <div class="chat-container" id="chat-container">
@@ -201,6 +205,27 @@
         const sendButton = document.getElementById('send-button');
         const chatContainer = document.getElementById('chat-container');
         const modelSelector = document.getElementById('model-selector');
+        const googleAccessCheckbox = document.getElementById('google-access-set');
+    
+        // 초기화: modelSelector 상태에 따라 체크박스 설정
+        function initializeCheckbox() {
+            if (modelSelector.value === 'Llama') {
+                googleAccessCheckbox.disabled = false;
+            } else {
+                googleAccessCheckbox.disabled = true;
+                googleAccessCheckbox.checked = false;
+            }
+        }
+    
+        // 모델 변경 시 체크박스 활성화/비활성화 업데이트
+        modelSelector.addEventListener('change', () => {
+            if (modelSelector.value === 'Llama') {
+                googleAccessCheckbox.disabled = false;
+            } else {
+                googleAccessCheckbox.disabled = true;
+                googleAccessCheckbox.checked = false;
+            }
+        });
     
         chatForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -253,7 +278,10 @@
                         assertiveness: 3,
                         access_level: true
                     }
-                    : { input_data: inputText };
+                    : { 
+                        input_data: inputText, 
+                        google_access_set: googleAccessCheckbox.checked
+                    };
     
                 const response = await fetch(`http://localhost:8000/${model}_stream`, {
                     method: 'POST',
@@ -279,6 +307,9 @@
                 appendMessage('시스템', '서버와의 연결 중 문제가 발생했습니다.', 'ai-message');
             }
         }
+    
+        // 초기 상태 설정 호출
+        initializeCheckbox();
     </script>
 </body>
 </html>
