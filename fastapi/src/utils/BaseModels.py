@@ -1,5 +1,7 @@
-# Models.py
-# 파일은 FastAPI 애플리케이션에서 사용되는 Pydantic 모델을 정의하는 모듈입니다. 이 파일은 다음과 같은 기능을 제공합니다.
+# BaseModels.py
+'''
+파일은 FastAPI 애플리케이션에서 사용되는 Pydantic 모델을 정의하는 모듈입니다. 이 파일은 다음과 같은 기능을 제공합니다.
+'''
 
 import re
 import httpx

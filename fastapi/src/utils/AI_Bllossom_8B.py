@@ -1,5 +1,7 @@
 # AI_Bllossom_8B.py
-# 파일은 BllossomChatModel 클래스를 정의하고, 이 클래스는 Bllossom 8B 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
+'''
+파일은 BllossomChatModel 클래스를 정의하고, 이 클래스는 Bllossom 8B 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
+'''
 
 import os
 from threading import Thread
@@ -12,6 +14,9 @@ from torch.cuda.amp import GradScaler
 from transformers import BitsAndBytesConfig, TextIteratorStreamer
 
 class BllossomChatModel:
+    '''
+    BllossomChatModel 클래스는 Bllossom 8B 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
+    '''
     def __init__(self):
         '''
         BllossomChatModel 클래스 초기화

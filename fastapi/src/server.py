@@ -6,6 +6,7 @@ import yaml
 import torch
 import uvicorn
 import httpx
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from asyncio import TimeoutError
 from pydantic import ValidationError
@@ -19,11 +20,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-import utils.Models as ChatModel
-import utils.Error_handlers as ChatError
-from utils.Language_handler import LanguageProcessor
-from utils.AI_Llama_8B import LlamaChatModel as Llama_8B
-from utils.AI_Bllossom_8B import BllossomChatModel as Bllossom_8B
+from utils  import ChatError, ChatModel, LanguageProcessor, Llama_8B, Bllossom_8B
 
 llama_model_8b = None  # Llama_8B 모델 전역 변수
 bllossom_model_8b = None  # Bllossom_8B 모델 전역 변수
@@ -108,7 +105,7 @@ def custom_openapi():
 
     openapi_schema = get_openapi(
         title="ChatBot-AI FastAPI",
-        version="v1.0.2",
+        version="v1.1.0",
         summary="AI 모델 관리 API",
         routes=app.routes,
         description=(
@@ -162,8 +159,82 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
 
 def stream_search_results(search_results: dict):
     items = search_results.get("items", [])
-    for item in items[:3]:  # 최대 3개의 결과만 스트리밍
-        yield f"{item['title']}: {item['snippet']}\n"
+    for item in items[:2]:  # 최대 3개의 결과만 스트리밍
+        search_data_set = f"{item['title']}: {item['snippet']}\n"
+        print(search_data_set)
+        yield search_data_set
+
+async def fetch_results(query: str, num: int, domain: str = "") -> list:
+    """
+    Google 검색 결과를 가져오는 함수
+    :param query: 검색어
+    :param num: 가져올 결과 수
+    :param domain: 특정 도메인 필터 (없으면 전체 검색)
+    :return: 검색 결과 리스트
+    """
+    base_url = "https://www.googleapis.com/customsearch/v1"
+    params = {
+        "key": GOOGLE_API_KEY,
+        "cx": SEARCH_ENGINE_ID,
+        "q": f"{query} {domain}".strip(),
+        "num": min(num, 10)
+    }
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(base_url, params=params)
+            response.raise_for_status()
+            search_results = response.json()
+
+            return [
+                {
+                    "title": item.get("title", "제목 없음"),
+                    "snippet": item.get("snippet", "설명 없음"),
+                    "link": item.get("link", "링크 없음")
+                }
+                for item in search_results.get("items", [])
+            ]
+    except httpx.RequestError as e:
+        print(f"HTTP 요청 오류: {str(e)}")
+    except Exception as e:
+        print(f"오류 발생: {str(e)}")
+    return []
+
+async def fetch_search_results(query: str, num_results: int = 5) -> list:
+    """
+    위키백과, 나무위키, 다양한 뉴스 사이트 등, 사이트 기반으로 검색 결과를 가져옵니다.
+    부족한 경우 최상단 검색 결과 추가.
+    :param query: 검색어
+    :param num_results: 가져올 각 도메인별 검색 결과 수
+    :return: 검색 결과 리스트 (제목, 설명, 링크 포함)
+    """
+    domains = [
+        "site:en.wikipedia.org",# 영어 위키백과
+        "site:ko.wikipedia.org",# 한국어 위키백과
+        "site:namu.wiki",       # 나무위키
+        "site:news.naver.com",  # 네이버 뉴스
+        "site:bbc.com",         # BBC
+        "site:cnn.com",         # CNN
+        "site:reuters.com",     # 로이터
+        "site:nytimes.com",     # 다양한 뉴스 사이트
+        "site:dcinside.com",    # 디시인사이드
+        "site:reddit.com",      # 레딧
+        "site:naver.com"        # 네이버
+    ]
+
+    all_results = []
+    total_results_needed = num_results * len(domains)
+
+    for domain in domains:
+        domain_results = await fetch_results(query=query, num=num_results, domain=domain)
+        all_results.extend(domain_results)
+
+    if len(all_results) < total_results_needed:
+        remaining_needed = total_results_needed - len(all_results)
+        general_results = await fetch_results(query=query, num=remaining_needed)
+        all_results.extend(general_results)
+
+    return all_results[:total_results_needed]
+
 
 @app.get("/")
 async def root():
@@ -187,63 +258,118 @@ async def search(query: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
 
-@app.post("/Llama_stream", summary="스트리밍 방식으로 Llama_8B 모델 답변 생성")
-async def llama_stream(request: ChatModel.Llama_Request):
-    '''
-    Llama_8B 모델에 질문 입력 시 답변을 스트리밍 방식으로 반환
-    '''
+@app.post("/Llama_stream", summary="AI 모델이 검색 결과를 활용하여 답변 생성")
+async def Llama_stream(request: ChatModel.Llama_Request):
+    """
+    사용자 질문과 위키백과, 나무위키, 뉴스 결과를 결합하여 AI 답변을 생성합니다.
+    :param request: 사용자 질문과 옵션 포함
+    :return: AI 모델의 답변
+    """
     try:
-        if not request.google_access_set:
-            # Google Access가 설정되지 않은 경우 바로 처리
-            response_stream = llama_model_8b.generate_response_stream(
-                input_text=request.input_data,
-                google_search=None
-            )
-            return StreamingResponse(response_stream, media_type="text/plain")
+        search_context = ""  # search_context를 초기화
 
-        # 명사 추출
-        search_nouns = languageprocessor.process_sentence(request.input_data)
-        print(f"Extracted search nouns: {search_nouns}")
+        if request.google_access_set:
+            # 위키백과, 나무위키, 뉴스 사이트 기반으로 검색
+            search_results = await fetch_search_results(request.input_data, num_results=5)
 
-        analysis_result = search_nouns.get("분석 결과", {})
-        if not isinstance(analysis_result, dict):
-            raise ValueError(f"Unexpected structure in '분석 결과': {analysis_result}")
+            # 검색 결과를 텍스트로 통합
+            if search_results:
+                search_context = "\n".join([
+                    f"제목: {item['title']}\n설명: {item['snippet']}\n링크: {item['link']}"
+                    for item in search_results[:5]  # 최대 5개만 사용
+                ])
+            else:
+                search_context = "검색 결과가 없습니다."
+        
+        print(f"Search Context: {search_context}")
 
-        nouns = analysis_result.get("명사", [])
-        if not isinstance(nouns, list):
-            raise ValueError(f"Unexpected type for '명사': {type(nouns)}")
-
-        result = " ".join(nouns)
-        print(f"Result: {result}")
-
-        # Google 검색 API 호출
-        url = f"https://www.googleapis.com/customsearch/v1"
-        params = {"key": GOOGLE_API_KEY, "cx": SEARCH_ENGINE_ID, "q": result}
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, params=params)
-            response.raise_for_status()
-
-        # 검색 결과를 스트리밍 방식으로 전달
-        search_stream = stream_search_results(response.json())
-        print(search_stream)
-
-        response_stream = llama_model_8b.generate_response_stream(
-            input_text=request.input_data,
-            google_search="".join(search_stream)
+        # AI 모델에 입력 생성
+        prompt = (
+            f"사용자 질문은 {request.input_data}\n\n"
+            f"참고 정보는 {search_context}\n\n"
         )
+
+        # AI 모델로 답변 생성
+        response_stream = llama_model_8b.generate_response_stream(input_text=prompt)
         return StreamingResponse(response_stream, media_type="text/plain")
 
     except TimeoutError:
-        raise ChatError.InternalServerErrorException(detail="Llama 모델 응답이 시간 초과되었습니다.")
-    except ValidationError as e:
-        raise ChatError.BadRequestException(detail=str(e))
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=500, detail=f"HTTP 요청 오류: {str(e)}")
-    except HTTPException as e:
-        raise e
+        raise ChatError.InternalServerErrorException(detail="모델 응답이 시간 초과되었습니다.")
     except Exception as e:
         print(f"Unhandled Exception: {e}")
         raise ChatError.InternalServerErrorException(detail=str(e))
+
+
+# @app.post("/Llama_stream", summary="스트리밍 방식으로 Llama_8B 모델 답변 생성")
+# async def llama_stream(request: ChatModel.Llama_Request):
+#     '''
+#     Llama_8B 모델에 질문 입력 시 답변을 스트리밍 방식으로 반환
+#     '''
+#     try:
+#         if not request.google_access_set:
+#             # Google Access가 설정되지 않은 경우 바로 처리
+#             response_stream = llama_model_8b.generate_response_stream(
+#                 input_text=request.input_data,
+#                 google_search=None
+#             )
+#             return StreamingResponse(response_stream, media_type="text/plain")
+
+#         # 명사 추출 및 처리
+#         search_nouns = languageprocessor.process_sentence(request.input_data)
+
+#         # 기본값 설정
+#         result = request.input_data  # 초기값은 입력 데이터로 설정
+
+#         # 반환값 확인 및 디버깅
+#         if not isinstance(search_nouns, dict):
+#             print(f"Unexpected structure in process_sentence output: {search_nouns}")
+#         else:
+#             print(search_nouns)  # 정상적인 출력 확인
+
+#         # 분석 결과 가져오기
+#         analysis_result = search_nouns.get("분석 결과", {})
+#         if not isinstance(analysis_result, dict):
+#             print(f"Unexpected structure in '분석 결과': {analysis_result}")
+#         else:
+#             # 명사, 부사, 동사, 형용사 순으로 확인
+#             for key in ["명사", "부사", "동사", "형용사"]:
+#                 words = analysis_result.get(key, [])
+#                 if isinstance(words, list) and words:  # 리스트이고 비어있지 않은 경우만 처리
+#                     result = " ".join(words)
+#                     break
+#                 elif not isinstance(words, list):  # 예상 타입이 아닌 경우 디버깅 메시지 출력
+#                     print(f"Unexpected type for '{key}': {type(words)}")
+
+#         # 최종 결과 출력
+#         print(f"Final result: {result}")
+
+#         # Google 검색 API 호출
+#         url = f"https://www.googleapis.com/customsearch/v1"
+#         params = {"key": GOOGLE_API_KEY, "cx": SEARCH_ENGINE_ID, "q": result}
+#         async with httpx.AsyncClient() as client:
+#             response = await client.get(url, params=params)
+#             response.raise_for_status()
+
+#         # 검색 결과를 스트리밍 방식으로 전달
+#         search_stream = stream_search_results(response.json())
+
+#         response_stream = llama_model_8b.generate_response_stream(
+#             input_text=request.input_data,
+#             google_search="".join(search_stream)
+#         )
+#         return StreamingResponse(response_stream, media_type="text/plain")
+    
+#     except TimeoutError:
+#         raise ChatError.InternalServerErrorException(detail="Llama 모델 응답이 시간 초과되었습니다.")
+#     except ValidationError as e:
+#         raise ChatError.BadRequestException(detail=str(e))
+#     except httpx.RequestError as e:
+#         raise HTTPException(status_code=500, detail=f"HTTP 요청 오류: {str(e)}")
+#     except HTTPException as e:
+#         raise e
+#     except Exception as e:
+#         print(f"Unhandled Exception: {e}")
+#         raise ChatError.InternalServerErrorException(detail=str(e))
     
 @app.post("/Bllossom_stream", summary="스트리밍 방식으로 Bllossom_8B 모델 답변 생성")
 async def bllossom_stream(request: ChatModel.Bllossom_Request):

@@ -10,6 +10,7 @@ pip install -r .\fastapi\requirements.txt
 
 :: spaCy 모델 설치
 python -m spacy download en_core_web_sm
+python -m spacy download ko_core_news_sm
 
 :: pip install torch==2.0.1+cu118 torchvision==0.15.2+cu118 torchaudio==2.0.2+cu118 -f https://download.pytorch.org/whl/torch_stable.html
 

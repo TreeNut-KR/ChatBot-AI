@@ -1,5 +1,7 @@
-# DB_mysql.py
-# 파일은 MySQLDBHandler 클래스를 정의하고, 이 클래스는 MySQL 데이터베이스와 상호 작용하는 데 필요한 모든 기능을 제공합니다.
+# Database_mysql.py
+'''
+파일은 MySQLDBHandler 클래스를 정의하고, 이 클래스는 MySQL 데이터베이스와 상호 작용하는 데 필요한 모든 기능을 제공합니다.
+'''
 
 import os
 import asyncio
