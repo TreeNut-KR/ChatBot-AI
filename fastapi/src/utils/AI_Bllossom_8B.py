@@ -1,3 +1,8 @@
+# AI_Bllossom_8B.py
+'''
+파일은 BllossomChatModel 클래스를 정의하고, 이 클래스는 Bllossom 8B 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
+'''
+
 import os
 from threading import Thread
 
@@ -9,6 +14,9 @@ from torch.cuda.amp import GradScaler
 from transformers import BitsAndBytesConfig, TextIteratorStreamer
 
 class BllossomChatModel:
+    '''
+    BllossomChatModel 클래스는 Bllossom 8B 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
+    '''
     def __init__(self):
         '''
         BllossomChatModel 클래스 초기화
@@ -17,9 +25,9 @@ class BllossomChatModel:
         parent_dir = os.path.dirname(current_dir)
         dotenv_path = os.path.join(parent_dir, '.env')
         load_dotenv(dotenv_path)
-        self.cache_dir = "./fastapi/ai_model/"
+        self.cache_dir = "/app/ai_model/"
         self.model_id = "MLP-KTLim/llama-3-Korean-Bllossom-8B"
-        self.device = torch.device("cuda:0")  # 명확히 cuda:0로 지정
+        self.device = torch.device("cuda:1")  # 명확히 cuda:1로 지정
 
         self.model_kwargs = {
             "torch_dtype": torch.float16,
@@ -36,7 +44,7 @@ class BllossomChatModel:
         self.tokenizer = self.load_tokenizer()
         print("모델 로드 중...")
         self.model = self.load_model()
-        print("모델과 토크나이저 로드 완료!") 
+        print("모델과 토크나이저 로드 완료!")
 
         self.model.gradient_checkpointing_enable()
         self.conversation_history = []

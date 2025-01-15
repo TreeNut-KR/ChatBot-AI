@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TreeNut ChatBot</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         body {
             font-family: 'Noto Sans KR', sans-serif;
@@ -118,6 +119,10 @@
             align-self: flex-start;
         }
 
+        .ai-message.markdown {
+            background-color: #2b2e47;
+        }
+
         footer {
             background-color: #1e1e2f;
             padding: 10px 20px;
@@ -177,11 +182,15 @@
     <div class="content">
         <header>
             <h1>TreeNut ChatBot</h1>
-            <label for="model-selector" style="display: none;">모델 선택</label>
-            <select id="model-selector" aria-label="모델 선택">
-                <option value="Llama">Llama</option>
-                <option value="Bllossom">Bllossom</option>
-            </select>
+            <div>
+                <label for="google-access-set">
+                    <input type="checkbox" id="google-access-set" disabled> Google Search 활성화
+                </label>
+                <select id="model-selector" aria-label="모델 선택">
+                    <option value="Llama">Llama</option>
+                    <option value="Bllossom">Bllossom</option>
+                </select>
+            </div>
         </header>
         <main>
             <div class="chat-container" id="chat-container">
@@ -201,6 +210,25 @@
         const sendButton = document.getElementById('send-button');
         const chatContainer = document.getElementById('chat-container');
         const modelSelector = document.getElementById('model-selector');
+        const googleAccessCheckbox = document.getElementById('google-access-set');
+
+        function initializeCheckbox() {
+            if (modelSelector.value === 'Llama') {
+                googleAccessCheckbox.disabled = false;
+            } else {
+                googleAccessCheckbox.disabled = true;
+                googleAccessCheckbox.checked = false;
+            }
+        }
+
+        modelSelector.addEventListener('change', () => {
+            if (modelSelector.value === 'Llama') {
+                googleAccessCheckbox.disabled = false;
+            } else {
+                googleAccessCheckbox.disabled = true;
+                googleAccessCheckbox.checked = false;
+            }
+        });
 
         chatForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -220,7 +248,12 @@
         function appendMessage(user, text, className) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', className);
-            messageDiv.textContent = text;
+            if (className.includes('ai-message')) {
+                messageDiv.innerHTML = marked.parse(text);
+                messageDiv.classList.add('markdown');
+            } else {
+                messageDiv.textContent = text;
+            }
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
@@ -238,11 +271,27 @@
 
         async function sendToServer(model, inputText) {
             try {
-                const requestBody = model === 'Bllossom' 
-                    ? { input_data: inputText }
-                    : { input_data: inputText };
+                const requestBody = model === 'Bllossom'
+                    ? {
+                        input_data: inputText,
+                        character_name: "KindBot",
+                        description: "친절한 도우미 봇",
+                        greeting: "안녕하세요! 무엇을 도와드릴까요?",
+                        image: "https://drive.google.com/thumbnail?id=12PqUS6bj4eAO_fLDaWQmoq94-771xfim",
+                        character_setting: "친절하고 공손한 봇",
+                        tone: "공손한",
+                        energy_level: 8,
+                        politeness: 10,
+                        humor: 5,
+                        assertiveness: 3,
+                        access_level: true
+                    }
+                    : { 
+                        input_data: inputText, 
+                        google_access_set: googleAccessCheckbox.checked
+                    };
 
-                const response = await fetch(`http://localhost:8000/${model}_stream`, {
+                const response = await fetch(`http://localhost:8001/${model}_stream`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(requestBody)
@@ -252,20 +301,26 @@
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder('utf-8');
+                let accumulatedText = ''; // 누적된 텍스트
                 let aiMessageDiv = document.createElement('div');
-                aiMessageDiv.classList.add('message', 'ai-message');
+                aiMessageDiv.classList.add('message', 'ai-message', 'markdown');
                 chatContainer.appendChild(aiMessageDiv);
 
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    aiMessageDiv.textContent += decoder.decode(value);
+                    accumulatedText += decoder.decode(value);
+
+                    // 누적된 텍스트를 마크다운으로 변환
+                    aiMessageDiv.innerHTML = marked.parse(accumulatedText);
                     chatContainer.scrollTop = chatContainer.scrollHeight;
                 }
             } catch (error) {
                 appendMessage('시스템', '서버와의 연결 중 문제가 발생했습니다.', 'ai-message');
             }
         }
+
+        initializeCheckbox();
     </script>
 </body>
 </html>
