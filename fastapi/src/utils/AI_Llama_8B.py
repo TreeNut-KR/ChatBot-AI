@@ -26,7 +26,7 @@ class LlamaChatModel:
         parent_dir = os.path.dirname(current_dir)
         dotenv_path = os.path.join(parent_dir, '.env')
         load_dotenv(dotenv_path)
-        self.cache_dir = "./fastapi/ai_model/"
+        self.cache_dir = "/app/ai_model/"
         self.model_id = "meta-llama/Llama-3.1-8B-Instruct"
         self.device = torch.device("cuda:0")  # 명확히 cuda:0로 지정
 

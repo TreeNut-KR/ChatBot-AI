@@ -291,7 +291,7 @@
                         google_access_set: googleAccessCheckbox.checked
                     };
 
-                const response = await fetch(`http://localhost:8000/${model}_stream`, {
+                const response = await fetch(`http://localhost:8001/${model}_stream`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(requestBody)

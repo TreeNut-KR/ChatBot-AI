@@ -28,11 +28,12 @@ pytest
 pytest-asyncio
 langchain-community
 transformers
-bitsandbytes==0.44.1
+bitsandbytes
 accelerate>=0.26.0
 ua-parser
 jpype1
 konlpy
-googletrans==4.0.0-rc1
-spacy
+googletrans
 langdetect
+beautifulsoup4
+networkx

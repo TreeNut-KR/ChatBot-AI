@@ -143,7 +143,7 @@ output_data_set = Field(
 
 class Llama_Request(BaseModel):
     input_data: str = input_data_set
-    google_access_set: bool = google_access_set # default=False
+    google_access: bool = google_access_set # default=False
     
 class Llama_Response(BaseModel):
     output_data: str = output_data_set

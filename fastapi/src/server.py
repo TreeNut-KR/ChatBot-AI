@@ -6,6 +6,7 @@ import yaml
 import torch
 import uvicorn
 import httpx
+import ipaddress
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from asyncio import TimeoutError
@@ -120,20 +121,31 @@ def custom_openapi():
     return app.openapi_schema
 
 app.openapi = custom_openapi
+def is_internal_ip(ip):
+    try:
+        ip_obj = ipaddress.ip_address(ip)
+        # Check if the IP is in the internal network range (192.168.219.0/24)
+        return ip_obj in ipaddress.ip_network("192.168.219.0/24")
+    except ValueError:
+        return False
 
 @app.middleware("http")
 async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
     ip_string = os.getenv("IP")
     allowed_ips = ip_string.split(", ") if ip_string else []
     client_ip = request.client.host
-    
-    bot_user_agents = load_bot_list("fastapi/src/bot.yaml")
+
+    bot_user_agents = load_bot_list("/app/src/bot.yaml")  # 경로 수정
     user_agent = request.headers.get("User-Agent", "").lower()
 
     try:
-        if request.url.path in ["/Llama_stream","/Bllossom_stream", "/docs", "/redoc", "/openapi.json"] and client_ip not in allowed_ips:
-            raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
-        
+        # Restrict access based on IP and internal network range
+        # if (request.url.path in ["/Llama_stream", "/Bllossom_stream", "/docs", "/redoc", "/openapi.json"]
+        #         and client_ip not in allowed_ips
+        #         and not is_internal_ip(client_ip)):
+        #     raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
+
+        # Block bots based on user agent
         if any(bot in user_agent for bot in bot_user_agents):
             raise ChatError.BadRequestException(detail=f"{user_agent} Bot access is not allowed.")
 
@@ -142,18 +154,14 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
 
     except ValidationError as e:
         raise ChatError.BadRequestException(detail=str(e))
-    
     except ChatError.IPRestrictedException as e:
         return await ChatError.generic_exception_handler(request, e)
-    
     except ChatError.BadRequestException as e:
         return await ChatError.generic_exception_handler(request, e)
-    
     except HTTPException as e:
-        if e.status_code == 405:
+        if (e.status_code == 405):
             raise ChatError.MethodNotAllowedException(detail="The method used is not allowed.")
         raise e
-    
     except Exception as e:
         raise ChatError.InternalServerErrorException(detail="Internal server error occurred.")
 
@@ -265,10 +273,11 @@ async def Llama_stream(request: ChatModel.Llama_Request):
     :param request: 사용자 질문과 옵션 포함
     :return: AI 모델의 답변
     """
+    print(f"Request: {request}")
     try:
         search_context = ""  # search_context를 초기화
 
-        if request.google_access_set:
+        if request.google_access:
             # 위키백과, 나무위키, 뉴스 사이트 기반으로 검색
             search_results = await fetch_search_results(request.input_data, num_results=5)
 
@@ -279,7 +288,7 @@ async def Llama_stream(request: ChatModel.Llama_Request):
                     for item in search_results[:5]  # 최대 5개만 사용
                 ])
             else:
-                search_context = "검색 결과가 없습니다."
+                search_context = ""
         
         print(f"Search Context: {search_context}")
 
@@ -406,4 +415,4 @@ async def bllossom_stream(request: ChatModel.Bllossom_Request):
         raise ChatError.InternalServerErrorException(detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)
