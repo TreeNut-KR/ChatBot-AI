@@ -1,14 +1,23 @@
+# AI_Llama_8B.py
+'''
+파일은 LlamaChatModel 클래스를 정의하고, 이 클래스는 Llama 8B 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
+'''
+
 import os
 from threading import Thread
 
 import torch
 import transformers
+from typing import Optional
 from accelerate import Accelerator
 from dotenv import load_dotenv
 from torch.cuda.amp import GradScaler
-from transformers import BitsAndBytesConfig, TextIteratorStreamer, StoppingCriteria, StoppingCriteriaList
+from transformers import BitsAndBytesConfig, TextIteratorStreamer
 
 class LlamaChatModel:
+    '''
+    LlamaChatModel 클래스는 Llama 8B 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
+    '''
     def __init__(self):
         '''
         LlamaChatModel 클래스 초기화
@@ -17,15 +26,19 @@ class LlamaChatModel:
         parent_dir = os.path.dirname(current_dir)
         dotenv_path = os.path.join(parent_dir, '.env')
         load_dotenv(dotenv_path)
-        self.cache_dir = "./fastapi/ai_model/"
+        self.cache_dir = "/app/ai_model/"
         self.model_id = "meta-llama/Llama-3.1-8B-Instruct"
-        self.device = torch.device("cuda:1")  # 명확히 cuda:1로 지정
+        self.device = torch.device("cuda:0")  # 명확히 cuda:0로 지정
 
         self.model_kwargs = {
             "torch_dtype": torch.float16,
             "trust_remote_code": True,
             "device_map": {"": self.device},
-            "quantization_config": BitsAndBytesConfig(load_in_4bit=True)
+            "quantization_config": BitsAndBytesConfig(
+                load_in_4bit=True,
+                double_quant=True,  # 추가 양자화
+                compute_dtype=torch.float16
+            )
         }
 
         self.hf_token = os.getenv("HUGGING_FACE_TOKEN")
@@ -46,6 +59,8 @@ class LlamaChatModel:
             self.model_id,
             token=self.hf_token
         )
+        if tokenizer.eos_token_id is None:
+            tokenizer.add_special_tokens({'eos_token': '<|endoftext|>'})
         tokenizer.pad_token_id = tokenizer.eos_token_id
         return tokenizer
 
@@ -58,20 +73,12 @@ class LlamaChatModel:
         )
         return model
 
-    class StopOnEOS(StoppingCriteria):
-        def __init__(self, eos_token_id):
-            super().__init__()
-            self.eos_token_id = eos_token_id
-
-        def __call__(self, input_ids, scores, **kwargs):
-            # 자동 종료 조건: EOS 토큰이 생성되면 종료
-            return self.eos_token_id in input_ids[0].tolist()
-
     def generate_response_stream(self, input_text: str):
-        # prompt = self._build_prompt(input_text)
+        """
+        Top-p 샘플링을 사용하여 텍스트를 생성하고 스트리밍 방식으로 결과를 반환합니다.
+        """
         input_ids = self.tokenizer.encode(
             text=input_text,
-            # text_pair=prompt,
             return_tensors="pt",
             padding=True,
             truncation=True
@@ -79,45 +86,30 @@ class LlamaChatModel:
         attention_mask = (input_ids != self.tokenizer.pad_token_id).long().to(self.device)
         streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True)
 
-        # Stopping criteria 리스트 추가
-        stopping_criteria = StoppingCriteriaList([
-            self.StopOnEOS(eos_token_id=self.tokenizer.eos_token_id)
-        ])
-
         generation_kwargs = {
             "input_ids": input_ids.to(self.device),
             "attention_mask": attention_mask.to(self.device),
-            "min_new_tokens": 10,  # 최소 토큰 수
-            "max_new_tokens": 512,  # 최대 토큰 수 제한
-            "do_sample": True,
-            "temperature": 0.7,
-            "top_k": 50,
-            "top_p": 0.9,
-            "repetition_penalty": 1.2,
-            "streamer": streamer,
-            "stopping_criteria": stopping_criteria
+            "min_new_tokens": 1,
+            "max_new_tokens": 512,
+            "do_sample": True,  # 샘플링 활성화
+            "top_p": 0.9,  # Top-p Sampling 활성화 (0.9로 설정)
+            "top_k": 0,  # Top-k 비활성화 (Top-p와 함께 사용하지 않음)
+            "temperature": 0.7,  # 다양성을 위한 온도 조정
+            "eos_token_id": self.tokenizer.eos_token_id,
+            "pad_token_id": (
+                self.tokenizer.pad_token_id
+                if self.tokenizer.pad_token_id is not None
+                else self.tokenizer.eos_token_id
+            ),
+            "repetition_penalty": 1.2,  # 반복 방지 패널티
+            "num_return_sequences": 1,  # 한 번에 하나의 시퀀스 생성
+            "streamer": streamer  # 스트리밍 활성화
         }
 
-        # 모델 생성 스레드 실행
+        # Thread를 사용하여 생성 작업 비동기화
         thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
         thread.start()
 
-        # 스트리머를 통해 출력된 텍스트를 순차적으로 반환
+        # Streamer를 통해 생성된 텍스트 반환
         for new_text in streamer:
             yield new_text
-
-            
-    # def _build_prompt(self, user_input: str):
-    #     """
-    #     대화 기록 기반으로 프롬프트 생성
-    #     """
-    #     recent_history = self.conversation_history[-5:]  # 최근 5개의 대화만 유지
-    #     history = "\n".join([f"{entry['role']}: {entry['content']}" for entry in recent_history])
-    #     prompt = (
-    #         "meta-llama/Llama-3.1-8B-Instruct(role:AI) prompt:\n"
-    #         f"대화 기록: {history}\n"
-    #         f"사용자 입력: {user_input}\n\n"
-    #     )
-    #     print(history)
-    #     self.conversation_history.append({"role": "user", "content": user_input})
-    #     return prompt
