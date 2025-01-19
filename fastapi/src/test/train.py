@@ -13,7 +13,9 @@ from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training, Ta
 from datasets import load_from_disk
 from accelerate import Accelerator
 from dotenv import load_dotenv
-from torch.utils.data import DataLoader, DistributedSampler
+from torch.utils.data import DataLoader
+from torch.nn.parallel import DistributedDataParallel as DDP
+import torch.distributed as dist
 
 class MultiGPUTrainer:
     def __init__(self):
@@ -28,6 +30,10 @@ class MultiGPUTrainer:
         
         self.num_gpus = torch.cuda.device_count()
         print(f"사용 가능한 GPU 개수: {self.num_gpus}")
+        
+        # GPU 메모리 설정
+        self.max_memory = self.get_gpu_memory()
+        print(f"GPU 메모리 설정: {self.max_memory}")
         
         # AI_Llama_8B.py와 동일한 설정
         self.cache_dir = "./fastapi/ai_model"
@@ -51,13 +57,6 @@ class MultiGPUTrainer:
             task_type=TaskType.CAUSAL_LM
         )
         
-        # GPU 메모리 설정
-        self.max_memory = {
-            0: "10GiB",  # 12GB GPU에 10GiB 메모리 할당
-            1: "6GiB",   # 8GB GPU에 6GiB 메모리 할당
-            "cpu": "16GiB"
-        }
-        
         # 오프로드 폴더 설정
         self.offload_folder = "./fastapi/ai_model/offload"
         os.makedirs(self.offload_folder, exist_ok=True)
@@ -65,11 +64,25 @@ class MultiGPUTrainer:
         # Accelerator 초기화
         self.accelerator = Accelerator(cpu=False)
 
+        # 토크나이저 및 모델 로드
         print("토크나이저 로드 중...")
         self.tokenizer = self.load_tokenizer()
         print("모델 로드 중...")
         self.model = self.load_model()
-        
+        print("모델 로드 완료")
+
+    def get_gpu_memory(self):
+        """각 GPU의 사용 가능한 VRAM을 측정하여 반환"""
+        max_memory = {}
+        for i in range(self.num_gpus):
+            total_memory = torch.cuda.get_device_properties(i).total_memory
+            reserved_memory = torch.cuda.memory_reserved(i)
+            allocated_memory = torch.cuda.memory_allocated(i)
+            free_memory = total_memory - (reserved_memory + allocated_memory)
+            max_memory[i] = f"{free_memory // (1024 ** 3)}GiB"
+        max_memory["cpu"] = "16GiB"
+        return max_memory
+
     def load_tokenizer(self):
         """토크나이저 로드"""
         tokenizer = transformers.AutoTokenizer.from_pretrained(
@@ -105,6 +118,17 @@ class MultiGPUTrainer:
         # 모델을 Accelerator와 함께 병렬화
         model = self.accelerator.prepare(model)
 
+        # DDP 초기화
+        if self.num_gpus > 1:
+            os.environ["RANK"] = "0"
+            os.environ["WORLD_SIZE"] = str(self.num_gpus)
+            os.environ["MASTER_ADDR"] = "localhost"
+            os.environ["MASTER_PORT"] = "12355"
+            torch.cuda.set_device(0)  # 첫 번째 GPU를 사용하도록 설정
+            dist.init_process_group(backend='gloo')
+            model = DDP(model)
+            print("DDP 초기화 완료")
+
         return model
         
     def preprocess_function(self, examples):
@@ -127,6 +151,11 @@ class MultiGPUTrainer:
         try:
             print("데이터셋 로드 중...")
             dataset_path = "./fastapi/datasets/maywell/ko_wikidata_QA"
+            
+            # 데이터셋 경로 확인
+            if not os.path.exists(dataset_path):
+                raise FileNotFoundError(f"데이터셋 경로를 찾을 수 없습니다: {dataset_path}")
+            
             dataset = load_from_disk(dataset_path)
             train_data = dataset["train"]
             train_size = len(train_data)
@@ -140,9 +169,6 @@ class MultiGPUTrainer:
                 remove_columns=sampled_data.column_names
             )
 
-            # 분산 샘플러 설정 (각 GPU에 적절한 데이터 분배)
-            train_sampler = DistributedSampler(tokenized_dataset, num_replicas=self.num_gpus, rank=self.accelerator.process_index)
-
             # 데이터 로더 설정
             data_collator = DataCollatorForLanguageModeling(
                 tokenizer=self.tokenizer,
@@ -151,7 +177,6 @@ class MultiGPUTrainer:
 
             train_dataloader = DataLoader(
                 tokenized_dataset,
-                sampler=train_sampler,
                 batch_size=4,
                 collate_fn=data_collator
             )
@@ -160,7 +185,7 @@ class MultiGPUTrainer:
             training_args = TrainingArguments(
                 output_dir=self.offload_folder,
                 learning_rate=2e-4,
-                per_device_train_batch_size=2,
+                per_device_train_batch_size=2,  # 각 GPU당 배치 크기
                 gradient_accumulation_steps=16,
                 max_steps=1000,
                 warmup_steps=100,
@@ -171,9 +196,8 @@ class MultiGPUTrainer:
                 logging_dir="./logs",
                 dataloader_num_workers=1,
                 dataloader_pin_memory=False,
-                ddp_find_unused_parameters=False,
                 optim="paged_adamw_32bit",
-                local_rank=self.accelerator.process_index  # 분산 학습을 위한 설정
+                remove_unused_columns=False  # 사용되지 않는 열 제거 안 함
             )
 
             trainer = Trainer(
@@ -195,6 +219,9 @@ class MultiGPUTrainer:
             print(f"학습 중 오류 발생: {str(e)}")
             raise
 
-if __name__ == "__main__":
+def main():
     trainer = MultiGPUTrainer()
     trainer.train_model()
+
+if __name__ == "__main__":
+    main()
