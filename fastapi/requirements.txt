@@ -37,3 +37,4 @@ googletrans
 langdetect
 beautifulsoup4
 networkx
+databases

@@ -1,23 +1,17 @@
+version: '3.8'
+
 services:
-  fastapi:
-    restart: always
+  mongodb:
+    restart: unless-stopped
     build:
-      context: ./fastapi
-      dockerfile: Dockerfile
-    volumes:
-      - ./fastapi/src:/app/src
-      - ./fastapi/ai_model:/app/ai_model  # 로컬 AI 모델 파일을 컨테이너에 마운트
+      context: ./mongo
     ports:
-      - "8001:8001"
+      - "27018:27018"
     environment:
-      - HUGGING_FACE_TOKEN=${HUGGING_FACE_TOKEN}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - SEARCH_ENGINE_ID=${SEARCH_ENGINE_ID}
-      - TREE_KEY=${TREE_KEY}
-      - IP=${IP}
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - capabilities: [gpu]
-    runtime: nvidia
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ADMIN_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ADMIN_PASSWORD}
+      MONGO_DATABASE: ${MONGO_DATABASE}
+    volumes:
+      - ./mongo/data:/data/db
+      - ./mongo/log:/var/log/mongodb
+      - ./mongo/.env:/docker-entrypoint-initdb.d/.env
