@@ -118,17 +118,6 @@ class MultiGPUTrainer:
         # 모델을 Accelerator와 함께 병렬화
         model = self.accelerator.prepare(model)
 
-        # DDP 초기화
-        if self.num_gpus > 1:
-            os.environ["RANK"] = "0"
-            os.environ["WORLD_SIZE"] = str(self.num_gpus)
-            os.environ["MASTER_ADDR"] = "localhost"
-            os.environ["MASTER_PORT"] = "12355"
-            torch.cuda.set_device(0)  # 첫 번째 GPU를 사용하도록 설정
-            dist.init_process_group(backend='gloo')
-            model = DDP(model)
-            print("DDP 초기화 완료")
-
         return model
         
     def preprocess_function(self, examples):
