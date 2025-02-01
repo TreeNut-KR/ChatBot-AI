@@ -38,3 +38,7 @@ langdetect
 beautifulsoup4
 networkx
 databases
+gguf
+llama-cpp-python
+Pillow
+pytesseract

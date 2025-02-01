@@ -19,10 +19,10 @@ from starlette.responses import StreamingResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from utils  import ChatError, ChatModel, LanguageProcessor, MongoDBHandler, Llama_8B, Bllossom_8B
+from utils  import ChatError, ChatModel, LanguageProcessor, MongoDBHandler, Llama_8B, Lumimaid_8B
 
 llama_model_8b = None                   # Llama_8B 모델 전역 변수
-bllossom_model_8b = None                # Bllossom_8B 모델 전역 변수
+Lumimaid_model_8b = None                # Lumimaid_8B 모델 전역 변수
 mongo_handler = MongoDBHandler()        # MongoDB 핸들러 초기화
 languageprocessor = LanguageProcessor() # LanguageProcessor 초기화
 load_dotenv()
@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
     '''
     FastAPI AI 모델 애플리케이션 초기화
     '''
-    global llama_model_8b, bllossom_model_8b
+    global llama_model_8b, Lumimaid_model_8b
 
     # CUDA 디바이스 정보 가져오기 함수
     def get_cuda_device_info(device_id: int) -> str:
@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
 
     # Llama 및 Bllossom 모델 로드
     llama_model_8b = Llama_8B()  # cuda:0
-    bllossom_model_8b = Bllossom_8B()  # cuda:1
+    Lumimaid_model_8b = Lumimaid_8B()  # cuda:1
 
     # 디버깅용 출력
     llama_device_info = get_cuda_device_info(0)  # Llama 모델은 cuda:1
@@ -67,7 +67,7 @@ async def lifespan(app: FastAPI):
 
     # 모델 메모리 해제
     llama_model_8b = None
-    bllossom_model_8b = None
+    Lumimaid_model_8b = None
     print("모델 해제 완료")
 
 app = FastAPI(lifespan=lifespan)  # 여기서 한 번만 app을 생성합니다.
@@ -139,7 +139,7 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
 
     try:
         # Restrict access based on IP and internal network range
-        if (request.url.path in ["/Llama_stream", "/Bllossom_stream", "/docs", "/redoc", "/openapi.json"]
+        if (request.url.path in ["/Llama_stream", "/_stream", "/docs", "/redoc", "/openapi.json"]
                 and client_ip not in allowed_ips
                 and not is_internal_ip(client_ip)):
             raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
@@ -338,10 +338,10 @@ async def Llama_stream(request: ChatModel.Llama_Request):
         print(f"Unhandled Exception: {e}")
         raise ChatError.InternalServerErrorException(detail=str(e))
     
-@app.post("/Bllossom_stream", summary="스트리밍 방식으로 Bllossom_8B 모델 답변 생성")
-async def bllossom_stream(request: ChatModel.Bllossom_Request):
+@app.post("/Lumimaid_stream", summary="스트리밍 방식으로 Lumimaid_8B 모델 답변 생성")
+async def Lumimaid_stream(request: ChatModel.Lumimaid_Request):
     '''
-    Bllossom_8B 모델에 질문 입력 시 캐릭터 설정을 반영하여 답변을 스트리밍 방식으로 반환
+    Lumimaid_8B 모델에 질문 입력 시 캐릭터 설정을 반영하여 답변을 스트리밍 방식으로 반환
     '''
     try:
         character_settings = {
@@ -357,7 +357,7 @@ async def bllossom_stream(request: ChatModel.Bllossom_Request):
             "access_level": request.access_level
         }
         
-        response_stream = bllossom_model_8b.generate_response_stream(
+        response_stream = Lumimaid_model_8b.generate_response_stream(
             input_text=request.input_data,
             character_settings=character_settings
         )

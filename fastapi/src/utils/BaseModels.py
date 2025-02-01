@@ -148,7 +148,7 @@ class Llama_Request(BaseModel):
 class Llama_Response(BaseModel):
     output_data: str = output_data_set
     
-class Bllossom_Request(BaseModel):
+class Lumimaid_Request(BaseModel):
     input_data: str = input_data_set
     character_name: str = character_name_set
     description: str = description_set

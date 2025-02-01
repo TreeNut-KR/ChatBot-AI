@@ -18,11 +18,11 @@ from . import BaseModels as ChatModel
 from . import Error_handlers as ChatError
 from .Language_handler import LanguageProcessor
 from .Database_mongo import MongoDBHandler
-from .AI_Bllossom_8B import BllossomChatModel as Bllossom_8B
+from .AI_Lumimaid_8B import LumimaidChatModel as Lumimaid_8B
 from .AI_Llama_8B import LlamaChatModel as Llama_8B
 
 __all__ = [
-    'Bllossom_8B',
+    'Lumimaid_8B',
     'Llama_8B',
     'ChatModel',
     'ChatError',
