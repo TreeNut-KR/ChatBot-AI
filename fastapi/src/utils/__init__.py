@@ -18,11 +18,13 @@ from . import BaseModels as ChatModel
 from . import Error_handlers as ChatError
 from .Language_handler import LanguageProcessor
 from .Database_mongo import MongoDBHandler
-from .AI_Lumimaid_8B import LumimaidChatModel as Lumimaid_8B
+from .AI_Lumimaid_8B import LlamaModelHandler as Lumimaid_8B
+from .AI_Lumimaid_8B import CharacterPrompt
 from .AI_Llama_8B import LlamaChatModel as Llama_8B
 
 __all__ = [
     'Lumimaid_8B',
+    'CharacterPrompt',
     'Llama_8B',
     'ChatModel',
     'ChatError',

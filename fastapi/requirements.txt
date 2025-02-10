@@ -24,29 +24,6 @@ transformers
 bitsandbytes
 accelerate>=0.26.0
 
-# NLP 도구
-konlpy
-googletrans
-langdetect
-spacy
-
-# 이미지 처리
-Pillow
-pytesseract
-
-# CUDA 관련 패키지
-pynvml
---find-links https://github.com/oobabooga/llama-cpp-python-cuBLAS-wheels/releases/download/textgen-webui/
-llama_cpp_python_cuda==0.3.6+cu121
-
-# ExLlamaV2 설치 (GitHub 릴리스에서 직접 설치)
---find-links https://github.com/turboderp/exllama/releases/download/v2.7/
-exllamav2
-
-# Flash Attention (CUDA 11.8 호환 버전)
---find-links https://github.com/Dao-AILab/flash-attention/releases/download/v2.3.3/
-flash-attn==2.3.3
-
 # 기타 의존성 패키지
 annotated-types==0.7.0
 anyio==4.4.0
@@ -68,3 +45,14 @@ jpype1
 beautifulsoup4
 networkx
 gguf
+
+# NLP 도구
+konlpy
+googletrans
+langdetect
+spacy
+
+# 이미지 처리
+Pillow
+pytesseract
+

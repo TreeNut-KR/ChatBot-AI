@@ -19,7 +19,7 @@ from starlette.responses import StreamingResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from utils  import ChatError, ChatModel, LanguageProcessor, MongoDBHandler, Llama_8B, Lumimaid_8B
+from utils  import ChatError, ChatModel, LanguageProcessor, MongoDBHandler, Llama_8B, Lumimaid_8B, CharacterPrompt
 
 llama_model_8b = None                   # Llama_8B 모델 전역 변수
 Lumimaid_model_8b = None                # Lumimaid_8B 모델 전역 변수
@@ -340,36 +340,48 @@ async def Llama_stream(request: ChatModel.Llama_Request):
     
 @app.post("/Lumimaid_stream", summary="스트리밍 방식으로 Lumimaid_8B 모델 답변 생성")
 async def Lumimaid_stream(request: ChatModel.Lumimaid_Request):
-    '''
-    Lumimaid_8B 모델에 질문 입력 시 캐릭터 설정을 반영하여 답변을 스트리밍 방식으로 반환
-    '''
+    """
+    Lumimaid_8B 모델에 질문을 입력하고 캐릭터 설정을 반영하여 답변을 스트리밍 방식으로 반환합니다.
+
+    Args:
+        request (ChatModel.Lumimaid_Request): 사용자 요청 데이터
+
+    Returns:
+        StreamingResponse: 스트리밍 방식의 모델 응답
+    """
     try:
+        # 캐릭터 설정 구성
         character_settings = {
             "character_name": request.character_name,
-            "description": request.description,
             "greeting": request.greeting,
-            "character_setting": request.character_setting,
-            "tone": request.tone,
-            "energy_level": request.energy_level,
-            "politeness": request.politeness,
-            "humor": request.humor,
-            "assertiveness": request.assertiveness,
+            "context": request.context,
             "access_level": request.access_level
         }
         
+        # 응답 스트림 생성
         response_stream = Lumimaid_model_8b.generate_response_stream(
             input_text=request.input_data,
             character_settings=character_settings
         )
-        return StreamingResponse(response_stream, media_type="text/plain")
+        
+        return StreamingResponse(
+            response_stream,
+            media_type="text/plain",
+            headers={
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+            }
+        )
+        
     except TimeoutError:
-        raise ChatError.InternalServerErrorException(detail="Bllossom 모델 응답이 시간 초과되었습니다.")
+        raise ChatError.InternalServerErrorException(
+            detail="Lumimaid 모델 응답이 시간 초과되었습니다."
+        )
     except ValidationError as e:
         raise ChatError.BadRequestException(detail=str(e))
-    except HTTPException as e:
-        raise e
     except Exception as e:
-        print(f"Unhandled Exception: {e}")  # 디버깅 출력 추가
+        print(f"처리되지 않은 예외: {e}")
         raise ChatError.InternalServerErrorException(detail=str(e))
 
 if __name__ == "__main__":

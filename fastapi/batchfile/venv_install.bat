@@ -32,6 +32,7 @@ python -m spacy download ko_core_news_sm
 
 :: 나머지 requirements.txt 패키지 설치
 pip install -r .\fastapi\requirements.txt
+pip install -r .\fastapi\requirements_llama.txt
 
 echo 가상 환경이 성공적으로 설정되었습니다.
 ENDLOCAL
