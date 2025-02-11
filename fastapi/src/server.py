@@ -1,5 +1,7 @@
 # server.py
-# 파일은 FastAPI 서버를 구동하는 엔트리 포인트입니다.
+'''
+파일은 FastAPI 서버를 구동하는 엔트리 포인트입니다.
+'''
 
 import os
 import yaml
@@ -19,16 +21,13 @@ from starlette.responses import StreamingResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from utils  import ChatError, ChatModel, LanguageProcessor, MongoDBHandler, Llama_8B, Lumimaid_8B, CharacterPrompt
+from utils  import ChatError, ChatModel, GoogleSearch, LanguageProcessor, MongoDBHandler, Llama_8B, Lumimaid_8B
 
 llama_model_8b = None                   # Llama_8B 모델 전역 변수
 Lumimaid_model_8b = None                # Lumimaid_8B 모델 전역 변수
 mongo_handler = MongoDBHandler()        # MongoDB 핸들러 초기화
 languageprocessor = LanguageProcessor() # LanguageProcessor 초기화
 load_dotenv()
-
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-SEARCH_ENGINE_ID = os.getenv("SEARCH_ENGINE_ID")
 
 def load_bot_list(file_path: str) -> list:
     '''
@@ -52,16 +51,16 @@ async def lifespan(app: FastAPI):
         total_memory = device_properties.total_memory / (1024 ** 3)  # GB 단위로 변환
         return f"Device {device_id}: {device_name} (Total Memory: {total_memory:.2f} GB)"
 
-    # Llama 및 Bllossom 모델 로드
+    # Llama 및 Lumimaid 모델 로드
     llama_model_8b = Llama_8B()  # cuda:0
     Lumimaid_model_8b = Lumimaid_8B()  # cuda:1
 
     # 디버깅용 출력
-    llama_device_info = get_cuda_device_info(0)  # Llama 모델은 cuda:1
-    bllossom_device_info = get_cuda_device_info(1)  # Bllossom 모델은 cuda:0
+    llama_device_info = get_cuda_device_info(0)  # Llama 모델은 cuda:0
+    Lumimaid_device_info = get_cuda_device_info(1)  # Lumimaid 모델은 cuda:1
 
     print(f"Llama 모델 로드 완료 ({llama_device_info})")
-    print(f"Bllossom 모델 로드 완료 ({bllossom_device_info})")
+    print(f"Lumimaid 모델 로드 완료 ({Lumimaid_device_info})")
 
     yield
 
@@ -105,7 +104,7 @@ def custom_openapi():
 
     openapi_schema = get_openapi(
         title="ChatBot-AI FastAPI",
-        version="v1.1.0",
+        version="v1.2.0",
         summary="AI 모델 관리 API",
         routes=app.routes,
         description=(
@@ -123,7 +122,7 @@ app.openapi = custom_openapi
 def is_internal_ip(ip):
     try:
         ip_obj = ipaddress.ip_address(ip)
-        # Check if the IP is in the internal network range (192.168.219.0/24)
+        # IP가 내부 네트워크 범위(192.168.219.0/24)에 있는지 확인합니다
         return ip_obj in ipaddress.ip_network("192.168.219.0/24")
     except ValueError:
         return False
@@ -134,17 +133,17 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
     allowed_ips = ip_string.split(", ") if ip_string else []
     client_ip = request.client.host
 
-    bot_user_agents = load_bot_list("./fastapi/src/bot.yaml")  # 경로 수정
+    bot_user_agents = load_bot_list("./fastapi/src/bot.yaml") # 경로 수정
     user_agent = request.headers.get("User-Agent", "").lower()
 
     try:
-        # Restrict access based on IP and internal network range
-        if (request.url.path in ["/Llama_stream", "/_stream", "/docs", "/redoc", "/openapi.json"]
+        # IP 및 내부 네트워크 범위에 따라 액세스 제한
+        if (request.url.path in ["/Llama_stream", "/Lumimaid_stream", "/docs", "/redoc", "/openapi.json"]
                 and client_ip not in allowed_ips
                 and not is_internal_ip(client_ip)):
             raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
 
-        # Block bots based on user agent
+        # 사용자 에이전트 기반 봇 차단
         if any(bot in user_agent for bot in bot_user_agents):
             raise ChatError.BadRequestException(detail=f"{user_agent} Bot access is not allowed.")
 
@@ -163,85 +162,6 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
         raise e
     except Exception as e:
         raise ChatError.InternalServerErrorException(detail="Internal server error occurred.")
-
-def stream_search_results(search_results: dict):
-    items = search_results.get("items", [])
-    for item in items[:2]:  # 최대 3개의 결과만 스트리밍
-        search_data_set = f"{item['title']}: {item['snippet']}\n"
-        print(search_data_set)
-        yield search_data_set
-
-async def fetch_results(query: str, num: int, domain: str = "") -> list:
-    """
-    Google 검색 결과를 가져오는 함수
-    :param query: 검색어
-    :param num: 가져올 결과 수
-    :param domain: 특정 도메인 필터 (없으면 전체 검색)
-    :return: 검색 결과 리스트
-    """
-    base_url = "https://www.googleapis.com/customsearch/v1"
-    params = {
-        "key": GOOGLE_API_KEY,
-        "cx": SEARCH_ENGINE_ID,
-        "q": f"{query} {domain}".strip(),
-        "num": min(num, 10)
-    }
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(base_url, params=params)
-            response.raise_for_status()
-            search_results = response.json()
-
-            return [
-                {
-                    "title": item.get("title", "제목 없음"),
-                    "snippet": item.get("snippet", "설명 없음"),
-                    "link": item.get("link", "링크 없음")
-                }
-                for item in search_results.get("items", [])
-            ]
-    except httpx.RequestError as e:
-        print(f"HTTP 요청 오류: {str(e)}")
-    except Exception as e:
-        print(f"오류 발생: {str(e)}")
-    return []
-
-async def fetch_search_results(query: str, num_results: int = 5) -> list:
-    """
-    위키백과, 나무위키, 다양한 뉴스 사이트 등, 사이트 기반으로 검색 결과를 가져옵니다.
-    부족한 경우 최상단 검색 결과 추가.
-    :param query: 검색어
-    :param num_results: 가져올 각 도메인별 검색 결과 수
-    :return: 검색 결과 리스트 (제목, 설명, 링크 포함)
-    """
-    domains = [
-        "site:en.wikipedia.org",# 영어 위키백과
-        "site:ko.wikipedia.org",# 한국어 위키백과
-        "site:namu.wiki",       # 나무위키
-        "site:news.naver.com",  # 네이버 뉴스
-        "site:bbc.com",         # BBC
-        "site:cnn.com",         # CNN
-        "site:reuters.com",     # 로이터
-        "site:nytimes.com",     # 다양한 뉴스 사이트
-        "site:dcinside.com",    # 디시인사이드
-        "site:reddit.com",      # 레딧
-        "site:naver.com"        # 네이버
-    ]
-
-    all_results = []
-    total_results_needed = num_results * len(domains)
-
-    for domain in domains:
-        domain_results = await fetch_results(query=query, num=num_results, domain=domain)
-        all_results.extend(domain_results)
-
-    if len(all_results) < total_results_needed:
-        remaining_needed = total_results_needed - len(all_results)
-        general_results = await fetch_results(query=query, num=remaining_needed)
-        all_results.extend(general_results)
-
-    return all_results[:total_results_needed]
-
 
 @app.get("/")
 async def root():
@@ -283,8 +203,8 @@ async def search(query: str):
     try:
         url = f"https://www.googleapis.com/customsearch/v1"
         params = {
-            "key": GOOGLE_API_KEY,
-            "cx": SEARCH_ENGINE_ID,
+            "key": GoogleSearch.GOOGLE_API_KEY,
+            "cx": GoogleSearch.SEARCH_ENGINE_ID,
             "q": query
         }
         async with httpx.AsyncClient() as client:
@@ -299,28 +219,29 @@ async def search(query: str):
 @app.post("/Llama_stream", summary="AI 모델이 검색 결과를 활용하여 답변 생성")
 async def Llama_stream(request: ChatModel.Llama_Request):
     """
-    사용자 질문과 위키백과, 나무위키, 뉴스 결과를 결합하여 AI 답변을 생성합니다.
-    :param request: 사용자 질문과 옵션 포함
-    :return: AI 모델의 답변
+    Llama_8B 모델에 질문을 위키백과, 나무위키, 뉴스 등의 결과를 결합하여 AI 답변을 생성합니다.
+    
+    Args:
+        request (ChatModel.Llama_Request): 사용자 질문과 인터넷 검색 옵션 포함
+        
+    Returns:
+        StreamingResponse: 스트리밍 방식의 모델 응답
     """
-    print(f"Request: {request}")
     try:
         search_context = ""  # search_context를 초기화
-
+        
         if request.google_access:
             # 위키백과, 나무위키, 뉴스 사이트 기반으로 검색
-            search_results = await fetch_search_results(request.input_data, num_results=5)
+            search_results = await GoogleSearch.fetch_search_results(request.input_data, num_results=5)
 
             # 검색 결과를 텍스트로 통합
             if search_results:
                 search_context = "\n".join([
                     f"제목: {item['title']}\n설명: {item['snippet']}\n링크: {item['link']}"
-                    for item in search_results[:5]  # 최대 5개만 사용
+                    for item in search_results[:5] # 최대 5개만 사용
                 ])
             else:
                 search_context = ""
-        
-        print(f"Search Context: {search_context}")
 
         # AI 모델에 입력 생성
         prompt = (
@@ -328,14 +249,29 @@ async def Llama_stream(request: ChatModel.Llama_Request):
             f"참고 정보는 {search_context}\n\n"
         )
 
-        # AI 모델로 답변 생성
-        response_stream = llama_model_8b.generate_response_stream(input_text=prompt)
-        return StreamingResponse(response_stream, media_type="text/plain")
+        # 응답 스트림 생성
+        response_stream = llama_model_8b.generate_response_stream(
+            input_text=prompt
+        )
+        
+        return StreamingResponse(
+            response_stream,
+            media_type="text/plain",
+            headers={
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+            }
+        )
 
     except TimeoutError:
-        raise ChatError.InternalServerErrorException(detail="모델 응답이 시간 초과되었습니다.")
+        raise ChatError.InternalServerErrorException(
+            detail="Llama 모델 응답이 시간 초과되었습니다."
+        )
+    except ValidationError as e:
+        raise ChatError.BadRequestException(detail=str(e))
     except Exception as e:
-        print(f"Unhandled Exception: {e}")
+        print(f"처리되지 않은 예외: {e}")
         raise ChatError.InternalServerErrorException(detail=str(e))
     
 @app.post("/Lumimaid_stream", summary="스트리밍 방식으로 Lumimaid_8B 모델 답변 생성")
@@ -344,7 +280,7 @@ async def Lumimaid_stream(request: ChatModel.Lumimaid_Request):
     Lumimaid_8B 모델에 질문을 입력하고 캐릭터 설정을 반영하여 답변을 스트리밍 방식으로 반환합니다.
 
     Args:
-        request (ChatModel.Lumimaid_Request): 사용자 요청 데이터
+        request (ChatModel.Lumimaid_Request): 사용자 요청 데이터 포함
 
     Returns:
         StreamingResponse: 스트리밍 방식의 모델 응답

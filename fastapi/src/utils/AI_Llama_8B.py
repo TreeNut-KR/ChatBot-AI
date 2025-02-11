@@ -15,9 +15,17 @@ from torch.cuda.amp import GradScaler
 from transformers import BitsAndBytesConfig, TextIteratorStreamer
 
 class LlamaChatModel:
-    '''
-    LlamaChatModel 클래스는 Llama 8B 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
-    '''
+    """
+    [<img src="https://cdn-avatars.huggingface.co/v1/production/uploads/646cf8084eefb026fb8fd8bc/oCTqufkdTkjyGodsx1vo1.png" width="100" height="auto">](https://huggingface.co/meta-llama/Llama-3.1-8B)
+    
+    Llama 모델을 로드하고 입력 프롬프트로부터 응답 텍스트를 생성하는 클래스입니다.
+    
+    모델 정보:
+    - 모델명: Llama-3.1-8B-Instruct
+    - 유형: 표준 Hugging Face Transformers 모델
+    - 제작자: Meta (구 Facebook)
+    - 소스: [Hugging Face 모델 허브](https://huggingface.co/meta-llama/Llama-3.1-8B)
+    """
     def __init__(self):
         '''
         LlamaChatModel 클래스 초기화
@@ -74,9 +82,6 @@ class LlamaChatModel:
         return model
 
     def generate_response_stream(self, input_text: str):
-        """
-        Top-p 샘플링을 사용하여 텍스트를 생성하고 스트리밍 방식으로 결과를 반환합니다.
-        """
         input_ids = self.tokenizer.encode(
             text=input_text,
             return_tensors="pt",

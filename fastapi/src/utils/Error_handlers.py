@@ -1,5 +1,7 @@
 # Error_handlers.py
-# 파일은 FastAPI 애플리케이션에서 발생하는 예외를 처리하는 모듈입니다.
+'''
+파일은 FastAPI 애플리케이션에서 발생하는 예외를 처리하는 모듈입니다.
+'''
 
 import os
 import logging
