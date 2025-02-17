@@ -28,7 +28,10 @@ class LlamaChatModel:
     """
     def __init__(self):
         '''
-        LlamaChatModel 클래스 초기화
+        [<img src="https://cdn-avatars.huggingface.co/v1/production/uploads/646cf8084eefb026fb8fd8bc/oCTqufkdTkjyGodsx1vo1.png" width="100" height="auto">](https://huggingface.co/meta-llama/Llama-3.1-8B)
+
+        
+        LlamaChatModel 클래스 초기화 메소드
         '''
         current_dir = os.path.dirname(os.path.abspath(__file__))
         parent_dir = os.path.dirname(current_dir)

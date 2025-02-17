@@ -70,7 +70,7 @@ class LumimaidChatModel:
     """
     [<img src="https://cdn-uploads.huggingface.co/production/uploads/630dfb008df86f1e5becadc3/d3QMaxy3peFTpSlWdWF-k.png" width="290" height="auto">](https://huggingface.co/Lewdiculous/Llama-3-Lumimaid-8B-v0.1-OAS-GGUF-IQ-Imatrix)
     
-    GGUF 모델(Llama 기반)을 로드하고 입력 프롬프트로부터 응답 텍스트를 생성하는 클래스입니다.
+    GGUF 포맷으로 경량화된 Llama-3-Lumimaid-8B 모델을 로드하고, 주어진 입력 프롬프트에 대한 응답을 생성하는 클래스입니다.
     
     모델 정보:
     - 모델명: Llama-3-Lumimaid-8B
@@ -78,17 +78,24 @@ class LumimaidChatModel:
     - 제작자: Lewdiculous
     - 소스: [Hugging Face 모델 허브](https://huggingface.co/Lewdiculous/Llama-3-Lumimaid-8B-v0.1-OAS-GGUF-IQ-Imatrix)
     """
-    def __init__(self, gpu_layers: int = 50) -> None:
+    def __init__(self) -> None:
         """
-        초기화 메소드
-
-        Args:
-            gpu_layers (int, optional): GPU에 로드할 레이어 수 (기본값 50)
+        [<img src="https://cdn-uploads.huggingface.co/production/uploads/630dfb008df86f1e5becadc3/d3QMaxy3peFTpSlWdWF-k.png" width="290" height="auto">](https://huggingface.co/Lewdiculous/Llama-3-Lumimaid-8B-v0.1-OAS-GGUF-IQ-Imatrix)
+    
+        LumimaidChatModel 클레스 초기화 메소드
         """
+        print("\n" + "="*50)
+        print("📦 Lumimaid 모델 초기화 시작...")
         self.model_path: str = "fastapi/ai_model/v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat.gguf"
         self.verbose: bool = False
-        self.gpu_layers: int = gpu_layers
+        self.gpu_layers: int = 50
+        
+        # 진행 상태 표시
+        print("🚀 Lumimaid 모델 초기화 중...")
         self.model: Llama = self._load_model()
+        print("✨ 모델 로드 완료!")
+        print("="*50 + "\n")
+        
         self.response_queue: Queue = Queue()
 
     def _load_model(self) -> Llama:
@@ -121,7 +128,7 @@ class LumimaidChatModel:
                            prompt: str,
                            max_tokens: int = 256,
                            temperature: float = 0.7,
-                           top_p: float = 0.95,
+                           top_p: float = 0.80,
                            stop: Optional[list] = None) -> None:
         """
         별도 스레드에서 실행되어 응답을 큐에 넣는 메서드
@@ -160,7 +167,7 @@ class LumimaidChatModel:
                                     prompt: str,
                                     max_tokens: int = 256,
                                     temperature: float = 0.7,
-                                    top_p: float = 0.95,
+                                    top_p: float = 0.80,
                                     stop: Optional[list] = None) -> Generator[str, None, None]:
         """
         스트리밍 방식으로 텍스트 응답 생성
@@ -193,7 +200,7 @@ class LumimaidChatModel:
                           prompt: str,
                           max_tokens: int = 256,
                           temperature: float = 0.7,
-                          top_p: float = 0.95,
+                          top_p: float = 0.80,
                           stop: Optional[list] = None) -> str:
         """
         주어진 프롬프트로부터 텍스트 응답 생성

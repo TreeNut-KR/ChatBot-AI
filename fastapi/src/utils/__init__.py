@@ -1,33 +1,56 @@
 # Desc: Package initializer for the utils module
-'''
+"""
 utils 패키지 초기화 모듈
 
-이 모듈은 utils 패키지의 초기화를 담당합니다. 다음과 같은 모듈들을 포함하고 있습니다:
+이 모듈은 utils 패키지의 초기화를 담당하며, 다음과 같은 하위 모듈들을 포함합니다:
 
-- AI_Lumimaid_8B: Lumimaid 8B 모델을 사용하여 대화를 생성하는 LumimaidChatModel 클래스를 정의합니다.
-- AI_Llama_8B: Llama 8B 모델을 사용하여 대화를 생성하는 LlamaChatModel 클래스를 정의합니다.
-- BaseModels: FastAPI 애플리케이션에서 사용되는 Pydantic 모델을 정의합니다.
-- Error_handlers: FastAPI 애플리케이션에서 발생하는 예외를 처리하는 모듈입니다.
-- Language_handler: 자연어 처리를 위한 LanguageProcessor 클래스를 정의합니다.
+AI Models:
+    - lumimaid_model: Lumimaid 모델을 사용하는 대화 생성 모델
+    - llama_model: Llama 모델을 사용하는 대화 생성 모델
+    - bllossom_model: Bllossom 모델을 사용하는 대화 생성 모델
 
-__all__ 리스트를 통해 외부에서 접근 가능한 모듈들을 정의합니다. \n
-'''
+Handlers:
+    - error_handler: FastAPI 예외 처리
+    - language_handler: 자연어 처리
+    - mongodb_handler: MongoDB 데이터베이스 처리
 
-# Used modules
-from . import BaseModels as ChatModel
-from . import Error_handlers as ChatError
-from . import Google_search as GoogleSearch
-from .Language_handler import LanguageProcessor
-from .Database_mongo import MongoDBHandler
-from .AI_Lumimaid_8B import LumimaidChatModel as Lumimaid_8B
-from .AI_Llama_8B import LlamaChatModel as Llama_8B
+Schemas:
+    - chat_schema: FastAPI Pydantic 모델 정의
+
+Services:
+    - search_service: 구글 검색 서비스
+"""
+
+# AI Models
+from .ai_models.lumimaid_model import LumimaidChatModel as Lumimaid
+from .ai_models.llama_model import LlamaChatModel as Llama
+from .ai_models.bllossom_model import BllossomChatModel as Bllossom
+
+# Handlers
+from .handlers import error_handler as ChatError
+from .handlers.language_handler import LanguageProcessor
+from .handlers.mongodb_handler import MongoDBHandler
+
+# Schemas
+from .schemas import chat_schema as ChatModel
+
+# Services
+from .services import search_service as GoogleSearch
 
 __all__ = [
-    'ChatModel',
+    # AI Models
+    'Lumimaid',
+    'Llama',
+    'Bllossom',
+    
+    # Handlers
     'ChatError',
-    'GoogleSearch',
     'LanguageProcessor',
     'MongoDBHandler',
-    'Lumimaid_8B',
-    'Llama_8B'
+    
+    # Schemas
+    'ChatModel',
+    
+    # Services
+    'GoogleSearch',
 ]

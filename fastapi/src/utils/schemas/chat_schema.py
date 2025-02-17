@@ -40,8 +40,8 @@ class Validators:
         except httpx.RequestError:
             raise ValueError('이미지 URL에 접근하는 중 오류가 발생했습니다.')
 
-# Llama Request Field
-Llama_input_data_set = Field(
+# Bllossom Request Field
+Bllossom_input_data_set = Field(
     examples=["Llama AI 모델의 출시일과 버전들을 각각 알려줘."],
     title="사용자 입력 문장",
     description="사용자 입력 문장 길이 제약",
@@ -55,8 +55,8 @@ google_access_set = Field(
     description="검색 기반 액세스 수준을 나타냅니다. True: 검색 기반 활성화. False: 검색 기반 제한됨."
 )
 
-# Llama Response Field
-Llama_output_data_set = Field(
+# Bllossom Response Field
+Bllossom_output_data_set = Field(
     examples=['''
     물론이죠! Llama AI 모델의 출시일과 버전들은 다음과 같습니다:
 
@@ -200,12 +200,12 @@ Lumimaid_output_data_set = Field(
 )
 
 # BaseModel 설정
-class Llama_Request(BaseModel):
-    input_data: str = Llama_input_data_set
+class Bllossom_Request(BaseModel):
+    input_data: str = Bllossom_input_data_set
     google_access: bool = google_access_set
     
-class Llama_Response(BaseModel):
-    output_data: str = Llama_output_data_set
+class Bllossom_Response(BaseModel):
+    output_data: str = Bllossom_output_data_set
     
 class Lumimaid_Request(BaseModel):
     input_data: str = Lumimaid_input_data_set

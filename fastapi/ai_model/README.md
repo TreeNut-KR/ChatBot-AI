@@ -7,7 +7,7 @@
 
 ### 🟢 **모델 설명**
 
-| 항목 | **LlamaChatModel** | **LumimaidChatModel** |
+| 항목 | **LlamaChatModel** | **LumimaidChatModel** | 
 |------|--------------------|----------------------|
 | **기반 모델** | Llama-3.1-8B-Instruct | Llama-3-Lumimaid-8B |
 | **제작자** | Meta | Lewdiculous |

@@ -21,10 +21,10 @@ from starlette.responses import StreamingResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from utils  import ChatError, ChatModel, GoogleSearch, LanguageProcessor, MongoDBHandler, Llama_8B, Lumimaid_8B
+from utils  import ChatError, ChatModel, GoogleSearch, LanguageProcessor, MongoDBHandler, Llama, Lumimaid, Bllossom
 
-llama_model_8b = None                   # Llama_8B 모델 전역 변수
-Lumimaid_model_8b = None                # Lumimaid_8B 모델 전역 변수
+Bllossom_model = None                   # Bllossom 모델 전역 변수
+Lumimaid_model = None                   # Lumimaid 모델 전역 변수
 mongo_handler = MongoDBHandler()        # MongoDB 핸들러 초기화
 languageprocessor = LanguageProcessor() # LanguageProcessor 초기화
 load_dotenv()
@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
     '''
     FastAPI AI 모델 애플리케이션 초기화
     '''
-    global llama_model_8b, Lumimaid_model_8b
+    global Bllossom_model, Lumimaid_model
 
     # CUDA 디바이스 정보 가져오기 함수
     def get_cuda_device_info(device_id: int) -> str:
@@ -51,22 +51,22 @@ async def lifespan(app: FastAPI):
         total_memory = device_properties.total_memory / (1024 ** 3)  # GB 단위로 변환
         return f"Device {device_id}: {device_name} (Total Memory: {total_memory:.2f} GB)"
 
-    # Llama 및 Lumimaid 모델 로드
-    llama_model_8b = Llama_8B()  # cuda:0
-    Lumimaid_model_8b = Lumimaid_8B()  # cuda:1
+    # Bllossom 및 Lumimaid 모델 로드
+    Bllossom_model = Bllossom()  # cuda:0
+    Lumimaid_model = Lumimaid()  # cuda:1
 
     # 디버깅용 출력
-    llama_device_info = get_cuda_device_info(0)  # Llama 모델은 cuda:0
+    Bllossom_device_info = get_cuda_device_info(0)  # Bllossom 모델은 cuda:0
     Lumimaid_device_info = get_cuda_device_info(1)  # Lumimaid 모델은 cuda:1
 
-    print(f"Llama 모델 로드 완료 ({llama_device_info})")
+    print(f"Bllossom 모델 로드 완료 ({Bllossom_device_info})")
     print(f"Lumimaid 모델 로드 완료 ({Lumimaid_device_info})")
 
     yield
 
     # 모델 메모리 해제
-    llama_model_8b = None
-    Lumimaid_model_8b = None
+    Bllossom_model = None
+    Lumimaid_model = None
     print("모델 해제 완료")
 
 app = FastAPI(lifespan=lifespan)  # 여기서 한 번만 app을 생성합니다.
@@ -138,7 +138,7 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
 
     try:
         # IP 및 내부 네트워크 범위에 따라 액세스 제한
-        if (request.url.path in ["/Llama_stream", "/Lumimaid_stream", "/docs", "/redoc", "/openapi.json"]
+        if (request.url.path in ["/office_stream", "/Character_stream", "/docs", "/redoc", "/openapi.json"]
                 and client_ip not in allowed_ips
                 and not is_internal_ip(client_ip)):
             raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
@@ -216,13 +216,13 @@ async def search(query: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
 
-@app.post("/Llama_stream", summary="AI 모델이 검색 결과를 활용하여 답변 생성")
-async def Llama_stream(request: ChatModel.Llama_Request):
+@app.post("/office_stream", summary="AI 모델이 검색 결과를 활용하여 답변 생성")
+async def office_stream(request: ChatModel.Bllossom_Request):
     """
-    Llama_8B 모델에 질문을 위키백과, 나무위키, 뉴스 등의 결과를 결합하여 AI 답변을 생성합니다.
+    Bllossom_8B 모델에 질문을 위키백과, 나무위키, 뉴스 등의 결과를 결합하여 AI 답변을 생성합니다.
     
     Args:
-        request (ChatModel.Llama_Request): 사용자 질문과 인터넷 검색 옵션 포함
+        request (ChatModel.Bllossom_Request): 사용자 질문과 인터넷 검색 옵션 포함
         
     Returns:
         StreamingResponse: 스트리밍 방식의 모델 응답
@@ -243,15 +243,10 @@ async def Llama_stream(request: ChatModel.Llama_Request):
             else:
                 search_context = ""
 
-        # AI 모델에 입력 생성
-        prompt = (
-            f"사용자 질문은 {request.input_data}\n\n"
-            f"참고 정보는 {search_context}\n\n"
-        )
-
         # 응답 스트림 생성
-        response_stream = llama_model_8b.generate_response_stream(
-            input_text=prompt
+        response_stream = Bllossom_model.generate_response_stream(
+            input_text=request.input_data,
+            search_text=search_context
         )
         
         return StreamingResponse(
@@ -266,7 +261,7 @@ async def Llama_stream(request: ChatModel.Llama_Request):
 
     except TimeoutError:
         raise ChatError.InternalServerErrorException(
-            detail="Llama 모델 응답이 시간 초과되었습니다."
+            detail="Bllossom 모델 응답이 시간 초과되었습니다."
         )
     except ValidationError as e:
         raise ChatError.BadRequestException(detail=str(e))
@@ -274,8 +269,8 @@ async def Llama_stream(request: ChatModel.Llama_Request):
         print(f"처리되지 않은 예외: {e}")
         raise ChatError.InternalServerErrorException(detail=str(e))
     
-@app.post("/Lumimaid_stream", summary="스트리밍 방식으로 Lumimaid_8B 모델 답변 생성")
-async def Lumimaid_stream(request: ChatModel.Lumimaid_Request):
+@app.post("/character_stream", summary="스트리밍 방식으로 Lumimaid_8B 모델 답변 생성")
+async def character_stream(request: ChatModel.Lumimaid_Request):
     """
     Lumimaid_8B 모델에 질문을 입력하고 캐릭터 설정을 반영하여 답변을 스트리밍 방식으로 반환합니다.
 
@@ -295,7 +290,7 @@ async def Lumimaid_stream(request: ChatModel.Lumimaid_Request):
         }
         
         # 응답 스트림 생성
-        response_stream = Lumimaid_model_8b.generate_response_stream(
+        response_stream = Lumimaid_model.generate_response_stream(
             input_text=request.input_data,
             character_settings=character_settings
         )
