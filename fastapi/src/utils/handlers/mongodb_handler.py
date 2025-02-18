@@ -1,21 +1,39 @@
-# Database_mongo.py
 '''
 MongoDBHandler 클래스는 MongoDB에 연결하고 데이터베이스, 컬렉션 목록을 가져오는 클래스입니다.
 '''
+
 import os
-import json
-from typing import Dict, List
+from typing import List
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import PyMongoError
 
-from .Error_handlers import InternalServerErrorException, NotFoundException
+from .error_handler import InternalServerErrorException, NotFoundException
 
 class MongoDBHandler:
+    """
+    MongoDB 데이터베이스 작업을 처리하는 핸들러 클래스입니다.
+    
+    Attributes:
+        mongo_uri (str): MongoDB 연결 문자열
+        client (AsyncIOMotorClient): MongoDB 비동기 클라이언트 인스턴스
+        db (AsyncIOMotorDatabase): 기본 데이터베이스 인스턴스
+    
+    Raises:
+        InternalServerErrorException: MongoDB 연결 또는 초기화 중 오류 발생 시
+    """
+
     def __init__(self) -> None:
         """
-        MongoDBHandler 클래스 초기화.
-        MongoDB에 연결하고 필요한 환경 변수를 로드합니다.
+        MongoDBHandler 클래스를 초기화합니다.
+        
+        환경 변수에서 MongoDB 연결 정보를 로드하고 데이터베이스에 연결합니다.
+        
+        Raises:
+            InternalServerErrorException: 
+                - 환경 변수 로드 실패
+                - MongoDB 연결 실패
+                - 기타 초기화 오류
         """
         try:
             # 환경 변수 파일 경로 설정
@@ -46,10 +64,16 @@ class MongoDBHandler:
 
     async def get_db(self) -> List[str]:
         """
-        데이터베이스 이름 목록을 반환합니다.
+        사용 가능한 모든 데이터베이스 이름 목록을 조회합니다.
         
-        :return: 데이터베이스 이름 리스트
-        :raises InternalServerErrorException: 데이터베이스 이름을 가져오는 도중 문제가 발생할 경우
+        Returns:
+            List[str]: 데이터베이스 이름 목록
+            
+        Raises:
+            InternalServerErrorException: 
+                - MongoDB 서버 연결 실패
+                - 데이터베이스 목록 조회 실패
+                - 예상치 못한 오류 발생
         """
         try:
             return await self.client.list_database_names()
@@ -60,14 +84,23 @@ class MongoDBHandler:
 
     async def get_collection(self, database_name: str) -> List[str]:
         """
-        데이터베이스의 컬렉션 이름 목록을 반환합니다.
+        지정된 데이터베이스의 모든 컬렉션 이름 목록을 조회합니다.
         
-        :param database_name: 데이터베이스 이름
-        :return: 컬렉션 이름 리스트
-        :raises NotFoundException: 데이터베이스가 존재하지 않을 경우
-        :raises InternalServerErrorException: 컬렉션 이름을 가져오는 도중 문제가 발생할 경우
+        Args:
+            database_name (str): 조회할 데이터베이스의 이름
+            
+        Returns:
+            List[str]: 컬렉션 이름 목록
+            
+        Raises:
+            NotFoundException: 
+                - 지정된 데이터베이스가 존재하지 않는 경우
+            InternalServerErrorException:
+                - MongoDB 서버 연결 실패
+                - 컬렉션 목록 조회 실패
+                - 예상치 못한 오류 발생
         """
-        db_names = await self.get_db_names()
+        db_names = await self.get_db()
         if database_name not in db_names:
             raise NotFoundException(f"Database '{database_name}' not found.")
         try:
