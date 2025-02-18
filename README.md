@@ -1,9 +1,118 @@
-# ChatBot-AI
+# 🤖 ChatBot-AI Project
 
->현재 사용 중인 모델은 [meta-llama](https://huggingface.co/meta-llama)의 모델이며, 모델의 라이선스는 해당 페이지에서 확인하실 수 있습니다.
->
->상업적 이용은 현재 보류 중이며, [챗봇 사이트](https://github.com/TreeNut-KR/ChatBot) 개발에 중점을 두고 있음을 알려드립니다.
->
-> The model currently in use is from [meta-llama](https://huggingface.co/meta-llama), and you can check the model's license on that page.
->
-> Please note that commercial use is currently on hold, and our focus is on developing the [ChatBot site](https://github.com/TreeNut-KR/ChatBot).
+> AI 기반 챗봇 프로젝트입니다.
+> FastAPI를 활용한 백엔드 서버와 Llama 기반 AI 모델을 통합하여 구현되었습니다.
+
+## 📋 프로젝트 구조
+
+```
+ChatBot-AI/
+├── fastapi/
+│   ├── ai_model/      # AI 모델 관련 파일
+│   ├── batchfile/     # 환경 설정 배치 파일
+│   └── datasets/      # 학습 데이터셋
+```
+
+## 🚀 주요 기능
+
+- **AI 모델**:
+  - Llama-3.1-8B-Instruct (기본 추론)
+  - Llama-3-Lumimaid-8B (GGUF 최적화)
+- **데이터셋**:
+  - ko_wikidata_QA (137,505개 한국어 QA 쌍)
+
+## ⚙️ 환경 설정
+
+### 필수 요구사항
+- Python 3.11
+- CUDA 지원 GPU
+- Windows 운영체제
+
+### 설치 방법
+1. 환경 구성
+    #### ① CUDA Toolkit
+
+    - Version : 11.8
+    - Download : [CUDA Toolkit 11.8 Downloads](https://developer.download.nvidia.com/compute/cuda/11.8.0/network_installers/cuda_11.8.0_windows_network.exe)
+
+    - Version : 12.8
+    - Download : [CUDA Toolkit 12.8 Downloads](https://developer.download.nvidia.com/compute/cuda/12.8.0/network_installers/cuda_12.8.0_windows_network.exe)
+
+    #### ② cuDNN
+
+    - Version : 8.7.0
+    - Download : [Local Installers for Windows](https://developer.nvidia.com/downloads/c118-cudnn-windows-8664-87084cuda11-archivezip)
+    - cuDNN directory location
+        ```
+        C:\tools\cuda\
+        ```
+
+    #### ③ Python
+
+    - Version : 3.11.x
+    - Download : [Python 3.11.4 - June 6, 2023](https://www.python.org/ftp/python/3.11.4/python-3.11.4-amd64.exe)
+
+
+    #### ④ Visual C++ 재배포 가능 패키지 설치
+    - Download : [ Latest Microsoft Visual C++ Downloads](https://download.visualstudio.microsoft.com/download/pr/1754ea58-11a6-44ab-a262-696e194ce543/3642E3F95D50CC193E4B5A0B0FFBF7FE2C08801517758B4C8AEB7105A091208A/VC_redist.x64.exe)
+    - Download : [ Visual Studio 2013 (VC++ 12.0) Downloads](https://download.visualstudio.microsoft.com/download/pr/10912041/cee5d6bca2ddbcd039da727bf4acb48a/vcredist_x64.exe)
+    - Download : [ Visual Studio 2012 (VC++ 11.0) Downloads](https://download.microsoft.com/download/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU_4/vcredist_x64.exe)
+    - Download : [ Visual Studio 2010 (VC++ 10.0) Downloads](https://download.microsoft.com/download/1/6/5/165255E7-1014-4D0A-B094-B6A430A6BFFC/vcredist_x64.exe)
+    - Download : [ Visual Studio 2008 (VC++ 9.0) Downloads](https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe)
+    - Download : [ Visual Studio 2005 (VC++ 8.0) Downloads](https://download.microsoft.com/download/8/B/4/8B42259F-5D70-43F4-AC2E-4B208FD8D66A/vcredist_x64.EXE)
+
+    #### ⑤ PyTorch
+
+    - Run this Commandpip
+
+        ```
+        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+        ```
+
+    #### ⑥ 환경 변수 설정
+    
+    - 시스템 변수 추가
+
+    | 변수 이름 | 변수 값 |
+    | --- | --- |
+    | CUDA_HOME | C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8 |
+    | CUDNN_HOME | C:\tools\cuda |
+
+    - Path 환경 변수 추가
+
+    | Set | | Path |
+    | --- | --- | --- |
+    |SET PATH |=|C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\bin|
+    |SET PATH |=|C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\extras\CUPTI\lib64|
+    |SET PATH |=|C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\include|
+    |SET PATH |=|C:\tools\cuda\bin|
+
+2. 가상환경 생성
+
+   - [venv_setup.bat](.\fastapi\batchfile\venv_setup.bat)
+   ```bash
+   .\fastapi\batchfile\venv_setup.bat
+   ```
+
+3. 필요 패키지 설치
+
+   - [venv_setup.bat](.\fastapi\batchfile\venv_install.bat)
+    ```bash
+    .\fastapi\batchfile\venv_install.bat
+    ```
+
+## 📚 사용된 주요 패키지
+
+- torch (CUDA 11.8)
+- llama-cpp-python (CUDA 12.8)
+
+## 🔑 라이선스
+
+- **AI 모델**: Meta AI 라이선스
+- **데이터셋**: 비상업적 사용 (학습된 모델은 상업적 사용 가능)
+
+## 📌 참고사항
+
+자세한 모델 및 데이터셋 정보는 각 폴더의 README.md를 참고해주세요:
+- [AI 모델 정보](./fastapi/ai_model/README.md)
+- [데이터셋 정보](./fastapi/datasets/README.md)

@@ -1,7 +1,8 @@
-import json
-import base64
+'''
+파일은 LumimaidChatModel, CharacterPrompt 클래스를 정의하고 llama_cpp_cuda를 사용하여,
+Llama-3-Lumimaid-8B.gguf 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
+'''
 from typing import Optional, Generator
-from PIL import Image
 from llama_cpp_cuda import (
     Llama,           # 기본 LLM 모델
     LlamaCache,      # 캐시 관리
@@ -14,11 +15,25 @@ from queue import Queue
 
 class CharacterPrompt:
     def __init__(self, name: str, greeting: str, context: str):
+        """
+        초기화 메소드
+
+        Args:
+            name (str): 캐릭터 이름
+            greetin (str): 캐릭터 인사말
+            context (str): 캐릭터 설정
+        """
         self.name = name
         self.greeting = greeting
         self.context = context
 
     def __str__(self) -> str:
+        """
+        문자열 출력 메소드
+        
+        Returns:
+            str: 캐릭터 정보 문자열
+        """
         return (
             f"Name: {self.name}\n"
             f"Greeting: {self.greeting}\n"
@@ -34,7 +49,7 @@ def build_llama3_prompt(character: CharacterPrompt, user_input: str) -> str:
         user_input (str): 사용자 입력
 
     Returns:
-        str: Llama3 형식의 프롬프트 문자열
+        str: Lumimaid GGUF 형식의 프롬프트 문자열
     """
     system_prompt = (
         f"Character Name: {character.name}\n"
@@ -50,23 +65,36 @@ def build_llama3_prompt(character: CharacterPrompt, user_input: str) -> str:
         "<|start_header_id|>assistant<|end_header_id|>\n"
     )
 
-class LlamaModelHandler:
+class LumimaidChatModel:
     """
-    GGUF 모델(Llama)을 로드하고 입력 프롬프트로부터 응답 텍스트를 생성하는 클래스
+    [<img src="https://cdn-uploads.huggingface.co/production/uploads/630dfb008df86f1e5becadc3/d3QMaxy3peFTpSlWdWF-k.png" width="290" height="auto">](https://huggingface.co/Lewdiculous/Llama-3-Lumimaid-8B-v0.1-OAS-GGUF-IQ-Imatrix)
+    
+    GGUF 포맷으로 경량화된 Llama-3-Lumimaid-8B 모델을 로드하고, 주어진 입력 프롬프트에 대한 응답을 생성하는 클래스입니다.
+    
+    모델 정보:
+    - 모델명: Llama-3-Lumimaid-8B
+    - 유형: GGUF 포맷 (압축, 경량화)
+    - 제작자: Lewdiculous
+    - 소스: [Hugging Face 모델 허브](https://huggingface.co/Lewdiculous/Llama-3-Lumimaid-8B-v0.1-OAS-GGUF-IQ-Imatrix)
     """
-    def __init__(self, gpu_layers: int = 50) -> None:
+    def __init__(self) -> None:
         """
-        초기화 메소드
-
-        Args:
-            model_path (str): GGUF 모델 파일 경로 또는 모델 ID
-            verbose (bool, optional): 로드 시 로그 출력 여부 (기본값 False)
-            gpu_layers (int, optional): GPU에 로드할 레이어 수 (기본값 35)
+        [<img src="https://cdn-uploads.huggingface.co/production/uploads/630dfb008df86f1e5becadc3/d3QMaxy3peFTpSlWdWF-k.png" width="290" height="auto">](https://huggingface.co/Lewdiculous/Llama-3-Lumimaid-8B-v0.1-OAS-GGUF-IQ-Imatrix)
+    
+        LumimaidChatModel 클레스 초기화 메소드
         """
+        print("\n" + "="*50)
+        print("📦 Lumimaid 모델 초기화 시작...")
         self.model_path: str = "fastapi/ai_model/v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat.gguf"
         self.verbose: bool = False
-        self.gpu_layers: int = gpu_layers
+        self.gpu_layers: int = 50
+        
+        # 진행 상태 표시
+        print("🚀 Lumimaid 모델 초기화 중...")
         self.model: Llama = self._load_model()
+        print("✨ 모델 로드 완료!")
+        print("="*50 + "\n")
+        
         self.response_queue: Queue = Queue()
 
     def _load_model(self) -> Llama:
@@ -90,18 +118,26 @@ class LlamaModelHandler:
                 use_mlock=True,            # 메모리 잠금 활성화
                 n_threads=8                # 스레드 수 제한
             )
-            print("✅ 모델이 CUDA:1 (RTX 3060)에 성공적으로 로드되었습니다.")
-            print(f"🔧 GPU 메모리 설정: {self.gpu_layers}개 레이어, KQV 캐시 오프로드 활성화")
             return model
         except Exception as e:
             print(f"❌ 모델 로드 중 오류 발생: {e}")
             raise
 
-    def _stream_completion(self, prompt: str, max_tokens: int = 256,
-                         temperature: float = 0.7, top_p: float = 0.95,
-                         stop: Optional[list] = None) -> None:
+    def _stream_completion(self,
+                           prompt: str,
+                           max_tokens: int = 256,
+                           temperature: float = 0.7,
+                           top_p: float = 0.80,
+                           stop: Optional[list] = None) -> None:
         """
         별도 스레드에서 실행되어 응답을 큐에 넣는 메서드
+        
+        Args:
+            prompt (str): 입력 프롬프트 (Llama3 형식)
+            max_tokens (int, optional): 생성할 최대 토큰 수 (기본값 256)
+            temperature (float, optional): 생성 온도 (기본값 0.7)
+            top_p (float, optional): top_p 샘플링 값 (기본값 0.95)
+            stop (Optional[list], optional): 중지 토큰 리스트 (기본값 None)
         """
         try:
             stream = self.model.create_completion(
@@ -126,21 +162,24 @@ class LlamaModelHandler:
             print(f"스트리밍 중 오류 발생: {e}")
             self.response_queue.put(None)
 
-    def create_streaming_completion(self, prompt: str, max_tokens: int = 256,
-                                 temperature: float = 0.7, top_p: float = 0.95,
-                                 stop: Optional[list] = None) -> Generator[str, None, None]:
+    def create_streaming_completion(self,
+                                    prompt: str,
+                                    max_tokens: int = 256,
+                                    temperature: float = 0.7,
+                                    top_p: float = 0.80,
+                                    stop: Optional[list] = None) -> Generator[str, None, None]:
         """
         스트리밍 방식으로 텍스트 응답 생성
 
         Args:
-            prompt (str): 입력 프롬프트
-            max_tokens (int): 최대 토큰 수
-            temperature (float): 생성 온도
-            top_p (float): top_p 샘플링 값
-            stop (Optional[list]): 중지 토큰 리스트
+            prompt (str): 입력 프롬프트 (Llama3 형식)
+            max_tokens (int, optional): 생성할 최대 토큰 수 (기본값 256)
+            temperature (float, optional): 생성 온도 (기본값 0.7)
+            top_p (float, optional): top_p 샘플링 값 (기본값 0.95)
+            stop (Optional[list], optional): 중지 토큰 리스트 (기본값 None)
 
-        Yields:
-            str: 생성된 텍스트 조각들
+        Returns:
+            Generator[str, None, None]: 생성된 텍스트 조각들을 반환하는 제너레이터
         """
         # 스트리밍 스레드 시작
         thread = Thread(
@@ -156,8 +195,11 @@ class LlamaModelHandler:
                 break
             yield text
 
-    def create_completion(self, prompt: str, max_tokens: int = 256,
-                          temperature: float = 0.7, top_p: float = 0.95,
+    def create_completion(self,
+                          prompt: str,
+                          max_tokens: int = 256,
+                          temperature: float = 0.7,
+                          top_p: float = 0.80,
                           stop: Optional[list] = None) -> str:
         """
         주어진 프롬프트로부터 텍스트 응답 생성
@@ -193,17 +235,27 @@ class LlamaModelHandler:
             input_text (str): 사용자 입력 텍스트
             character_settings (dict): 캐릭터 설정 딕셔너리
 
-        Yields:
-            str: 생성된 텍스트 조각들
+        Returns:
+            Generator[str, None, None]: 생성된 텍스트 조각들을 반환하는 제너레이터
         """
         try:
             # 캐릭터 정보 설정
             if character_settings:
                 character_info = CharacterPrompt(
-                    name=character_settings.get("character_name", "Assistant"),
-                    greeting=character_settings.get("greeting", ""),
-                    context=character_settings.get("character_setting", "")
+                    name=character_settings.get(
+                        "character_name",
+                        "Treenut Company's AI Agent"
+                    ),  # 기본 캐릭터 이름
+                    greeting=character_settings.get(
+                        "greeting",
+                        "Hello! How can I assist you today?"
+                    ),  # 기본 인사말
+                    context=character_settings.get(
+                        "character_setting",
+                        "Treenut Company's AI Agent"
+                    )   # 기본 캐릭터 설정
                 )
+
                 # Llama3 프롬프트 형식으로 변환
                 prompt = build_llama3_prompt(character_info, input_text)
             else:
@@ -212,7 +264,7 @@ class LlamaModelHandler:
             # 스트리밍 응답 생성
             for text_chunk in self.create_streaming_completion(
                 prompt=prompt,
-                max_tokens=2048,
+                max_tokens=8191,
                 temperature=0.7,
                 top_p=0.95,
                 stop=["<|eot_id|>"]
@@ -254,7 +306,7 @@ class LlamaModelHandler:
 #     gguf_model_path: str = "fastapi/ai_model/v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat.gguf"
     
 #     # 모델 로드 및 텍스트 생성
-#     model_handler = LlamaModelHandler(gguf_model_path, verbose=False)
+#     model_handler = LumimaidChatModel()
     
 #     print("\n=== 모델 응답 ===")
 #     for response_chunk in model_handler.create_streaming_completion(

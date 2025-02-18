@@ -1,4 +1,3 @@
-# AI_Llama_8B.py
 '''
 파일은 LlamaChatModel 클래스를 정의하고, 이 클래스는 Llama 8B 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
 '''
@@ -8,19 +7,30 @@ from threading import Thread
 
 import torch
 import transformers
-from typing import Optional
+from typing import Generator
 from accelerate import Accelerator
 from dotenv import load_dotenv
 from torch.cuda.amp import GradScaler
 from transformers import BitsAndBytesConfig, TextIteratorStreamer
 
 class LlamaChatModel:
-    '''
-    LlamaChatModel 클래스는 Llama 8B 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
-    '''
+    """
+    [<img src="https://cdn-avatars.huggingface.co/v1/production/uploads/646cf8084eefb026fb8fd8bc/oCTqufkdTkjyGodsx1vo1.png" width="100" height="auto">](https://huggingface.co/meta-llama/Llama-3.1-8B)
+    
+    Llama 모델을 로드하고 입력 프롬프트로부터 응답 텍스트를 생성하는 클래스입니다.
+    
+    모델 정보:
+    - 모델명: Llama-3.1-8B-Instruct
+    - 유형: 표준 Hugging Face Transformers 모델
+    - 제작자: Meta (구 Facebook)
+    - 소스: [Hugging Face 모델 허브](https://huggingface.co/meta-llama/Llama-3.1-8B)
+    """
     def __init__(self):
         '''
-        LlamaChatModel 클래스 초기화
+        [<img src="https://cdn-avatars.huggingface.co/v1/production/uploads/646cf8084eefb026fb8fd8bc/oCTqufkdTkjyGodsx1vo1.png" width="100" height="auto">](https://huggingface.co/meta-llama/Llama-3.1-8B)
+
+        
+        LlamaChatModel 클래스 초기화 메소드
         '''
         current_dir = os.path.dirname(os.path.abspath(__file__))
         parent_dir = os.path.dirname(current_dir)
@@ -55,6 +65,16 @@ class LlamaChatModel:
         self.conversation_history = []
 
     def load_tokenizer(self) -> transformers.PreTrainedTokenizerBase:
+        """
+        Llama 모델용 토크나이저를 로드하고 설정합니다.
+        
+        Returns:
+            PreTrainedTokenizerBase: 설정된 토크나이저 인스턴스
+            
+        Raises:
+            OSError: 토크나이저 로드 실패 시
+            ValueError: 토큰 설정 실패 시
+        """
         tokenizer = transformers.AutoTokenizer.from_pretrained(
             self.model_id,
             token=self.hf_token
@@ -65,6 +85,16 @@ class LlamaChatModel:
         return tokenizer
 
     def load_model(self) -> transformers.PreTrainedModel:
+        """
+        Llama 모델을 로드하고 4비트 양자화를 적용합니다.
+        
+        Returns:
+            PreTrainedModel: 양자화된 Llama 모델 인스턴스
+            
+        Raises:
+            OSError: 모델 로드 실패 시
+            RuntimeError: CUDA 메모리 부족 시
+        """
         model = transformers.AutoModelForCausalLM.from_pretrained(
             self.model_id,
             cache_dir=self.cache_dir,
@@ -73,9 +103,15 @@ class LlamaChatModel:
         )
         return model
 
-    def generate_response_stream(self, input_text: str):
+    def generate_response_stream(self, input_text: str) -> Generator[str, None, None]:
         """
-        Top-p 샘플링을 사용하여 텍스트를 생성하고 스트리밍 방식으로 결과를 반환합니다.
+        입력 텍스트에 대한 응답을 스트리밍 방식으로 생성합니다.
+        
+        Args:
+            input_text (str): 모델에 입력할 프롬프트 텍스트
+
+        Returns:
+            Generator[str, None, None]: 생성된 텍스트 조각들을 반환하는 제너레이터
         """
         input_ids = self.tokenizer.encode(
             text=input_text,
