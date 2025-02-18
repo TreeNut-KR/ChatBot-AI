@@ -184,11 +184,11 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
     user_agent = request.headers.get("User-Agent", "").lower()
 
     try:
-        # # IP 및 내부 네트워크 범위에 따라 액세스 제한
-        # if (request.url.path in ["/office_stream", "/character_stream", "/docs", "/redoc", "/openapi.json"]
-        #         and client_ip not in allowed_ips
-        #         and not is_internal_ip(client_ip)):
-        #     raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
+        # IP 및 내부 네트워크 범위에 따라 액세스 제한
+        if (request.url.path in ["/office_stream", "/character_stream", "/docs", "/redoc", "/openapi.json"]
+                and client_ip not in allowed_ips
+                and not is_internal_ip(client_ip)):
+            raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
 
         # 사용자 에이전트 기반 봇 차단
         if any(bot in user_agent for bot in bot_user_agents):
