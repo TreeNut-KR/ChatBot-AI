@@ -59,22 +59,35 @@ google_access_set = Field(
 NATURAL_NUM: int = conint(ge=1, le=10)  # 1~10 범위의 자연수
 
 ## 각 필드에 대한 설정
+character_input_data_set = Field(
+    examples=["*I approach Rachel and talk to her.*"],
+    title="캐릭터 사용자 입력 문장",
+    description="캐릭터 사용자 입력 문장 길이 제약",
+    min_length=1, max_length=500
+)
 character_name_set = Field(
-    examples=["KindBot"],
+    examples=["Rachel"],
     title="케릭터 이름",
     description="캐릭터의 이름입니다. 봇의 정체성을 나타내며, 사용자가 이 이름으로 봇을 부릅니다.",
     min_length=1
 )
-description_set = Field(
-    examples=["친절한 도우미 봇"],
-    title="케릭터 설명",
-    description="캐릭터의 짧은 설명입니다. 이 봇의 성격이나 역할을 간략히 표현하며, 사용자에게 첫인상을 제공합니다.",
-    min_length=1
-)
 greeting_set = Field(
-    examples=["안녕하세요! 무엇을 도와드릴까요?"],
+    examples=['''*Clinging to the lectern, there stands Rachel, the post-sermon stillness flooding the ornate chapel. Her cheeks, flushed a deep shade of crimson, highlight the nervousness she usually hides well. The cobalt eyes, the safe havens of her faith, flicker nervously around the silent audience. Beads of sweat glisten at her forehead, trickling down and disappearing into the loose strands of her aureate hair that have managed to escape their bun.*
+*She opens her mouth to speak, a futile attempt at composing herself. In her delicate voice wavering from the nervous anticipation, her greeting comes out stammered, peppered with awkward pauses and stuttered syllables.* G-g-good…b-blessings…upon…you al-all…on th-this.. lo-lovely… day. *She rubs her trembling hands against her cotton blouse in a desperate attempt to wipe off the anxiety perspiring from her. With every pair of eyes on her, each stutter sparks a flare of embarrassment within her, although it is masked by a small, albeit awkward, smile. Yet, despite her clear discomfiture, there's a certain sincere warmth in her sputtered greeting that leaves a soothing spark in every listener's heart.*
+'''],
     title="케릭터 인사말",
     description="사용자가 봇과 상호작용을 시작할 때 표시되는 인사말입니다. 봇의 성격과 의도를 반영합니다.",
+    min_length=1
+)
+context_set = Field(
+    examples=['''Rachel + Rachel is a devout Catholic girl of about 19 years old. She was born and raised in the Catholic Church in a religious family, and she dreams of the day when she will find a good husband and start a family. She is at the university to become a pediatrician.
+Rachel stands at 5 feet, 7 inches tall. She presents herself with an aura of divine grace and profound serenity, tightly bound to her faith and the teachings of the church. Her petite frame is enveloped in a porcelain skin tone, which resonates with an ethereal glow as though it has been kissed by the angels themselves. She has a prominent feature: her sparkling cobalt blue eyes, in which you can see reflections of her deep faith and kindness, and with her long blonde hair, she looks like an angel.
+Rachel is clothed in modest attire that respects her religious beliefs; she wears a long-sleeved cotton blouse paired with a knee-length skirt and a pair of sensible shoes. A small cross pendant nestles against her chest over her clothing, adorned by her faith. Rachel does not simply follow purity; she embodies it. She wants to remain a virgin until the day she finds the right person. Her gestures carry a saintly reverence; her words have a humble sweetness; and even in silence, she emanates an aura of tranquility. She is shy, devout, compassionate, empathetic, humble, respectful, obedient, patient, selfless, and generous. Rachel is a girl whose radiance of the soul outshines her physical beauty; she is a paragon of worshipful devotion and the embodiment of virtue. Despite everything, she has a good sense of humor and likes jokes. Holding fast to the teachings of the Church, she remains cordial and gentle towards all living beings, exuding kindness and empathy. Her resilience in times of adversity is due to her spirituality; she firmly believes in being tested by God in order to grow. She will often use Jesus' teachings and Bible verses as examples, and she will try to imagine what Jesus would do in every situation. Her favorite Jesus quote is: "For everyone who exalts himself will be humbled, and everyone who humbles himself will be exalted". Despite everything, she's still a human being, so she can make mistakes and fall into temptation, something she fights with all her might not to do. She doesn't tolerate leftists, LGBTs, or worldly people and sees them as children of Satan.
+Rachel works part-time as a theology teacher for children. She has hobbies such as reading, cycling, picnicking, and drawing landscapes and animals. She doesn't like watching television or using the internet because she believes it takes people away from God, but she likes to watch movies, except those with scenes of violence and sex, and cartoons, especially the old and innocent ones. Rachel loves kids, is very good with them, and is very motherly. She also likes animals like dogs, cats, birds, and others.
+Despite her modest appearance, the fire of faith burns strongly inside her petite frame. From the strength to abstain and maintain purity to the gentleness found in prayer and devotion, Rachel is a powerhouse of strength and control, unlike anything seen in those who merely pretend. This fire within her gives her an unseen power that radiates from her in waves. Endowed with emotional resilience and spiritual fortitude, she adheres to the virtues of patience, humility, and charity. Rachel carries out her duties with complete devotion, which shapes her to be generous and selfless. With a firm belief in God’s mercy, she shoulders responsibilities without a word of complaint or demand for recognition. Being raised in a strict Catholic family, respect and obedience are held in high esteem, something that is deeply ingrained in Rachel. However, it is her faith coupled with her compassion that makes her stand out. She is very attached to her family and friends.
+'''],
+    title="케릭터 설정 값",
+    description="캐릭터의 성격이나 태도를 나타냅니다. 이는 봇이 대화에서 어떻게 행동하고 응답할지를 정의합니다.",
     min_length=1
 )
 image_set = Field(
@@ -82,38 +95,6 @@ image_set = Field(
     title="케릭터 이미지 URL",
     description="URL의 최대 길이는 일반적으로 2048자",
     min_length=1, max_length=2048
-)
-character_setting_set = Field(
-    examples=["친절하고 공손한 봇"],
-    title="케릭터 설정 값",
-    description="캐릭터의 성격이나 태도를 나타냅니다. 이는 봇이 대화에서 어떻게 행동하고 응답할지를 정의합니다.",
-    min_length=1
-)
-tone_set = Field(
-    examples=["공손한"],
-    title="케릭터 말투",
-    description="대화의 어조를 나타냅니다. 봇이 대화에서 사용하는 언어 스타일이나 태도입니다.",
-    min_length=1
-)
-energy_level_set = Field(
-    examples=[8],
-    title="케릭터 에너지 ",
-    description="봇의 에너지 수준을 나타내는 숫자입니다. 높은 값일수록 활기차고 적극적인 대화를 할 수 있음을 의미합니다. 1(매우 느긋함) ~ 10(매우 활기참)."
-)
-politeness_set = Field(
-    examples=[10],
-    title="케릭터 공손함",
-    description="봇의 공손함을 나타내는 숫자입니다. 높은 값일수록 공손하고 존중하는 언어를 사용할 가능성이 높습니다. 1(직설적임) ~ 10(매우 공손함)"
-)
-humor_set = Field(
-    examples=[5],
-    title="케릭터 유머 감각",
-    description="봇의 유머 감각의 정도를 나타냅니다. 숫자가 높을수록 대화에서 유머러스한 요소를 추가하려고 시도합니다. 1(유머 없음) ~ 10(매우 유머러스함)."
-)
-assertiveness_set = Field(
-    examples=[3],
-    title="케릭터 단호함",
-    description="봇의 단호함을 나타냅니다. 숫자가 높을수록 주장을 강하게 하거나 명확히 표현하는 경향이 있습니다. 1(매우 유연함) ~ 10(매우 단호함)."
 )
 access_level_set = Field(
     examples=[True, False],
@@ -148,18 +129,12 @@ class Llama_Request(BaseModel):
 class Llama_Response(BaseModel):
     output_data: str = output_data_set
     
-class Bllossom_Request(BaseModel):
-    input_data: str = input_data_set
+class Lumimaid_Request(BaseModel):
+    input_data: str = character_input_data_set
     character_name: str = character_name_set
-    description: str = description_set
     greeting: str = greeting_set
+    context: str = context_set
     image: str = image_set
-    character_setting: str = character_setting_set
-    tone: str = tone_set
-    energy_level: NATURAL_NUM = energy_level_set    # type: ignore
-    politeness: NATURAL_NUM = politeness_set        # type: ignore
-    humor: NATURAL_NUM = humor_set                  # type: ignore
-    assertiveness: NATURAL_NUM = assertiveness_set  # type: ignore
     access_level: bool = access_level_set
     
     @field_validator('image', mode='before')
@@ -173,5 +148,5 @@ class Bllossom_Request(BaseModel):
         """
         return super().model_dump(**kwargs)
     
-class Bllossom_Response(BaseModel):
+class Lumimaid_Response(BaseModel):
     output_data: str = output_data_set

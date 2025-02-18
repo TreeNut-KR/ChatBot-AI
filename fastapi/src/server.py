@@ -7,7 +7,6 @@ import torch
 import uvicorn
 import httpx
 import ipaddress
-from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from asyncio import TimeoutError
 from pydantic import ValidationError
@@ -15,17 +14,17 @@ from contextlib import asynccontextmanager
 
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import (APIRouter, Depends, FastAPI, HTTPException, Request)
-from starlette.responses import JSONResponse, StreamingResponse
-from starlette.concurrency import run_in_threadpool
+from fastapi import (APIRouter,  Query, FastAPI, HTTPException, Request)
+from starlette.responses import StreamingResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from utils  import ChatError, ChatModel, LanguageProcessor, Llama_8B, Bllossom_8B
+from utils  import ChatError, ChatModel, LanguageProcessor, MongoDBHandler, Llama_8B, Lumimaid_8B, CharacterPrompt
 
-llama_model_8b = None  # Llama_8B 모델 전역 변수
-bllossom_model_8b = None  # Bllossom_8B 모델 전역 변수
-languageprocessor = LanguageProcessor()
+llama_model_8b = None                   # Llama_8B 모델 전역 변수
+Lumimaid_model_8b = None                # Lumimaid_8B 모델 전역 변수
+mongo_handler = MongoDBHandler()        # MongoDB 핸들러 초기화
+languageprocessor = LanguageProcessor() # LanguageProcessor 초기화
 load_dotenv()
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -44,7 +43,7 @@ async def lifespan(app: FastAPI):
     '''
     FastAPI AI 모델 애플리케이션 초기화
     '''
-    global llama_model_8b, bllossom_model_8b
+    global llama_model_8b, Lumimaid_model_8b
 
     # CUDA 디바이스 정보 가져오기 함수
     def get_cuda_device_info(device_id: int) -> str:
@@ -55,7 +54,7 @@ async def lifespan(app: FastAPI):
 
     # Llama 및 Bllossom 모델 로드
     llama_model_8b = Llama_8B()  # cuda:0
-    bllossom_model_8b = Bllossom_8B()  # cuda:1
+    Lumimaid_model_8b = Lumimaid_8B()  # cuda:1
 
     # 디버깅용 출력
     llama_device_info = get_cuda_device_info(0)  # Llama 모델은 cuda:1
@@ -68,7 +67,7 @@ async def lifespan(app: FastAPI):
 
     # 모델 메모리 해제
     llama_model_8b = None
-    bllossom_model_8b = None
+    Lumimaid_model_8b = None
     print("모델 해제 완료")
 
 app = FastAPI(lifespan=lifespan)  # 여기서 한 번만 app을 생성합니다.
@@ -135,15 +134,15 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
     allowed_ips = ip_string.split(", ") if ip_string else []
     client_ip = request.client.host
 
-    bot_user_agents = load_bot_list("/app/src/bot.yaml")  # 경로 수정
+    bot_user_agents = load_bot_list("./fastapi/src/bot.yaml")  # 경로 수정
     user_agent = request.headers.get("User-Agent", "").lower()
 
     try:
         # Restrict access based on IP and internal network range
-        # if (request.url.path in ["/Llama_stream", "/Bllossom_stream", "/docs", "/redoc", "/openapi.json"]
-        #         and client_ip not in allowed_ips
-        #         and not is_internal_ip(client_ip)):
-        #     raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
+        if (request.url.path in ["/Llama_stream", "/_stream", "/docs", "/redoc", "/openapi.json"]
+                and client_ip not in allowed_ips
+                and not is_internal_ip(client_ip)):
+            raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
 
         # Block bots based on user agent
         if any(bot in user_agent for bot in bot_user_agents):
@@ -248,6 +247,37 @@ async def fetch_search_results(query: str, num_results: int = 5) -> list:
 async def root():
     return {"message": "Welcome to the API"}
 
+mongo_router = APIRouter() # MySQL 관련 라우터 정의
+
+@mongo_router.get("/db", summary="데이터베이스 목록 가져오기")
+async def list_databases():
+    '''
+    데이터베이스 서버에 있는 모든 데이터베이스의 목록을 반환합니다.
+    '''
+    try:
+        databases = await mongo_handler.get_db()
+        return {"Database": databases}
+    except Exception as e:
+        raise ChatError.InternalServerErrorException(detail=str(e))
+
+@mongo_router.get("/collections", summary="데이터베이스 컬렉션 목록 가져오기")
+async def list_collections(db_name: str = Query(..., description="데이터베이스 이름")):
+    '''
+    현재 선택된 데이터베이스 내의 모든 컬렉션 이름을 반환합니다.
+    '''
+    try:
+        collections = await mongo_handler.get_collection(database_name=db_name)
+        return {"Collections": collections}
+    except Exception as e:
+        raise ChatError.InternalServerErrorException(detail=str(e))
+
+app.include_router(
+    mongo_router,
+    prefix="/mongo",
+    tags=["MongoDB Router"],
+    responses={500: {"description": "Internal Server Error"}}
+)
+
 @app.get("/search")
 async def search(query: str):
     try:
@@ -307,111 +337,51 @@ async def Llama_stream(request: ChatModel.Llama_Request):
     except Exception as e:
         print(f"Unhandled Exception: {e}")
         raise ChatError.InternalServerErrorException(detail=str(e))
-
-
-# @app.post("/Llama_stream", summary="스트리밍 방식으로 Llama_8B 모델 답변 생성")
-# async def llama_stream(request: ChatModel.Llama_Request):
-#     '''
-#     Llama_8B 모델에 질문 입력 시 답변을 스트리밍 방식으로 반환
-#     '''
-#     try:
-#         if not request.google_access_set:
-#             # Google Access가 설정되지 않은 경우 바로 처리
-#             response_stream = llama_model_8b.generate_response_stream(
-#                 input_text=request.input_data,
-#                 google_search=None
-#             )
-#             return StreamingResponse(response_stream, media_type="text/plain")
-
-#         # 명사 추출 및 처리
-#         search_nouns = languageprocessor.process_sentence(request.input_data)
-
-#         # 기본값 설정
-#         result = request.input_data  # 초기값은 입력 데이터로 설정
-
-#         # 반환값 확인 및 디버깅
-#         if not isinstance(search_nouns, dict):
-#             print(f"Unexpected structure in process_sentence output: {search_nouns}")
-#         else:
-#             print(search_nouns)  # 정상적인 출력 확인
-
-#         # 분석 결과 가져오기
-#         analysis_result = search_nouns.get("분석 결과", {})
-#         if not isinstance(analysis_result, dict):
-#             print(f"Unexpected structure in '분석 결과': {analysis_result}")
-#         else:
-#             # 명사, 부사, 동사, 형용사 순으로 확인
-#             for key in ["명사", "부사", "동사", "형용사"]:
-#                 words = analysis_result.get(key, [])
-#                 if isinstance(words, list) and words:  # 리스트이고 비어있지 않은 경우만 처리
-#                     result = " ".join(words)
-#                     break
-#                 elif not isinstance(words, list):  # 예상 타입이 아닌 경우 디버깅 메시지 출력
-#                     print(f"Unexpected type for '{key}': {type(words)}")
-
-#         # 최종 결과 출력
-#         print(f"Final result: {result}")
-
-#         # Google 검색 API 호출
-#         url = f"https://www.googleapis.com/customsearch/v1"
-#         params = {"key": GOOGLE_API_KEY, "cx": SEARCH_ENGINE_ID, "q": result}
-#         async with httpx.AsyncClient() as client:
-#             response = await client.get(url, params=params)
-#             response.raise_for_status()
-
-#         # 검색 결과를 스트리밍 방식으로 전달
-#         search_stream = stream_search_results(response.json())
-
-#         response_stream = llama_model_8b.generate_response_stream(
-#             input_text=request.input_data,
-#             google_search="".join(search_stream)
-#         )
-#         return StreamingResponse(response_stream, media_type="text/plain")
     
-#     except TimeoutError:
-#         raise ChatError.InternalServerErrorException(detail="Llama 모델 응답이 시간 초과되었습니다.")
-#     except ValidationError as e:
-#         raise ChatError.BadRequestException(detail=str(e))
-#     except httpx.RequestError as e:
-#         raise HTTPException(status_code=500, detail=f"HTTP 요청 오류: {str(e)}")
-#     except HTTPException as e:
-#         raise e
-#     except Exception as e:
-#         print(f"Unhandled Exception: {e}")
-#         raise ChatError.InternalServerErrorException(detail=str(e))
-    
-@app.post("/Bllossom_stream", summary="스트리밍 방식으로 Bllossom_8B 모델 답변 생성")
-async def bllossom_stream(request: ChatModel.Bllossom_Request):
-    '''
-    Bllossom_8B 모델에 질문 입력 시 캐릭터 설정을 반영하여 답변을 스트리밍 방식으로 반환
-    '''
+@app.post("/Lumimaid_stream", summary="스트리밍 방식으로 Lumimaid_8B 모델 답변 생성")
+async def Lumimaid_stream(request: ChatModel.Lumimaid_Request):
+    """
+    Lumimaid_8B 모델에 질문을 입력하고 캐릭터 설정을 반영하여 답변을 스트리밍 방식으로 반환합니다.
+
+    Args:
+        request (ChatModel.Lumimaid_Request): 사용자 요청 데이터
+
+    Returns:
+        StreamingResponse: 스트리밍 방식의 모델 응답
+    """
     try:
+        # 캐릭터 설정 구성
         character_settings = {
             "character_name": request.character_name,
-            "description": request.description,
             "greeting": request.greeting,
-            "character_setting": request.character_setting,
-            "tone": request.tone,
-            "energy_level": request.energy_level,
-            "politeness": request.politeness,
-            "humor": request.humor,
-            "assertiveness": request.assertiveness,
+            "context": request.context,
             "access_level": request.access_level
         }
         
-        response_stream = bllossom_model_8b.generate_response_stream(
+        # 응답 스트림 생성
+        response_stream = Lumimaid_model_8b.generate_response_stream(
             input_text=request.input_data,
             character_settings=character_settings
         )
-        return StreamingResponse(response_stream, media_type="text/plain")
+        
+        return StreamingResponse(
+            response_stream,
+            media_type="text/plain",
+            headers={
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+            }
+        )
+        
     except TimeoutError:
-        raise ChatError.InternalServerErrorException(detail="Bllossom 모델 응답이 시간 초과되었습니다.")
+        raise ChatError.InternalServerErrorException(
+            detail="Lumimaid 모델 응답이 시간 초과되었습니다."
+        )
     except ValidationError as e:
         raise ChatError.BadRequestException(detail=str(e))
-    except HTTPException as e:
-        raise e
     except Exception as e:
-        print(f"Unhandled Exception: {e}")  # 디버깅 출력 추가
+        print(f"처리되지 않은 예외: {e}")
         raise ChatError.InternalServerErrorException(detail=str(e))
 
 if __name__ == "__main__":

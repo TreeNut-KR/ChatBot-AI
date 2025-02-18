@@ -1,3 +1,7 @@
+---
+base_model: meta-llama/Llama-3.1-8B-Instruct
+library_name: peft
+---
 # ai_model 폴더
 
 > 해당 폴더는 사용 중인 모델에 대한 자료를 담는 폴더
@@ -6,3 +10,6 @@
 >
 
 - 사용 중인 모델 : [meta-llama/Llama-3.2-8B-Instruct](https://huggingface.co/meta-llama/), [MLP-KTLim/llama-3-Korean-Bllossom-8B](https://huggingface.co/MLP-KTLim)
+### Framework versions
+
+- PEFT 0.14.0
