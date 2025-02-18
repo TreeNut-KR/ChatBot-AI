@@ -26,7 +26,7 @@ class LlamaChatModel:
         parent_dir = os.path.dirname(current_dir)
         dotenv_path = os.path.join(parent_dir, '.env')
         load_dotenv(dotenv_path)
-        self.cache_dir = "/app/ai_model/"
+        self.cache_dir = "./fastapi/ai_model"
         self.model_id = "meta-llama/Llama-3.1-8B-Instruct"
         self.device = torch.device("cuda:0")  # 명확히 cuda:0로 지정
 
@@ -91,9 +91,9 @@ class LlamaChatModel:
             "attention_mask": attention_mask.to(self.device),
             "min_new_tokens": 1,
             "max_new_tokens": 512,
-            "do_sample": True,  # 샘플링 활성화
-            "top_p": 0.9,  # Top-p Sampling 활성화 (0.9로 설정)
-            "top_k": 0,  # Top-k 비활성화 (Top-p와 함께 사용하지 않음)
+            "do_sample": True,   # 샘플링 활성화
+            "top_p": 0.9,        # Top-p Sampling 활성화 (0.9로 설정)
+            "top_k": 0,          # Top-k 비활성화 (Top-p와 함께 사용하지 않음)
             "temperature": 0.7,  # 다양성을 위한 온도 조정
             "eos_token_id": self.tokenizer.eos_token_id,
             "pad_token_id": (
@@ -103,7 +103,7 @@ class LlamaChatModel:
             ),
             "repetition_penalty": 1.2,  # 반복 방지 패널티
             "num_return_sequences": 1,  # 한 번에 하나의 시퀀스 생성
-            "streamer": streamer  # 스트리밍 활성화
+            "streamer": streamer        # 스트리밍 활성화
         }
 
         # Thread를 사용하여 생성 작업 비동기화
