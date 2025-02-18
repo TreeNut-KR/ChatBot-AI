@@ -10,7 +10,8 @@ ChatBot-AI/
 ├── fastapi/
 │   ├── ai_model/      # AI 모델 관련 파일
 │   ├── batchfile/     # 환경 설정 배치 파일
-│   └── datasets/      # 학습 데이터셋
+│   ├── datasets/      # 학습 데이터셋
+│   └── src/           # API 서버 코드 파일일
 ```
 
 ## 🚀 주요 기능
@@ -18,6 +19,7 @@ ChatBot-AI/
 - **AI 모델**:
   - Llama-3.1-8B-Instruct (기본 추론)
   - Llama-3-Lumimaid-8B (GGUF 최적화)
+  - Llama-3-Korean-Bllossom-8B (GGUF 최적화화)
 - **데이터셋**:
   - ko_wikidata_QA (137,505개 한국어 QA 쌍)
 
@@ -101,7 +103,13 @@ ChatBot-AI/
     .\fastapi\batchfile\venv_install.bat
     ```
 
-## 📚 사용된 주요 패키지
+4. 서버 실행
+   - [server.py](.\fastapi\src\server.py)
+    ```bash
+    .\.venv\Scripts\python.exe .\fastapi\src\server.py
+    ``` 
+
+## 📚 사용된 주요 CUDA 패키지
 
 - torch (CUDA 11.8)
 - llama-cpp-python (CUDA 12.8)
