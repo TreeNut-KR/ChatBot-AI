@@ -111,7 +111,17 @@ class BllossomChatModel:
 
     def _load_model(self, gpu_layers: int) -> Llama:
         """
-        모델 로드
+        GGUF 포맷의 Llama 모델을 로드하고 GPU 가속을 설정합니다.
+        
+        Args:
+            gpu_layers (int): GPU에 오프로드할 레이어 수 (기본값: 50)
+            
+        Returns:
+            Llama: 초기화된 Llama 모델 인스턴스
+            
+        Raises:
+            RuntimeError: GPU 메모리 부족 또는 CUDA 초기화 실패 시
+            OSError: 모델 파일을 찾을 수 없거나 손상된 경우
         """
         print(f"✨ {self.model_id} 로드 중...")
         try:
@@ -150,9 +160,23 @@ class BllossomChatModel:
 
     def _stream_completion(self, prompt: str, **kwargs) -> None:
         """
-        스트리밍 응답 생성
+        텍스트 생성을 위한 내부 스트리밍 메서드입니다.
+        
+        Args:
+            prompt (str): 모델에 입력할 프롬프트 텍스트
+            **kwargs: 생성 매개변수 (temperature, top_p 등)
+            
+        Effects:
+            - response_queue에 생성된 텍스트 조각들을 순차적으로 추가
+            - 스트림 종료 시 None을 큐에 추가
+            
+        Error Handling:
+            - 예외 발생 시 오류 메시지 출력 후 None을 큐에 추가
+            - 경고 메시지는 warnings.catch_warnings로 필터링
+            
+        Threading:
+            - 별도의 스레드에서 실행되어 비동기 처리 지원
         """
-        import warnings
         try:
             # 경고 메시지 필터링
             with warnings.catch_warnings():
@@ -185,7 +209,17 @@ class BllossomChatModel:
                                     top_p: float = 0.80,
                                     stop: Optional[list] = None) -> Generator[str, None, None]:
         """
-        스트리밍 방식으로 텍스트 응답 생성
+        스트리밍 방식으로 텍스트 응답을 생성하는 메서드입니다.
+        
+        Args:
+            prompt (str): 모델에 입력할 프롬프트 텍스트
+            max_tokens (int, optional): 생성할 최대 토큰 수. 기본값: 256
+            temperature (float, optional): 샘플링 온도 (0~1). 기본값: 0.5
+            top_p (float, optional): 누적 확률 임계값 (0~1). 기본값: 0.80
+            stop (list, optional): 생성 중단 토큰 리스트. 기본값: None
+            
+        Returns:
+            Generator[str, None, None]: 생성된 텍스트 조각들의 제너레이터
         """
         # kwargs 딕셔너리로 파라미터 전달
         kwargs = {
@@ -218,8 +252,8 @@ class BllossomChatModel:
             input_text (str): 사용자 입력 텍스트
             character_settings (dict, optional): 캐릭터 설정 딕셔너리
 
-        Yields:
-            str: 생성된 텍스트 조각들
+        Returns:
+            Generator[str, None, None]: 생성된 텍스트 조각들을 반환하는 제너레이터
         """
         try:
             character_info = CharacterPrompt(

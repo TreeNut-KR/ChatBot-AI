@@ -1,5 +1,5 @@
 '''
-파일은 FastAPI 애플리케이션에서 사용되는 Pydantic 모델을 정의하는 모듈입니다. 이 파일은 다음과 같은 기능을 제공합니다.
+파일은 FastAPI 애플리케이션에서 사용되는 Pydantic 모델을 정의하는 모듈입니다.
 '''
 
 import re
@@ -7,10 +7,26 @@ import httpx
 from pydantic import BaseModel, Field, field_validator, conint
 
 class Validators:
+    """
+    URL 검증을 위한 유틸리티 클래스입니다.
+    
+    이 클래스는 URL 형식 검증과 이미지 URL 접근성 검사를 수행하는 
+    정적 메서드들을 제공합니다.
+    """
+    
     @staticmethod
     def validate_URL(v: str) -> str:
         """
-        URL 형식 검증 함수
+        Google Drive 썸네일 URL의 형식을 검증하는 함수입니다.
+        
+        Args:
+            v (str): 검증할 URL 문자열
+            
+        Returns:
+            str: 검증된 URL 문자열
+            
+        Raises:
+            ValueError: URL 형식이 올바르지 않을 경우
         """
         url_pattern = re.compile(
             r'''
@@ -28,9 +44,15 @@ class Validators:
 
     @staticmethod
     async def check_img_url(img_url: str):
-        '''
-        URL의 연결 테스트 함수
-        '''
+        """
+        URL이 실제로 접근 가능한 이미지를 가리키는지 확인하는 비동기 함수입니다.
+        
+        Args:
+            img_url (str): 검사할 이미지 URL
+            
+        Raises:
+            ValueError: 이미지에 접근할 수 없거나 요청 중 오류 발생 시
+        """
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.head(img_url, follow_redirects=True)
@@ -46,7 +68,6 @@ Bllossom_input_data_set = Field(
     description="사용자 입력 문장 길이 제약",
     min_length=1, max_length=500
 )
-
 google_access_set = Field(
     examples=[False, True],
     default=False,
@@ -200,13 +221,37 @@ Lumimaid_output_data_set = Field(
 
 # BaseModel 설정
 class Bllossom_Request(BaseModel):
+    """
+    Bllossom 모델에 대한 요청 데이터를 정의하는 Pydantic 모델입니다.
+    
+    Attributes:
+        input_data (str): 사용자의 입력 텍스트
+        google_access (bool): 검색 기능 사용 여부
+    """
     input_data: str = Bllossom_input_data_set
     google_access: bool = google_access_set
     
 class Bllossom_Response(BaseModel):
+    """
+    Bllossom 모델의 응답 데이터를 정의하는 Pydantic 모델입니다.
+    
+    Attributes:
+        output_data (str): 모델이 생성한 응답 텍스트
+    """
     output_data: str = Bllossom_output_data_set
     
 class Lumimaid_Request(BaseModel):
+    """
+    Lumimaid 모델에 대한 요청 데이터를 정의하는 Pydantic 모델입니다.
+    
+    Attributes:
+        input_data (str): 사용자의 입력 텍스트
+        character_name (str): 캐릭터의 이름
+        greeting (str): 캐릭터의 인사말
+        context (str): 캐릭터의 설정 정보
+        image (str): 캐릭터 이미지 URL
+        access_level (bool): 캐릭터의 접근 권한 레벨
+    """
     input_data: str = Lumimaid_input_data_set
     character_name: str = character_name_set
     greeting: str = greeting_set
@@ -216,14 +261,37 @@ class Lumimaid_Request(BaseModel):
     
     @field_validator('image', mode='before')
     def check_img_url(cls, v):
+        """
+        이미지 URL의 형식을 검증하는 Pydantic 필드 검증기입니다.
+        
+        Args:
+            v (str): 검증할 이미지 URL
+            
+        Returns:
+            str: 검증된 URL
+            
+        Raises:
+            ValueError: URL 형식이 올바르지 않을 경우
+        """
         return Validators.validate_URL(v)
     
     def model_dump(self, **kwargs):
         """
-        Pydantic BaseModel의 dict() 메서드를 대체하는 model_dump() 메서드입니다.
-        필터링된 데이터만 반환하도록 수정할 수 있습니다.
+        모델 데이터를 딕셔너리로 직렬화하는 메서드입니다.
+        
+        Args:
+            **kwargs: 직렬화 옵션
+            
+        Returns:
+            dict: 모델의 데이터를 포함하는 딕셔너리
         """
         return super().model_dump(**kwargs)
     
 class Lumimaid_Response(BaseModel):
+    """
+    Lumimaid 모델의 응답 데이터를 정의하는 Pydantic 모델입니다.
+    
+    Attributes:
+        output_data (str): 모델이 생성한 응답 텍스트
+    """
     output_data: str = Lumimaid_output_data_set

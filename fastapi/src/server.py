@@ -29,18 +29,30 @@ languageprocessor = LanguageProcessor() # LanguageProcessor 초기화
 load_dotenv()
 
 def load_bot_list(file_path: str) -> list:
-    '''
-    YAML 파일에서 봇 리스트를 불러오는 함수
-    '''
+    """
+    YAML 파일에서 봇 리스트를 불러오는 함수입니다.
+    
+    Args:
+        file_path (str): 봇 목록이 저장된 YAML 파일의 경로
+        
+    Returns:
+        list: 소문자로 변환된 봇 이름 리스트
+    """
     with open(file_path, 'r', encoding='utf-8') as file:
         data = yaml.safe_load(file)
         return [bot['name'].lower() for bot in data.get('bot_user_agents', [])]
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    '''
-    FastAPI AI 모델 애플리케이션 초기화
-    '''
+    """
+    FastAPI 애플리케이션의 수명 주기를 관리하는 컨텍스트 매니저입니다.
+    
+    Args:
+        app (FastAPI): FastAPI 애플리케이션 인스턴스
+        
+    Yields:
+        None: 애플리케이션 컨텍스트를 생성하고 종료할 때까지 대기
+    """
     global Bllossom_model, Lumimaid_model
 
     # CUDA 디바이스 정보 가져오기 함수
@@ -73,9 +85,16 @@ ChatError.add_exception_handlers(app)  # 예외 핸들러 추가
 
 class ExceptionMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        '''
-        예외를 Error_handlers에서 정의한 generic_exception_handler로 위임
-        '''
+        """
+        HTTP 요청을 처리하고 예외를 처리하는 미들웨어입니다.
+        
+        Args:
+            request (Request): 들어오는 HTTP 요청
+            call_next (callable): 다음 미들웨어나 라우트 핸들러를 호출하는 함수
+            
+        Returns:
+            Response: HTTP 응답 객체
+        """
         try:
             response = await call_next(request)
             return response
@@ -98,6 +117,12 @@ app.add_middleware(
 )
 
 def custom_openapi():
+    """
+    커스텀 OpenAPI 스키마를 생성하는 함수입니다.
+    
+    Returns:
+        dict: OpenAPI 스키마 정의
+    """
     if app.openapi_schema:
         return app.openapi_schema
 
@@ -119,6 +144,15 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 def is_internal_ip(ip):
+    """
+    주어진 IP 주소가 내부 네트워크에 속하는지 확인합니다.
+    
+    Args:
+        ip (str): 확인할 IP 주소 문자열
+        
+    Returns:
+        bool: 내부 IP인 경우 True, 아닌 경우 False
+    """
     try:
         ip_obj = ipaddress.ip_address(ip)
         # IP가 내부 네트워크 범위(192.168.219.0/24)에 있는지 확인합니다
@@ -128,6 +162,20 @@ def is_internal_ip(ip):
 
 @app.middleware("http")
 async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
+    """
+    IP 제한과 봇 차단을 처리하는 미들웨어입니다.
+    
+    Args:
+        request (Request): 들어오는 HTTP 요청
+        call_next (callable): 다음 미들웨어나 라우트 핸들러를 호출하는 함수
+        
+    Returns:
+        Response: HTTP 응답 객체
+        
+    Raises:
+        ChatError.IPRestrictedException: 허용되지 않은 IP 주소
+        ChatError.BadRequestException: 봇 접근 시도
+    """
     ip_string = os.getenv("IP")
     allowed_ips = ip_string.split(", ") if ip_string else []
     client_ip = request.client.host
@@ -137,7 +185,7 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
 
     try:
         # # IP 및 내부 네트워크 범위에 따라 액세스 제한
-        # if (request.url.path in ["/office_stream", "/Character_stream", "/docs", "/redoc", "/openapi.json"]
+        # if (request.url.path in ["/office_stream", "/character_stream", "/docs", "/redoc", "/openapi.json"]
         #         and client_ip not in allowed_ips
         #         and not is_internal_ip(client_ip)):
         #     raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
@@ -164,15 +212,27 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
 
 @app.get("/")
 async def root():
+    """
+    API 루트 엔드포인트입니다.
+    
+    Returns:
+        dict: 환영 메시지를 포함한 응답
+    """
     return {"message": "Welcome to the API"}
 
 mongo_router = APIRouter() # MySQL 관련 라우터 정의
 
 @mongo_router.get("/db", summary="데이터베이스 목록 가져오기")
 async def list_databases():
-    '''
-    데이터베이스 서버에 있는 모든 데이터베이스의 목록을 반환합니다.
-    '''
+    """
+    데이터베이스 서버의 모든 데이터베이스 목록을 조회합니다.
+    
+    Returns:
+        dict: 데이터베이스 목록을 포함한 응답
+        
+    Raises:
+        ChatError.InternalServerErrorException: 데이터베이스 조회 실패 시
+    """
     try:
         databases = await mongo_handler.get_db()
         return {"Database": databases}
@@ -181,9 +241,18 @@ async def list_databases():
 
 @mongo_router.get("/collections", summary="데이터베이스 컬렉션 목록 가져오기")
 async def list_collections(db_name: str = Query(..., description="데이터베이스 이름")):
-    '''
-    현재 선택된 데이터베이스 내의 모든 컬렉션 이름을 반환합니다.
-    '''
+    """
+    지정된 데이터베이스의 모든 컬렉션 목록을 조회합니다.
+    
+    Args:
+        db_name (str): 조회할 데이터베이스 이름
+        
+    Returns:
+        dict: 컬렉션 목록을 포함한 응답
+        
+    Raises:
+        ChatError.InternalServerErrorException: 컬렉션 조회 실패 시
+    """
     try:
         collections = await mongo_handler.get_collection(database_name=db_name)
         return {"Collections": collections}
@@ -197,6 +266,7 @@ app.include_router(
     responses={500: {"description": "Internal Server Error"}}
 )
 
+'''현재 사용 중지된 코드
 @app.get("/search")
 async def search(query: str):
     try:
@@ -214,6 +284,7 @@ async def search(query: str):
         raise HTTPException(status_code=500, detail=f"HTTP 요청 오류: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"서버 오류: {str(e)}")
+'''
 
 @app.post("/office_stream", summary="AI 모델이 검색 결과를 활용하여 답변 생성")
 async def office_stream(request: ChatModel.Bllossom_Request):
@@ -251,7 +322,7 @@ async def office_stream(request: ChatModel.Bllossom_Request):
                     "\n".join(formatted_results)
                 )
                 
-        '''
+        '''현재 DockDockGo 검색 기반으로 변경되어 사용 중지된 코드
         if request.google_access:
             # 위키백과, 나무위키, 뉴스 사이트 기반으로 검색
             search_results = await ChatSearch.fetch_google_filtered_results(query=request.input_data, num_results=9)

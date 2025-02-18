@@ -1,10 +1,5 @@
 """
-Google 및 DuckDuckGo 검색 API를 사용하여 웹 검색을 수행하는 서비스
-
-이 모듈은 다음과 같은 기능을 제공합니다:
-- Google Custom Search API를 통한 일반 및 필터링된 검색 결과 조회
-- DuckDuckGo API를 통한 텍스트 및 뉴스 검색 결과 조회
-- 도메인별 검색 결과 필터링 및 정렬
+파일은 Google 및 DuckDuckGo 검색 API를 사용하여 웹 검색을 수행하는 서비스입니다.
 """
 
 import os

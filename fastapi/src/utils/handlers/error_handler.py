@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 
 # 현재 파일의 상위 디렉토리 경로
 current_directory = os.path.dirname(os.path.abspath(__file__))
-parent_directory = os.path.dirname(current_directory)  # 상위 디렉토리
+parent_directory =  os.path.dirname(os.path.dirname(current_directory))
 
 # 로그 디렉토리 및 파일 경로 설정
 log_dir = os.path.join(parent_directory, "logs")

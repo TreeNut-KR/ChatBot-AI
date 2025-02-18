@@ -178,8 +178,8 @@ class LumimaidChatModel:
             top_p (float, optional): top_p 샘플링 값 (기본값 0.95)
             stop (Optional[list], optional): 중지 토큰 리스트 (기본값 None)
 
-        Yields:
-            str: 생성된 텍스트 조각들
+        Returns:
+            Generator[str, None, None]: 생성된 텍스트 조각들을 반환하는 제너레이터
         """
         # 스트리밍 스레드 시작
         thread = Thread(
@@ -235,8 +235,8 @@ class LumimaidChatModel:
             input_text (str): 사용자 입력 텍스트
             character_settings (dict): 캐릭터 설정 딕셔너리
 
-        Yields:
-            str: 생성된 텍스트 조각들
+        Returns:
+            Generator[str, None, None]: 생성된 텍스트 조각들을 반환하는 제너레이터
         """
         try:
             # 캐릭터 정보 설정
