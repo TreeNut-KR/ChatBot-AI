@@ -35,7 +35,7 @@ from .handlers.mongodb_handler import MongoDBHandler
 from .schemas import chat_schema as ChatModel
 
 # Services
-from .services import search_service as GoogleSearch
+from .services import search_service as ChatSearch
 
 __all__ = [
     # AI Models
@@ -52,5 +52,5 @@ __all__ = [
     'ChatModel',
     
     # Services
-    'GoogleSearch',
+    'ChatSearch',
 ]

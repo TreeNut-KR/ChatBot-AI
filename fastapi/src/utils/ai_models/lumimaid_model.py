@@ -1,4 +1,3 @@
-# AI_Lumimaid_8B.py
 '''
 이 파일은 LumimaidChatModel, CharacterPrompt 클래스를 정의하고 llama_cpp_cuda를 사용하여,
 Llama-3-Lumimaid-8B.gguf 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
@@ -265,7 +264,7 @@ class LumimaidChatModel:
             # 스트리밍 응답 생성
             for text_chunk in self.create_streaming_completion(
                 prompt=prompt,
-                max_tokens=2048,
+                max_tokens=8191,
                 temperature=0.7,
                 top_p=0.95,
                 stop=["<|eot_id|>"]

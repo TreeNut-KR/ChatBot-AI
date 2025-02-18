@@ -1,4 +1,3 @@
-# server.py
 '''
 파일은 FastAPI 서버를 구동하는 엔트리 포인트입니다.
 '''
@@ -21,7 +20,7 @@ from starlette.responses import StreamingResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from utils  import ChatError, ChatModel, GoogleSearch, LanguageProcessor, MongoDBHandler, Llama, Lumimaid, Bllossom
+from utils  import ChatError, ChatModel, ChatSearch, LanguageProcessor, MongoDBHandler, Llama, Lumimaid, Bllossom
 
 Bllossom_model = None                   # Bllossom 모델 전역 변수
 Lumimaid_model = None                   # Lumimaid 모델 전역 변수
@@ -104,12 +103,12 @@ def custom_openapi():
 
     openapi_schema = get_openapi(
         title="ChatBot-AI FastAPI",
-        version="v1.2.0",
+        version="v1.3.0",
         summary="AI 모델 관리 API",
         routes=app.routes,
         description=(
             "이 API는 다음과 같은 기능을 제공합니다:\n\n"
-            "각 엔드포인트의 자세한 정보는 해당 엔드포인트의 문서에서 확인할 수 있습니다."
+            f"각 엔드포인트의 자세한 정보는 [📌 ChatBot-AI FastAPI 명세서](https://github.com/TreeNut-KR/ChatBot-AI/issues/4) 에서 확인할 수 있습니다."
         ),
     )
     openapi_schema["info"]["x-logo"] = {
@@ -137,11 +136,11 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
     user_agent = request.headers.get("User-Agent", "").lower()
 
     try:
-        # IP 및 내부 네트워크 범위에 따라 액세스 제한
-        if (request.url.path in ["/office_stream", "/Character_stream", "/docs", "/redoc", "/openapi.json"]
-                and client_ip not in allowed_ips
-                and not is_internal_ip(client_ip)):
-            raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
+        # # IP 및 내부 네트워크 범위에 따라 액세스 제한
+        # if (request.url.path in ["/office_stream", "/Character_stream", "/docs", "/redoc", "/openapi.json"]
+        #         and client_ip not in allowed_ips
+        #         and not is_internal_ip(client_ip)):
+        #     raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
 
         # 사용자 에이전트 기반 봇 차단
         if any(bot in user_agent for bot in bot_user_agents):
@@ -203,8 +202,8 @@ async def search(query: str):
     try:
         url = f"https://www.googleapis.com/customsearch/v1"
         params = {
-            "key": GoogleSearch.GOOGLE_API_KEY,
-            "cx": GoogleSearch.SEARCH_ENGINE_ID,
+            "key": ChatSearch.GOOGLE_API_KEY,
+            "cx": ChatSearch.SEARCH_ENGINE_ID,
             "q": query
         }
         async with httpx.AsyncClient() as client:
@@ -230,10 +229,32 @@ async def office_stream(request: ChatModel.Bllossom_Request):
     try:
         search_context = ""  # search_context를 초기화
         
+        # DuckDuckGo 검색 결과 가져오기
+        if request.google_access:  # 검색 옵션이 활성화된 경우
+            duck_results = await ChatSearch.fetch_duck_search_results(query=request.input_data)
+            
+            if duck_results:
+                # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
+                formatted_results = []
+                for idx, item in enumerate(duck_results[:20], 1):  # 상위 20개 결과만 사용
+                    formatted_result = (
+                        f"[검색결과 {idx}]\n"
+                        f"제목: {item.get('title', '제목 없음')}\n"
+                        f"내용: {item.get('snippet', '내용 없음')}\n"
+                        f"출처: {item.get('link', '링크 없음')}\n"
+                    )
+                    formatted_results.append(formatted_result)
+                
+                # 모든 결과를 하나의 문자열로 결합
+                search_context = (
+                    "다음은 검색에서 가져온 관련 정보입니다:\n\n" +
+                    "\n".join(formatted_results)
+                )
+                
+        '''
         if request.google_access:
             # 위키백과, 나무위키, 뉴스 사이트 기반으로 검색
-            search_results = await GoogleSearch.fetch_search_results(request.input_data, num_results=5)
-
+            search_results = await ChatSearch.fetch_google_filtered_results(query=request.input_data, num_results=9)
             # 검색 결과를 텍스트로 통합
             if search_results:
                 search_context = "\n".join([
@@ -242,7 +263,9 @@ async def office_stream(request: ChatModel.Bllossom_Request):
                 ])
             else:
                 search_context = ""
-
+            print(search_results)
+        '''
+        
         # 응답 스트림 생성
         response_stream = Bllossom_model.generate_response_stream(
             input_text=request.input_data,

@@ -1,4 +1,3 @@
-# AI_Bllossom_8B.py
 '''
 이 파일은 BllossomChatModel, CharacterPrompt 클래스를 정의하고 llama_cpp_cuda를 사용하여,
 Llama-3-Bllossom-8B.gguf 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
@@ -58,9 +57,9 @@ def build_llama3_messages(character: CharacterPrompt, user_input: str) -> list:
         str: Bllossom GGUF 형식의 messages 문자열
     """
     system_prompt = (
-        f"Character Name: {character.name}\n"
-        f"Character Context: {character.context}\n"
-        f"Search Text: {character.search_text}"
+        f"system Name: {character.name}\n"
+        f"system Context: {character.context}\n"
+        f"User Search Text: {character.search_text}"
     )
     # 메시지 구성
     messages = [
@@ -136,7 +135,7 @@ class BllossomChatModel:
                     model_path=self.model_path,
                     n_gpu_layers=gpu_layers,
                     main_gpu=0,
-                    n_ctx=2048,
+                    n_ctx=8191,
                     n_batch=512,
                     verbose=False,
                     offload_kqv=True,
