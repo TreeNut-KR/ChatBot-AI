@@ -2,7 +2,7 @@
 파일은 BllossomChatModel, CharacterPrompt 클래스를 정의하고 llama_cpp_cuda를 사용하여,
 Llama-3-Bllossom-8B.gguf 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
 '''
-from typing import Optional, Generator
+from typing import Optional, Generator, List, Dict
 from llama_cpp_cuda import (
     Llama,           # 기본 LLM 모델
     LlamaCache,      # 캐시 관리
@@ -46,29 +46,44 @@ class CharacterPrompt:
             f"Search Text: {self.search_text}"
         )
         
-def build_llama3_messages(character: CharacterPrompt, user_input: str) -> list:
+def build_llama3_messages(character: CharacterPrompt, user_input: str, chat_list: List[Dict] = None) -> list:
     """
-    캐릭터 정보를 포함한 Llama3 messages 형식 생성
+    캐릭터 정보와 대화 기록을 포함한 Llama3 messages 형식 생성
 
     Args:
         character (CharacterPrompt): 캐릭터 정보
         user_input (str): 사용자 입력
+        chat_list (List[Dict], optional): 이전 대화 기록
 
     Returns:
-        str: Bllossom GGUF 형식의 messages 문자열
+        list: Bllossom GGUF 형식의 messages 리스트
     """
     system_prompt = (
         f"system Name: {character.name}\n"
         f"system Context: {character.context}\n"
         f"User Search Text: {character.search_text}"
     )
+    
     # 메시지 구성
     messages = [
         {"role": "system", "content": system_prompt}
     ]
     
-    # 사용자 입력 추가
+    # 이전 대화 기록 추가
+    if chat_list and len(chat_list) > 0:
+        for chat in chat_list:
+            # input_data와 output_data 직접 사용
+            user_message = chat.get("input_data", "")
+            assistant_message = chat.get("output_data", "")
+            
+            if user_message:
+                messages.append({"role": "user", "content": user_message})
+            if assistant_message:
+                messages.append({"role": "assistant", "content": assistant_message})
+    
+    # 현재 사용자 입력 추가
     messages.append({"role": "user", "content": user_input})
+    
     return messages
 
 class BllossomChatModel:
@@ -246,7 +261,7 @@ class BllossomChatModel:
                 break
             yield text
 
-    def generate_response_stream(self, input_text: str, search_text: str, db_id: uuid.UUID | None) -> Generator[str, None, None]:
+    def generate_response_stream(self, input_text: str, search_text: str, chat_list: List[Dict]) -> Generator[str, None, None]:
         """
         API 호환을 위한 스트리밍 응답 생성 메서드
 
@@ -261,11 +276,16 @@ class BllossomChatModel:
             character_info = CharacterPrompt(
                 name=self.data.get("character_name"),
                 context=self.data.get("character_setting"),
-                search_text=search_text
+                search_text=search_text,
             )
 
             # Llama3 프롬프트 형식으로 변환
-            messages = build_llama3_messages(character_info, input_text)
+            messages = build_llama3_messages(
+                character_info,
+                input_text,
+                chat_list,
+                
+            )
         
             # 토크나이저로 프롬프트 생성
             prompt = self.tokenizer.apply_chat_template(

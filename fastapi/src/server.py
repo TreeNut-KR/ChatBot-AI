@@ -54,6 +54,8 @@ async def lifespan(app: FastAPI):
         None: 애플리케이션 컨텍스트를 생성하고 종료할 때까지 대기
     """
     global Bllossom_model, Lumimaid_model
+    GREEN = "\033[32m"
+    RESET = "\033[0m"
 
     # CUDA 디바이스 정보 가져오기 함수
     def get_cuda_device_info(device_id: int) -> str:
@@ -69,16 +71,15 @@ async def lifespan(app: FastAPI):
     # 디버깅용 출력
     Bllossom_device_info = get_cuda_device_info(1)  # Bllossom 모델은 cuda:1
     Lumimaid_device_info = get_cuda_device_info(0)  # Lumimaid 모델은 cuda:0
-
-    print(f"Bllossom 모델 로드 완료 ({Bllossom_device_info})")
-    print(f"Lumimaid 모델 로드 완료 ({Lumimaid_device_info})")
+    print(f"{GREEN}INFO{RESET}:     Bllossom 모델 로드 완료 ({Bllossom_device_info})")
+    print(f"{GREEN}INFO{RESET}:     Lumimaid 모델 로드 완료 ({Lumimaid_device_info})")
 
     yield
 
     # 모델 메모리 해제
     Bllossom_model = None
     Lumimaid_model = None
-    print("모델 해제 완료")
+    print(f"{GREEN}INFO{RESET}:     모델 해제 완료")
 
 app = FastAPI(lifespan=lifespan)  # 여기서 한 번만 app을 생성합니다.
 ChatError.add_exception_handlers(app)  # 예외 핸들러 추가
@@ -298,6 +299,11 @@ async def office_stream(request: ChatModel.Bllossom_Request):
         StreamingResponse: 스트리밍 방식의 모델 응답
     """
     try:
+        chat_list = await mongo_handler.get_office_log(
+            user_id = request.user_id,
+            document_id = request.db_id,
+            router = "office",
+        )
         search_context = ""  # search_context를 초기화
         
         # DuckDuckGo 검색 결과 가져오기
@@ -321,7 +327,23 @@ async def office_stream(request: ChatModel.Bllossom_Request):
                     "다음은 검색에서 가져온 관련 정보입니다:\n\n" +
                     "\n".join(formatted_results)
                 )
-                
+        
+        # 일반 for 루프로 변경하여 응답 누적
+        full_response = ""
+        for chunk in Bllossom_model.generate_response_stream(
+            input_text=request.input_data,
+            search_text=search_context,
+            chat_list=chat_list,
+        ):
+            full_response += chunk
+
+        # JSON 응답 생성
+        response_data = {
+            "response": full_response,
+        }
+        
+        return JSONResponse(content=response_data)
+    
         '''현재 DockDockGo 검색 기반으로 변경되어 사용 중지된 코드
         if request.google_access:
             # 위키백과, 나무위키, 뉴스 사이트 기반으로 검색
@@ -337,22 +359,6 @@ async def office_stream(request: ChatModel.Bllossom_Request):
             print(search_results)
         '''
         
-        # 일반 for 루프로 변경하여 응답 누적
-        full_response = ""
-        for chunk in Bllossom_model.generate_response_stream(
-            input_text=request.input_data,
-            search_text=search_context,
-            db_id=request.db_id,
-        ):
-            full_response += chunk
-
-        # JSON 응답 생성
-        response_data = {
-            "response": full_response,
-        }
-        
-        return JSONResponse(content=response_data)
-    
         '''현재 spring boot에서 SSE 기반의 응답을 처리하지 못해서 사용 중지된 코드
         # 응답 스트림 생성
         response_stream = Bllossom_model.generate_response_stream(
@@ -392,18 +398,23 @@ async def character_stream(request: ChatModel.Lumimaid_Request):
         StreamingResponse: 스트리밍 방식의 모델 응답
     """
     try:
+        chat_list = await mongo_handler.get_character_log(
+            user_id = request.user_id,
+            document_id = request.db_id,
+            router = "chatbot",
+        )
         # 캐릭터 설정 구성
         character_settings = {
             "character_name": request.character_name,
             "greeting": request.greeting,
             "context": request.context,
+            "chat_list": chat_list,
         }
         # 일반 for 루프로 변경하여 응답 누적
         full_response = ""
         for chunk in Lumimaid_model.generate_response_stream(
             input_text= request.input_data,
             character_settings=character_settings,
-            db_id=request.db_id,
         ):
             full_response += chunk
 

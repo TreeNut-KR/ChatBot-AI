@@ -70,6 +70,12 @@ db_id_set = Field(
     title="케릭터 DB ID",
     description="캐릭터의 고유 식별자입니다. 데이터베이스에서 캐릭터를 식별하는 데 사용됩니다."
 )
+user_id_set = Field(
+        examples=["shaa97102"],
+        title="유저 id",
+        min_length=1, max_length=50,
+        description="유저 id 길이 제약"
+)
 
 # Bllossom Request Field
 Bllossom_input_data_set = Field(
@@ -197,10 +203,14 @@ class Bllossom_Request(BaseModel):
     Attributes:
         input_data (str): 사용자의 입력 텍스트
         google_access (bool): 검색 기능 사용 여부
+        db_id (uuid.UUID): 캐릭터의 DB ID
+        user_id (str): 유저 id
     """
     input_data: str = Bllossom_input_data_set
     google_access: bool = google_access_set
-    db_id: uuid.UUID | None = db_id_set
+    db_id: str | None = db_id_set
+    user_id: str | None = user_id_set
+    
     
 class Bllossom_Response(BaseModel):
     """
@@ -221,45 +231,15 @@ class Lumimaid_Request(BaseModel):
         greeting (str): 캐릭터의 인사말
         context (str): 캐릭터의 설정 정보
         db_id (uuid.UUID): 캐릭터의 DB ID
+        user_id (str): 유저 id
     """
-        # image (str) : 캐릭터 이미지 URL
-        # access_level(bool) : 캐릭터의 접근 권한 레벨
         
     input_data: str = Lumimaid_input_data_set
     character_name: str = character_name_set
     greeting: str = greeting_set
     context: str = context_set
-    db_id: uuid.UUID | None = db_id_set
-    # image: str = image_set
-    # access_level: bool = access_level_set
-    
-    # @field_validator('image', mode='before')
-    # def check_img_url(cls, v):
-    #     """
-    #     이미지 URL의 형식을 검증하는 Pydantic 필드 검증기입니다.
-        
-    #     Args:
-    #         v (str): 검증할 이미지 URL
-            
-    #     Returns:
-    #         str: 검증된 URL
-            
-    #     Raises:
-    #         ValueError: URL 형식이 올바르지 않을 경우
-    #     """
-    #     return Validators.validate_URL(v)
-    
-    # def model_dump(self, **kwargs):
-    #     """
-    #     모델 데이터를 딕셔너리로 직렬화하는 메서드입니다.
-        
-    #     Args:
-    #         **kwargs: 직렬화 옵션
-            
-    #     Returns:
-    #         dict: 모델의 데이터를 포함하는 딕셔너리
-    #     """
-    #     return super().model_dump(**kwargs)
+    db_id: str | None = db_id_set
+    user_id: str | None = user_id_set
     
 class Lumimaid_Response(BaseModel):
     """

@@ -2,14 +2,13 @@
 파일은 LumimaidChatModel, CharacterPrompt 클래스를 정의하고 llama_cpp_cuda를 사용하여,
 Llama-3-Lumimaid-8B.gguf 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
 '''
-from typing import Optional, Generator
+from typing import Optional, Generator, List, Dict
 from llama_cpp_cuda import (
     Llama,           # 기본 LLM 모델
     LlamaCache,      # 캐시 관리
     LlamaGrammar,    # 문법 제어
     LogitsProcessor  # 로짓 처리
 )
-import uuid
 from queue import Queue
 from threading import Thread
 
@@ -39,13 +38,14 @@ class CharacterPrompt:
             f"Context: {self.context}"
         )
         
-def build_llama3_prompt(character: CharacterPrompt, user_input: str) -> str:
+def build_llama3_prompt(character: CharacterPrompt, user_input: str, chat_history: List[Dict] = None) -> str:
     """
-    캐릭터 정보를 포함한 Llama3 프롬프트 형식 생성
+    캐릭터 정보와 대화 기록을 포함한 Llama3 프롬프트 형식 생성
 
     Args:
         character (CharacterPrompt): 캐릭터 정보
         user_input (str): 사용자 입력
+        chat_history (List[Dict], optional): 이전 대화 기록
 
     Returns:
         str: Lumimaid GGUF 형식의 프롬프트 문자열
@@ -60,13 +60,26 @@ def build_llama3_prompt(character: CharacterPrompt, user_input: str) -> str:
         "Use asterisks (*) to describe actions and emotions in detail."
     )
     
-    return (
+    # 기본 프롬프트 시작
+    prompt = (
         "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n"
         f"{system_prompt}<|eot_id|>"
+    )
+
+    # 이전 대화 기록 추가
+    if chat_history and len(chat_history) > 0:
+        for chat in chat_history:
+            if "dialogue" in chat:
+                prompt += chat["dialogue"]
+    
+    # 현재 사용자 입력 추가
+    prompt += (
         "<|start_header_id|>user<|end_header_id|>\n"
         f"{user_input}<|eot_id|>"
         "<|start_header_id|>assistant<|end_header_id|>\n"
     )
+    
+    return prompt
 
 class LumimaidChatModel:
     """
@@ -230,7 +243,7 @@ class LumimaidChatModel:
             print(f"응답 생성 중 오류 발생: {e}")
             return ""
 
-    def generate_response_stream(self, input_text: str, character_settings: dict, db_id: uuid.UUID | None) -> Generator[str, None, None]:
+    def generate_response_stream(self, input_text: str, character_settings: dict) -> Generator[str, None, None]:
         """
         API 호환을 위한 스트리밍 응답 생성 메서드
 
@@ -251,7 +264,11 @@ class LumimaidChatModel:
                 )
 
                 # Llama3 프롬프트 형식으로 변환
-                prompt = build_llama3_prompt(character_info, input_text)
+                prompt = build_llama3_prompt(
+                    character_info,
+                    input_text,
+                    character_settings.get("chat_list"),
+                )
             else:
                 prompt = input_text
             
