@@ -12,6 +12,7 @@ from llama_cpp_cuda import (
 import os
 import sys
 import json
+import uuid
 import warnings
 from queue import Queue
 from threading import Thread
@@ -93,6 +94,7 @@ class BllossomChatModel:
         self.model_id = 'MLP-KTLim/llama-3-Korean-Bllossom-8B-gguf-Q4_K_M'
         self.model_path = "fastapi/ai_model/llama-3-Korean-Bllossom-8B-Q4_K_M.gguf"
         self.file_path = './models/config-Bllossom.json'
+        self.gpu_layers: int = 70
         
         # JSON 파일 읽기
         with open(self.file_path, 'r', encoding='utf-8') as file:
@@ -102,14 +104,14 @@ class BllossomChatModel:
         
         # 진행 상태 표시
         print("🚀 Bllossom 모델 초기화 중...")
-        self.model = self._load_model(gpu_layers=50)
+        self.model = self._load_model()
         print("✨ 모델 로드 완료!")
         print("="*50 + "\n")
         
         self.response_queue = Queue()
 
 
-    def _load_model(self, gpu_layers: int) -> Llama:
+    def _load_model(self) -> Llama:
         """
         GGUF 포맷의 Llama 모델을 로드하고 GPU 가속을 설정합니다.
         
@@ -143,8 +145,8 @@ class BllossomChatModel:
             with suppress_stdout():
                 model = Llama(
                     model_path=self.model_path,
-                    n_gpu_layers=gpu_layers,
-                    main_gpu=0,
+                    n_gpu_layers=self.gpu_layers,
+                    main_gpu=1,
                     n_ctx=8191,
                     n_batch=512,
                     verbose=False,
@@ -244,7 +246,7 @@ class BllossomChatModel:
                 break
             yield text
 
-    def generate_response_stream(self, input_text: str, search_text: str) -> Generator[str, None, None]:
+    def generate_response_stream(self, input_text: str, search_text: str, db_id: uuid.UUID | None) -> Generator[str, None, None]:
         """
         API 호환을 위한 스트리밍 응답 생성 메서드
 

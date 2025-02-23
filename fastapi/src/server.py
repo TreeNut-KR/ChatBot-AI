@@ -16,7 +16,7 @@ from contextlib import asynccontextmanager
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import (APIRouter,  Query, FastAPI, HTTPException, Request)
-from starlette.responses import StreamingResponse
+from starlette.responses import StreamingResponse, JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -63,12 +63,12 @@ async def lifespan(app: FastAPI):
         return f"Device {device_id}: {device_name} (Total Memory: {total_memory:.2f} GB)"
 
     # Bllossom 및 Lumimaid 모델 로드
-    Bllossom_model = Bllossom()  # cuda:0
-    Lumimaid_model = Lumimaid()  # cuda:1
+    Bllossom_model = Bllossom()  # cuda:1
+    Lumimaid_model = Lumimaid()  # cuda:0
 
     # 디버깅용 출력
-    Bllossom_device_info = get_cuda_device_info(0)  # Bllossom 모델은 cuda:0
-    Lumimaid_device_info = get_cuda_device_info(1)  # Lumimaid 모델은 cuda:1
+    Bllossom_device_info = get_cuda_device_info(1)  # Bllossom 모델은 cuda:1
+    Lumimaid_device_info = get_cuda_device_info(0)  # Lumimaid 모델은 cuda:0
 
     print(f"Bllossom 모델 로드 완료 ({Bllossom_device_info})")
     print(f"Lumimaid 모델 로드 완료 ({Lumimaid_device_info})")
@@ -185,10 +185,10 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
 
     try:
         # IP 및 내부 네트워크 범위에 따라 액세스 제한
-        if (request.url.path in ["/office_stream", "/character_stream", "/docs", "/redoc", "/openapi.json"]
-                and client_ip not in allowed_ips
-                and not is_internal_ip(client_ip)):
-            raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
+        # if (request.url.path in ["/office_stream", "/character_stream", "/docs", "/redoc", "/openapi.json"]
+        #        and client_ip not in allowed_ips
+        #        and not is_internal_ip(client_ip)):
+        #    raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
 
         # 사용자 에이전트 기반 봇 차단
         if any(bot in user_agent for bot in bot_user_agents):
@@ -220,6 +220,7 @@ async def root():
     """
     return {"message": "Welcome to the API"}
 
+'''현재 사용 중지된 코드
 mongo_router = APIRouter() # MySQL 관련 라우터 정의
 
 @mongo_router.get("/db", summary="데이터베이스 목록 가져오기")
@@ -266,7 +267,6 @@ app.include_router(
     responses={500: {"description": "Internal Server Error"}}
 )
 
-'''현재 사용 중지된 코드
 @app.get("/search")
 async def search(query: str):
     try:
@@ -337,6 +337,23 @@ async def office_stream(request: ChatModel.Bllossom_Request):
             print(search_results)
         '''
         
+        # 일반 for 루프로 변경하여 응답 누적
+        full_response = ""
+        for chunk in Bllossom_model.generate_response_stream(
+            input_text=request.input_data,
+            search_text=search_context,
+            db_id=request.db_id,
+        ):
+            full_response += chunk
+
+        # JSON 응답 생성
+        response_data = {
+            "response": full_response,
+        }
+        
+        return JSONResponse(content=response_data)
+    
+        '''현재 spring boot에서 SSE 기반의 응답을 처리하지 못해서 사용 중지된 코드
         # 응답 스트림 생성
         response_stream = Bllossom_model.generate_response_stream(
             input_text=request.input_data,
@@ -352,7 +369,7 @@ async def office_stream(request: ChatModel.Bllossom_Request):
                 "Connection": "keep-alive",
             }
         )
-
+        '''
     except TimeoutError:
         raise ChatError.InternalServerErrorException(
             detail="Bllossom 모델 응답이 시간 초과되었습니다."
@@ -380,15 +397,30 @@ async def character_stream(request: ChatModel.Lumimaid_Request):
             "character_name": request.character_name,
             "greeting": request.greeting,
             "context": request.context,
-            "access_level": request.access_level
+        }
+        # 일반 for 루프로 변경하여 응답 누적
+        full_response = ""
+        for chunk in Lumimaid_model.generate_response_stream(
+            input_text= request.input_data,
+            character_settings=character_settings,
+            db_id=request.db_id,
+        ):
+            full_response += chunk
+
+        # JSON 응답 생성
+        response_data = {
+            "response": full_response,
         }
         
+        return JSONResponse(content=response_data)
+
+        '''현재 spring boot에서 SSE 기반의 응답을 처리하지 못해서 사용 중지된 코드
         # 응답 스트림 생성
         response_stream = Lumimaid_model.generate_response_stream(
             input_text=request.input_data,
             character_settings=character_settings
         )
-        
+
         return StreamingResponse(
             response_stream,
             media_type="text/plain",
@@ -398,6 +430,7 @@ async def character_stream(request: ChatModel.Lumimaid_Request):
                 "Connection": "keep-alive",
             }
         )
+        '''
         
     except TimeoutError:
         raise ChatError.InternalServerErrorException(

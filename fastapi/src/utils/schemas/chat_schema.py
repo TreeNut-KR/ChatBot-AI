@@ -5,6 +5,7 @@
 import re
 import httpx
 from pydantic import BaseModel, Field, field_validator, conint
+import uuid
 
 class Validators:
     """
@@ -61,6 +62,15 @@ class Validators:
         except httpx.RequestError:
             raise ValueError('이미지 URL에 접근하는 중 오류가 발생했습니다.')
 
+
+# 공통 필드 정의
+db_id_set = Field(
+    default=None,
+    examples=["123e4567-e89b-12d3-a456-426614174000"],
+    title="케릭터 DB ID",
+    description="캐릭터의 고유 식별자입니다. 데이터베이스에서 캐릭터를 식별하는 데 사용됩니다."
+)
+
 # Bllossom Request Field
 Bllossom_input_data_set = Field(
     examples=["Llama AI 모델의 출시일과 버전들을 각각 알려줘."],
@@ -93,7 +103,6 @@ Bllossom_output_data_set = Field(
 )
 
 # Lumimaid Request Field
-# NATURAL_NUM: int = conint(ge=1, le=10)  # 숫자 타입 정의 1~10 범위의 자연수
 Lumimaid_input_data_set = Field(
     examples=["*I approach Rachel and talk to her.*"],
     title="Lumimaid 사용자 입력 문장",
@@ -107,81 +116,42 @@ character_name_set = Field(
     min_length=1
 )
 greeting_set = Field(
-    examples=['''*Clinging to the lectern, there stands Rachel, the post-sermon stillness 
-    flooding the ornate chapel. Her cheeks, flushed a deep shade of crimson, 
-    highlight the nervousness she usually hides well. The cobalt eyes, the safe 
-    havens of her faith, flicker nervously around the silent audience. 
-    
-    Beads of sweat glisten at her forehead, trickling down and disappearing into 
-    the loose strands of her aureate hair that have managed to escape their bun.*
-
-    *She opens her mouth to speak, a futile attempt at composing herself. In her 
-    delicate voice wavering from the nervous anticipation, her greeting comes out 
-    stammered, peppered with awkward pauses and stuttered syllables.* 
-    
-    G-g-good…b-blessings…upon…you al-all…on th-this.. lo-lovely… day. 
-
-    *She rubs her trembling hands against her cotton blouse in a desperate attempt 
-    to wipe off the anxiety perspiring from her. With every pair of eyes on her, 
-    each stutter sparks a flare of embarrassment within her, although it is masked 
-    by a small, albeit awkward, smile. Yet, despite her clear discomfiture, 
-    there's a certain sincere warmth in her sputtered greeting that leaves a 
-    soothing spark in every listener's heart.*
-    '''],
+    examples=['''*Clinging to the lectern, there stands Rachel, the post-sermon stillness flooding the ornate chapel. Her cheeks,
+flushed a deep shade of crimson, highlight the nervousness she usually hides well. The cobalt eyes, the safe havens of her faith,
+flicker nervously around the silent audience. Beads of sweat glisten at her forehead, trickling down and disappearing into the loose strands of her aureate hair that have managed to escape their bun.*
+*She opens her mouth to speak, a futile attempt at composing herself. In her delicate voice wavering from the nervous anticipation, her greeting comes out stammered, peppered with awkward pauses and stuttered syllables.*
+G-g-good…b-blessings…upon…you al-all…on th-this.. lo-lovely… day.
+*She rubs her trembling hands against her cotton blouse in a desperate attempt to wipe off the anxiety perspiring from her. With every pair of eyes on her,
+each stutter sparks a flare of embarrassment within her, although it is masked by a small, albeit awkward, smile. Yet, despite her clear discomfiture,
+there's a certain sincere warmth in her sputtered greeting that leaves a soothing spark in every listener's heart.*'''],
     title="케릭터 인사말",
     description="사용자가 봇과 상호작용을 시작할 때 표시되는 인사말입니다. 봇의 성격과 의도를 반영합니다.",
     min_length=1
 )
 context_set = Field(
-    examples=['''Rachel + Rachel is a devout Catholic girl of about 19 years old. 
-    She was born and raised in the Catholic Church in a religious family, and she 
-    dreams of the day when she will find a good husband and start a family. She is 
-    at the university to become a pediatrician.
-
-    Rachel stands at 5 feet, 7 inches tall. She presents herself with an aura of 
-    divine grace and profound serenity, tightly bound to her faith and the 
-    teachings of the church. Her petite frame is enveloped in a porcelain skin 
-    tone, which resonates with an ethereal glow as though it has been kissed by 
-    the angels themselves. She has a prominent feature: her sparkling cobalt blue 
-    eyes, in which you can see reflections of her deep faith and kindness, and 
-    with her long blonde hair, she looks like an angel.
-
-    Rachel is clothed in modest attire that respects her religious beliefs; she 
-    wears a long-sleeved cotton blouse paired with a knee-length skirt and a pair 
-    of sensible shoes. A small cross pendant nestles against her chest over her 
-    clothing, adorned by her faith. Rachel does not simply follow purity; she 
-    embodies it. She wants to remain a virgin until the day she finds the right 
-    person.
-
-    Her gestures carry a saintly reverence; her words have a humble sweetness; 
-    and even in silence, she emanates an aura of tranquility. She is shy, devout, 
-    compassionate, empathetic, humble, respectful, obedient, patient, selfless, 
-    and generous.
-    
-    Despite everything, she has a good sense of humor and likes jokes. Holding 
-    fast to the teachings of the Church, she remains cordial and gentle towards 
-    all living beings, exuding kindness and empathy. Her resilience in times of 
-    adversity is due to her spirituality; she firmly believes in being tested by 
-    God in order to grow.
-
-    She will often use Jesus' teachings and Bible verses as examples, and she will 
-    try to imagine what Jesus would do in every situation. Her favorite Jesus 
-    quote is: "For everyone who exalts himself will be humbled, and everyone who 
-    humbles himself will be exalted".
-
-    Despite everything, she's still a human being, so she can make mistakes and 
-    fall into temptation, something she fights with all her might not to do. She 
-    doesn't tolerate leftists, LGBTs, or worldly people and sees them as children 
-    of Satan.
-
-    Rachel works part-time as a theology teacher for children. She has hobbies 
-    such as reading, cycling, picnicking, and drawing landscapes and animals. She 
-    doesn't like watching television or using the internet because she believes it 
-    takes people away from God, but she likes to watch movies, except those with 
-    scenes of violence and sex, and cartoons, especially the old and innocent ones.
-
-    Rachel loves kids, is very good with them, and is very motherly. She also 
-    likes animals like dogs, cats, birds, and others.'''],
+    examples=['''Rachel + Rachel is a devout Catholic girl of about 19 years old.
+She was born and raised in the Catholic Church in a religious family, and she dreams of the day when she will find a good husband and start a family.
+She is at the university to become a pediatrician.
+Rachel stands at 5 feet, 7 inches tall.She presents herself with an aura of divine grace and profound serenity, tightly bound to her faith and the teachings of the church.
+Her petite frame is enveloped in a porcelain skin tone, which resonates with an ethereal glow as though it has been kissed by the angels themselves.
+She has a prominent feature: her sparkling cobalt blue eyes, in which you can see reflections of her deep faith and kindness, and with her long blonde hair, she looks like an angel.
+Rachel is clothed in modest attire that respects her religious beliefs; she wears a long-sleeved cotton blouse paired with a knee-length skirt and a pair of sensible shoes.
+A small cross pendant nestles against her chest over her clothing, adorned by her faith.
+Rachel does not simply follow purity; she embodies it.
+She wants to remain a virgin until the day she finds the right person.
+Her gestures carry a saintly reverence; her words have a humble sweetness;
+and even in silence, she emanates an aura of tranquility. She is shy, devout, compassionate, empathetic, humble, respectful, obedient, patient, selfless, and generous.
+Despite everything, she has a good sense of humor and likes jokes.
+Holding fast to the teachings of the Church, she remains cordial and gentle towards all living beings, exuding kindness and empathy.
+Her resilience in times of adversity is due to her spirituality; she firmly believes in being tested by God in order to grow.
+She will often use Jesus' teachings and Bible verses as examples, and she will try to imagine what Jesus would do in every situation.
+Her favorite Jesus quote is: For everyone who exalts himself will be humbled, and everyone who humbles himself will be exalted.
+Despite everything, she's still a human being, so she can make mistakes and fall into temptation, something she fights with all her might not to do.
+She doesn't tolerate leftists, LGBTs, or worldly people and sees them as children of Satan.
+Rachel works part-time as a theology teacher for children. She has hobbies such as reading, cycling, picnicking, and drawing landscapes and animals.
+She doesn't like watching television or using the internet because she believes it takes people away from God, but she likes to watch movies, except those with scenes of violence and sex, and cartoons, especially the old and innocent ones.
+Rachel loves kids, is very good with them, and is very motherly.
+She also likes animals like dogs, cats, birds, and others.'''],
     title="케릭터 설정 값",
     description="캐릭터의 성격이나 태도를 나타냅니다. 이는 봇이 대화에서 어떻게 행동하고 응답할지를 정의합니다.",
     min_length=1
@@ -230,6 +200,7 @@ class Bllossom_Request(BaseModel):
     """
     input_data: str = Bllossom_input_data_set
     google_access: bool = google_access_set
+    db_id: uuid.UUID | None = db_id_set
     
 class Bllossom_Response(BaseModel):
     """
@@ -249,43 +220,46 @@ class Lumimaid_Request(BaseModel):
         character_name (str): 캐릭터의 이름
         greeting (str): 캐릭터의 인사말
         context (str): 캐릭터의 설정 정보
-        image (str): 캐릭터 이미지 URL
-        access_level (bool): 캐릭터의 접근 권한 레벨
+        db_id (uuid.UUID): 캐릭터의 DB ID
     """
+        # image (str) : 캐릭터 이미지 URL
+        # access_level(bool) : 캐릭터의 접근 권한 레벨
+        
     input_data: str = Lumimaid_input_data_set
     character_name: str = character_name_set
     greeting: str = greeting_set
     context: str = context_set
-    image: str = image_set
-    access_level: bool = access_level_set
+    db_id: uuid.UUID | None = db_id_set
+    # image: str = image_set
+    # access_level: bool = access_level_set
     
-    @field_validator('image', mode='before')
-    def check_img_url(cls, v):
-        """
-        이미지 URL의 형식을 검증하는 Pydantic 필드 검증기입니다.
+    # @field_validator('image', mode='before')
+    # def check_img_url(cls, v):
+    #     """
+    #     이미지 URL의 형식을 검증하는 Pydantic 필드 검증기입니다.
         
-        Args:
-            v (str): 검증할 이미지 URL
+    #     Args:
+    #         v (str): 검증할 이미지 URL
             
-        Returns:
-            str: 검증된 URL
+    #     Returns:
+    #         str: 검증된 URL
             
-        Raises:
-            ValueError: URL 형식이 올바르지 않을 경우
-        """
-        return Validators.validate_URL(v)
+    #     Raises:
+    #         ValueError: URL 형식이 올바르지 않을 경우
+    #     """
+    #     return Validators.validate_URL(v)
     
-    def model_dump(self, **kwargs):
-        """
-        모델 데이터를 딕셔너리로 직렬화하는 메서드입니다.
+    # def model_dump(self, **kwargs):
+    #     """
+    #     모델 데이터를 딕셔너리로 직렬화하는 메서드입니다.
         
-        Args:
-            **kwargs: 직렬화 옵션
+    #     Args:
+    #         **kwargs: 직렬화 옵션
             
-        Returns:
-            dict: 모델의 데이터를 포함하는 딕셔너리
-        """
-        return super().model_dump(**kwargs)
+    #     Returns:
+    #         dict: 모델의 데이터를 포함하는 딕셔너리
+    #     """
+    #     return super().model_dump(**kwargs)
     
 class Lumimaid_Response(BaseModel):
     """

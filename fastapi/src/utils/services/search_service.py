@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 SEARCH_ENGINE_ID = os.getenv("SEARCH_ENGINE_ID")
 
-def get_domain(url: str) -> str:
+def get_domain(url: str) -> str:  
     """
     URL에서 메인 도메인 추출
     

@@ -93,7 +93,7 @@ class MongoDBHandler:
             List[str]: 컬렉션 이름 목록
             
         Raises:
-            NotFoundException: 
+            NotFoundException:
                 - 지정된 데이터베이스가 존재하지 않는 경우
             InternalServerErrorException:
                 - MongoDB 서버 연결 실패

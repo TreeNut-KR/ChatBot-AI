@@ -55,6 +55,7 @@ konlpy
 googletrans
 langdetect
 spacy
+deep-translator>=1.11.4
 
 # 이미지 처리
 Pillow
