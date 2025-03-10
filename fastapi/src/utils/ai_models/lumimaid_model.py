@@ -99,17 +99,18 @@ class LumimaidChatModel:
     
         LumimaidChatModel 클레스 초기화 메소드
         """
-        print("\n" + "="*50)
-        print("📦 Lumimaid 모델 초기화 시작...")
         self.model_id = "v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat"
-        self.model_path: str = "fastapi/ai_model/v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat.gguf"
-        self.gpu_layers: int = 70
+        self.model_path = "fastapi/ai_model/v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat.gguf"
+        self.loading_text = f"✨ {self.model_id} 로드 중..."
+        self.gpu_layers = 70
         
+        print("\n" + "="*len(self.loading_text))
+        print(f"📦 {__class__.__name__} 모델 초기화 시작...")
         # 진행 상태 표시
-        print("🚀 Lumimaid 모델 초기화 중...")
+        print(f"🚀 {__class__.__name__} 모델 초기화 중...")
         self.model: Llama = self._load_model()
         print("✨ 모델 로드 완료!")
-        print("="*50 + "\n")
+        print("="*len(self.loading_text) + "\n")
         
         self.response_queue: Queue = Queue()
 
@@ -120,7 +121,7 @@ class LumimaidChatModel:
         Returns:
             Llama: 로드된 Llama 모델 객체
         """
-        print(f"✨ {self.model_id} 로드 중...")
+        print(f"{self.loading_text}")
         try:
             model = Llama(
                 model_path=self.model_path,

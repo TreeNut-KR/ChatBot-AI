@@ -61,60 +61,102 @@ file_handler.setLevel(logging.DEBUG)
 
 # StreamHandler 설정 (터미널 출력용)
 stream_handler = logging.StreamHandler()
-stream_handler.setLevel(logging.DEBUG)
+stream_handler.setLevel(logging.ERROR)  # ERROR 레벨 이상만 콘솔에 출력
 
-# 로그 포맷 설정
-formatter = logging.Formatter(
+# 각각 다른 포맷터 사용
+file_formatter = logging.Formatter(
     '[%(asctime)s] %(levelname)s in %(module)s: %(message)s\n'
     '%(message)s\n',
     datefmt='%Y-%m-%d %H:%M:%S',
 )
-file_handler.setFormatter(formatter)
-stream_handler.setFormatter(formatter)
+stream_formatter = logging.Formatter(
+    '[%(asctime)s] %(levelname)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
-# Logger에 핸들러 추가
+file_handler.setFormatter(file_formatter)
+stream_handler.setFormatter(stream_formatter)
+
+# 기존 핸들러 제거 후 새로 추가
+logger.handlers.clear()
 logger.addHandler(file_handler)
 logger.addHandler(stream_handler)
 
+# propagate 설정
+logger.propagate = False
+
 # 예외 클래스 정의
-class NotFoundException(HTTPException):
+class BaseHTTPException(HTTPException):
+    """모든 HTTP 예외의 기본 클래스"""
+    def __init__(self, status_code: int, detail: str):
+        super().__init__(status_code=status_code, detail=detail)
+        self._log_error()
+
+    def _log_error(self):
+        log_data = {
+            "timestamp": datetime.now().isoformat(),
+            "error_code": self.status_code,
+            "error_type": self.__class__.__name__,
+            "error_detail": self.detail
+        }
+
+        log_message = (
+            f"\n{'='*80}\n"
+            f"HTTP Exception Details:\n"
+            f"Timestamp: {log_data['timestamp']}\n"
+            f"Error Code: {log_data['error_code']}\n"
+            f"Error Type: {log_data['error_type']}\n"
+            f"Error Detail: {log_data['error_detail']}\n"
+            f"{'='*80}"
+        )
+
+        # exc_info=False로 설정하여 traceback 출력 제거
+        if self.status_code >= 500:
+            logger.error(log_message, exc_info=False)
+        elif self.status_code >= 400:
+            logger.warning(log_message, exc_info=False)
+        else:
+            logger.info(log_message, exc_info=False)
+
+class NotFoundException(BaseHTTPException):
     def __init__(self, detail: str = "Resource not found"):
         super().__init__(status_code=404, detail=detail)
 
-class BadRequestException(HTTPException):
+class BadRequestException(BaseHTTPException):
     def __init__(self, detail: str = "Bad request"):
         super().__init__(status_code=400, detail=detail)
 
-class UnauthorizedException(HTTPException):
+class UnauthorizedException(BaseHTTPException):
     def __init__(self, detail: str = "Unauthorized"):
         super().__init__(status_code=401, detail=detail)
 
-class ForbiddenException(HTTPException):
+class ForbiddenException(BaseHTTPException):
     def __init__(self, detail: str = "Forbidden"):
         super().__init__(status_code=403, detail=detail)
 
-class ValueErrorException(HTTPException):
+class ValueErrorException(BaseHTTPException):
     def __init__(self, detail: str = "Value Error"):
         super().__init__(status_code=422, detail=detail)
 
-class InternalServerErrorException(HTTPException):
+class InternalServerErrorException(BaseHTTPException):
     def __init__(self, detail: Optional[str] = None):
+        if detail is None:
+            detail = "Internal Server Error"
         super().__init__(status_code=500, detail=detail)
 
-class DatabaseErrorException(HTTPException):
+class DatabaseErrorException(BaseHTTPException):
     def __init__(self, detail: str = "Database Error"):
         super().__init__(status_code=503, detail=detail)
 
-class IPRestrictedException(HTTPException):
+class IPRestrictedException(BaseHTTPException):
     def __init__(self, detail: str = "Unauthorized IP address"):
         super().__init__(status_code=403, detail=detail)
 
-class MethodNotAllowedException(HTTPException):
+class MethodNotAllowedException(BaseHTTPException):
     def __init__(self, detail: str = "Method Not Allowed"):
         super().__init__(status_code=405, detail=detail)
 
-# 기존 클래스에 RouteNotFoundException 추가
-class RouteNotFoundException(HTTPException):
+class RouteNotFoundException(BaseHTTPException):
     def __init__(self, detail: str = "Route not found"):
         super().__init__(status_code=404, detail=detail)
 
@@ -317,7 +359,7 @@ async def database_error_handler(request: Request, exc: SQLAlchemyError) -> JSON
         f"Error Message: {log_data['error_message']}\n"
         f"Request URL: {log_data['request']['url']}\n"
         f"Method: {log_data['request']['method']}\n"
-        f"Client IP: {log_data['request']['client_ip']}\n"
+        f"Client IP: {log_data['client_ip']}\n"
         f"Traceback:\n{log_data['traceback']}\n"
         f"{'='*80}"
     )

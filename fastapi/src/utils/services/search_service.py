@@ -132,24 +132,29 @@ async def fetch_duck_search_results(query: str) -> list:
     Returns:
         list: DuckDuckGo 검색 결과 목록. 각 항목은 title, link, snippet를 포함하는 딕셔너리
     """
-    # 검색 래퍼 설정 수정
-    wrapper = DuckDuckGoSearchAPIWrapper(
-        region="kr-kr",
-        safesearch="moderate",
-        max_results=100,  # 최대 결과 수 증가
-        time="y",  # 검색 기간을 1년으로 설정
-        backend="auto"  # 자동 백엔드 선택
-    )
+    try:
+        # 검색 래퍼 설정 수정
+        wrapper = DuckDuckGoSearchAPIWrapper(
+            region="kr-kr",
+            safesearch="moderate",
+            max_results=100,  # 최대 결과 수 증가
+            time="y",  # 검색 기간을 1년으로 설정
+            backend="auto"  # 자동 백엔드 선택
+        )
 
-    # DuckDuckGoSearchResults 도구 설정
-    search = DuckDuckGoSearchResults(
-        api_wrapper=wrapper,
-        num_results=20,  # 반환할 결과 수 증가
-        output_format="json",  # JSON 형식으로 출력 설정
-        backend="text"  # 텍스트 검색 사용
-    )
+        # DuckDuckGoSearchResults 도구 설정
+        search = DuckDuckGoSearchResults(
+            api_wrapper=wrapper,
+            num_results=20,  # 반환할 결과 수 증가
+            output_format="json",  # JSON 형식으로 출력 설정
+            backend="text"  # 텍스트 검색 사용
+        )
 
-    # 검색 실행 및 결과 병합
-    text_results = json.loads(search.invoke(query))
-    
-    return text_results
+        # 검색 실행 및 결과 병합
+        text_results = json.loads(search.invoke(query))
+        
+        return text_results
+    except Exception as e:
+        # 오류 로깅 - 실패 시 빈 결과 반환
+        print(f"DuckDuckGo 검색 중 오류 발생: {str(e)}")
+        return []

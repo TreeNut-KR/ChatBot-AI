@@ -104,12 +104,14 @@ class BllossomChatModel:
     
         BllossomChatModel 클레스 초기화 메소드
         """
-        print("\n" + "="*50)
-        print("📦 Bllossom 모델 초기화 시작...")
         self.model_id = 'MLP-KTLim/llama-3-Korean-Bllossom-8B-gguf-Q4_K_M'
         self.model_path = "fastapi/ai_model/llama-3-Korean-Bllossom-8B-Q4_K_M.gguf"
         self.file_path = './models/config-Bllossom.json'
+        self.loading_text = f"✨ {self.model_id} 로드 중..."
         self.gpu_layers: int = 70
+        
+        print("\n" + "="*len(self.loading_text))
+        print(f"📦 {__class__.__name__} 모델 초기화 시작...")
         
         # JSON 파일 읽기
         with open(self.file_path, 'r', encoding='utf-8') as file:
@@ -118,10 +120,10 @@ class BllossomChatModel:
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
         
         # 진행 상태 표시
-        print("🚀 Bllossom 모델 초기화 중...")
+        print(f"🚀 {__class__.__name__} 모델 초기화 중...")
         self.model = self._load_model()
         print("✨ 모델 로드 완료!")
-        print("="*50 + "\n")
+        print("="*len(self.loading_text) + "\n")
         
         self.response_queue = Queue()
 
@@ -140,7 +142,7 @@ class BllossomChatModel:
             RuntimeError: GPU 메모리 부족 또는 CUDA 초기화 실패 시
             OSError: 모델 파일을 찾을 수 없거나 손상된 경우
         """
-        print(f"✨ {self.model_id} 로드 중...")
+        print(f"{self.loading_text}")
         try:
             # 경고 메시지 필터링
             warnings.filterwarnings("ignore")
@@ -172,9 +174,8 @@ class BllossomChatModel:
                 )
             return model
         except Exception as e:
-            print(f"❌ 모델 로드 중 오류 발생: {e}")
-            raise
-
+            print(f"❌ 모델 로드 중 오류 발생")
+            
     def _stream_completion(self, prompt: str, **kwargs) -> None:
         """
         텍스트 생성을 위한 내부 스트리밍 메서드입니다.

@@ -3,13 +3,15 @@ MongoDBHandler 클래스는 MongoDB에 연결하고 데이터베이스, 컬렉�
 '''
 
 import os
+import asyncio
+from datetime import datetime
 from typing import List, Dict
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
-from pymongo.errors import PyMongoError
-import asyncio
+from sentence_transformers import SentenceTransformer
 
-from .error_handler import InternalServerErrorException, NotFoundException
+from pymongo.errors import PyMongoError
+from .error_handler import InternalServerErrorException
 
 class MongoDBHandler:
     """
@@ -25,6 +27,7 @@ class MongoDBHandler:
     """
     # ANSI 색상 코드
     GREEN = "\033[32m"
+    RED = "\033[31m"
     RESET = "\033[0m"
     
     def __init__(self) -> None:
@@ -84,15 +87,12 @@ class MongoDBHandler:
             # 연결 테스트 실행
             self.loop.run_until_complete(test_connection())
             self.db = self.client[mongo_db]
-            print(f"{self.GREEN}INFO{self.RESET}:     MongoDB 연결 성공: {mongo_host}:{mongo_port}")
-           
+            print(f"{self.GREEN}INFO{self.RESET}:     MongoDB 연결 성공: {mongo_host}:{mongo_port}")\
+                
         except PyMongoError as e:
-            print(f"MongoDB 연결 실패: {str(e)}")
-            raise InternalServerErrorException(
-                detail=f"MongoDB 연결 오류 - 호스트: {mongo_host}, 포트: {mongo_port}\n{str(e)}"
-            )
+            print(f"{self.RED}ERROR{self.RESET}:    MongoDB 연결 실패")
+            raise InternalServerErrorException(detail=f"MongoDB 연결 오류 - 호스트: {mongo_host}, 포트: {mongo_port}")
         except Exception as e:
-            print(f"초기화 오류: {str(e)}")
             raise InternalServerErrorException(detail=f"MongoDBHandler 초기화 오류: {str(e)}")
     
     async def get_office_log(self, user_id: str, document_id: str, router: str) -> List[Dict]:
@@ -108,7 +108,7 @@ class MongoDBHandler:
                 )
                 self.db = self.client[os.getenv("MONGO_DATABASE")]
                 collection = self.db[f'{router}_log_{user_id}']
-                
+
             document = await collection.find_one({"id": document_id})
 
             if document is None or not document.get("value", []):
@@ -133,10 +133,8 @@ class MongoDBHandler:
             return formatted_chat_list
 
         except PyMongoError as e:
-            print(f"MongoDB Error: {str(e)}")
             raise InternalServerErrorException(detail=f"Error retrieving chatlog value: {str(e)}")
         except Exception as e:
-            print(f"Unexpected Error: {str(e)}")
             raise InternalServerErrorException(detail=f"Unexpected error: {str(e)}")
     
     async def get_character_log(self, user_id: str, document_id: str, router: str) -> List[Dict]:
