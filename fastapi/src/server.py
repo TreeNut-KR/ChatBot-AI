@@ -263,7 +263,7 @@ async def office_stream(request: ChatModel.Bllossom_Request):
                 if duck_results:
                     # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
                     formatted_results = []
-                    for idx, item in enumerate(duck_results[:20], 1):  # 상위 20개 결과만 사용
+                    for idx, item in enumerate(duck_results[:10], 1):  # 상위 10개 결과만 사용
                         formatted_result = (
                             f"[검색결과 {idx}]\n"
                             f"제목: {item.get('title', '제목 없음')}\n"
@@ -372,7 +372,7 @@ async def office_sse(request: ChatModel.Bllossom_Request):
             if duck_results:
                 # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
                 formatted_results = []
-                for idx, item in enumerate(duck_results[:20], 1):  # 상위 20개 결과만 사용
+                for idx, item in enumerate(duck_results[:10], 1):  # 상위 10개 결과만 사용
                     formatted_result = (
                         f"[검색결과 {idx}]\n"
                         f"제목: {item.get('title', '제목 없음')}\n"

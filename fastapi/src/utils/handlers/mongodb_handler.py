@@ -117,8 +117,8 @@ class MongoDBHandler:
             value_list = document.get("value", [])
             sorted_value_list = sorted(value_list, key=lambda x: x.get("index", 0))
             
-            # 최신 10개만 선택
-            latest_messages = sorted_value_list[-10:] if len(sorted_value_list) > 10 else sorted_value_list
+            # 최신 8개만 선택
+            latest_messages = sorted_value_list[-8:] if len(sorted_value_list) > 8 else sorted_value_list
 
             # 대화 기록 형식 수정
             formatted_chat_list = []
@@ -197,3 +197,4 @@ class MongoDBHandler:
             raise InternalServerErrorException(detail=f"Error retrieving chatlog value: {str(e)}")
         except Exception as e:
             raise InternalServerErrorException(detail=f"Unexpected error: {str(e)}")
+        

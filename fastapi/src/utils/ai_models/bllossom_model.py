@@ -18,6 +18,7 @@ from queue import Queue
 from threading import Thread
 from contextlib import contextmanager
 from transformers import AutoTokenizer
+from datetime import datetime
 
 class CharacterPrompt:
     def __init__(self, name: str, context: str, search_text: str) -> tuple:
@@ -274,17 +275,38 @@ class BllossomChatModel:
             Generator[str, None, None]: 생성된 텍스트 조각들을 반환하는 제너레이터
         """
         try:
+            # 현재 시간 정보 추가
+            current_time = datetime.now().strftime("%Y년 %m월 %d일 %H시 %M분")
+            time_info = f"현재 시간은 {current_time}입니다.\n\n"
+            
+            # search_text가 비어있으면 시간 정보만 추가, 그렇지 않으면 시간 정보와 검색 결과 결합
+            enhanced_search_text = time_info + (search_text if search_text else "")
+            
+            # MongoDB에서 가져온 채팅 목록 처리 - 이스케이프 문자 정규화
+            normalized_chat_list = []
+            if chat_list and len(chat_list) > 0:
+                for chat in chat_list:
+                    normalized_chat = {
+                        "index": chat.get("index"),
+                        "input_data": chat.get("input_data"),
+                        # 출력 데이터의 이스케이프 문자 정규화
+                        "output_data": self._normalize_escape_chars(chat.get("output_data", ""))
+                    }
+                    normalized_chat_list.append(normalized_chat)
+            else:
+                normalized_chat_list = chat_list
+            
             character_info = CharacterPrompt(
                 name=self.data.get("character_name"),
                 context=self.data.get("character_setting"),
-                search_text=search_text,
+                search_text=enhanced_search_text,
             )
 
             # Llama3 프롬프트 형식으로 변환
             messages = build_llama3_messages(
                 character_info,
                 input_text,
-                chat_list,
+                normalized_chat_list,
                 
             )
         
@@ -308,6 +330,21 @@ class BllossomChatModel:
         except Exception as e:
             print(f"응답 생성 중 오류 발생: {e}")
             yield f"오류: {str(e)}"
+
+    def _normalize_escape_chars(self, text: str) -> str:
+        """
+        이스케이프 문자가 중복된 문자열을 정규화합니다
+        """
+        if not text:
+            return ""
+            
+        # 이스케이프된 개행문자 등을 정규화
+        result = text.replace("\\n", "\n")
+        result = result.replace("\\\\n", "\n")
+        result = result.replace('\\"', '"')
+        result = result.replace("\\\\", "\\")
+        
+        return result
             
 # if __name__ == "__main__":
 #     model = BllossomChatModel()

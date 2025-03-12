@@ -287,6 +287,21 @@ class LumimaidChatModel:
             print(f"응답 생성 중 오류 발생: {e}")
             yield f"오류: {str(e)}"
 
+    def _normalize_escape_chars(self, text: str) -> str:
+        """
+        이스케이프 문자가 중복된 문자열을 정규화합니다
+        """
+        if not text:
+            return ""
+            
+        # 이스케이프된 개행문자 등을 정규화
+        result = text.replace("\\n", "\n")
+        result = result.replace("\\\\n", "\n")
+        result = result.replace('\\"', '"')
+        result = result.replace("\\\\", "\\")
+        
+        return result
+    
 # if __name__ == "__main__":
 #     character_set = {
 #     "name": "Rachel",

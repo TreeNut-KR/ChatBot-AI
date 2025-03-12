@@ -9,6 +9,9 @@ from langchain_community.tools import DuckDuckGoSearchResults
 from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
 from urllib.parse import urlparse
 
+RED = "\033[31m"
+RESET = "\033[0m"
+
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 SEARCH_ENGINE_ID = os.getenv("SEARCH_ENGINE_ID")
 
@@ -53,7 +56,7 @@ async def fetch_google_raw_results(query: str, num_results: int = 50) -> list:
             response.raise_for_status()
             return response.json().get("items", [])
     except Exception as e:
-        print(f"검색 오류: {str(e)}")
+        print(f"{RED}ERROR{RESET}:    검색 오류: {str(e)}")
         return []
 
 async def fetch_google_filtered_results(query: str, num_results: int = 5) -> list:
@@ -137,7 +140,7 @@ async def fetch_duck_search_results(query: str) -> list:
         wrapper = DuckDuckGoSearchAPIWrapper(
             region="kr-kr",
             safesearch="moderate",
-            max_results=100,  # 최대 결과 수 증가
+            max_results=10,  # 최대 결과 수 증가
             time="y",  # 검색 기간을 1년으로 설정
             backend="auto"  # 자동 백엔드 선택
         )
@@ -145,7 +148,7 @@ async def fetch_duck_search_results(query: str) -> list:
         # DuckDuckGoSearchResults 도구 설정
         search = DuckDuckGoSearchResults(
             api_wrapper=wrapper,
-            num_results=20,  # 반환할 결과 수 증가
+            num_results=10,  # 반환할 결과 수 증가
             output_format="json",  # JSON 형식으로 출력 설정
             backend="text"  # 텍스트 검색 사용
         )
@@ -156,5 +159,5 @@ async def fetch_duck_search_results(query: str) -> list:
         return text_results
     except Exception as e:
         # 오류 로깅 - 실패 시 빈 결과 반환
-        print(f"DuckDuckGo 검색 중 오류 발생: {str(e)}")
+        print(f"{RED}ERROR{RESET}:    DuckDuckGo 검색 중 오류 발생: {str(e)}")
         return []
