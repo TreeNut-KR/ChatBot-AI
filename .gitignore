@@ -160,6 +160,7 @@ models--beomi--KoAlpaca-Polyglot-5.8B/
 ai_model/*
 fastapi/ai_model/*
 fastapi/datasets/*
+models/*.yml
 
 # README.md 파일은 제외
 !ai_model/README.md
@@ -173,4 +174,4 @@ mongo/log
 # setting
 .vscode
 *.gpg
-
+.hintrc

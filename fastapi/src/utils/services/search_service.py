@@ -9,10 +9,13 @@ from langchain_community.tools import DuckDuckGoSearchResults
 from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
 from urllib.parse import urlparse
 
+RED = "\033[31m"
+RESET = "\033[0m"
+
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 SEARCH_ENGINE_ID = os.getenv("SEARCH_ENGINE_ID")
 
-def get_domain(url: str) -> str:
+def get_domain(url: str) -> str:  
     """
     URL에서 메인 도메인 추출
     
@@ -53,7 +56,7 @@ async def fetch_google_raw_results(query: str, num_results: int = 50) -> list:
             response.raise_for_status()
             return response.json().get("items", [])
     except Exception as e:
-        print(f"검색 오류: {str(e)}")
+        print(f"{RED}ERROR{RESET}:    검색 오류: {str(e)}")
         return []
 
 async def fetch_google_filtered_results(query: str, num_results: int = 5) -> list:
@@ -132,24 +135,29 @@ async def fetch_duck_search_results(query: str) -> list:
     Returns:
         list: DuckDuckGo 검색 결과 목록. 각 항목은 title, link, snippet를 포함하는 딕셔너리
     """
-    # 검색 래퍼 설정 수정
-    wrapper = DuckDuckGoSearchAPIWrapper(
-        region="kr-kr",
-        safesearch="moderate",
-        max_results=100,  # 최대 결과 수 증가
-        time="y",  # 검색 기간을 1년으로 설정
-        backend="auto"  # 자동 백엔드 선택
-    )
+    try:
+        # 검색 래퍼 설정 수정
+        wrapper = DuckDuckGoSearchAPIWrapper(
+            region="kr-kr",
+            safesearch="moderate",
+            max_results=10,  # 최대 결과 수 증가
+            time="y",  # 검색 기간을 1년으로 설정
+            backend="auto"  # 자동 백엔드 선택
+        )
 
-    # DuckDuckGoSearchResults 도구 설정
-    search = DuckDuckGoSearchResults(
-        api_wrapper=wrapper,
-        num_results=20,  # 반환할 결과 수 증가
-        output_format="json",  # JSON 형식으로 출력 설정
-        backend="text"  # 텍스트 검색 사용
-    )
+        # DuckDuckGoSearchResults 도구 설정
+        search = DuckDuckGoSearchResults(
+            api_wrapper=wrapper,
+            num_results=10,  # 반환할 결과 수 증가
+            output_format="json",  # JSON 형식으로 출력 설정
+            backend="text"  # 텍스트 검색 사용
+        )
 
-    # 검색 실행 및 결과 병합
-    text_results = json.loads(search.invoke(query))
-    
-    return text_results
+        # 검색 실행 및 결과 병합
+        text_results = json.loads(search.invoke(query))
+        
+        return text_results
+    except Exception as e:
+        # 오류 로깅 - 실패 시 빈 결과 반환
+        print(f"{RED}ERROR{RESET}:    DuckDuckGo 검색 중 오류 발생: {str(e)}")
+        return []

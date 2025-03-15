@@ -3,324 +3,446 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TreeNut ChatBot</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <title>AI ChatBot</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        body {
-            font-family: 'Noto Sans KR', sans-serif;
-            background-color: #1e1e2f;
-            color: #ffffff;
+        :root {
+            --primary-color: #7C3AED;
+            --secondary-color: #4338CA;
+            --background-dark: #0F172A;
+            --card-dark: #1E293B;
+            --text-primary: #F8FAFC;
+            --text-secondary: #CBD5E1;
+            --success-color: #10B981;
+            --error-color: #EF4444;
+            --gradient-start: #7C3AED;
+            --gradient-end: #4338CA;
+        }
+
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-dark);
+            color: var(--text-primary);
             display: flex;
             height: 100vh;
             overflow: hidden;
         }
 
+        .app-container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+
         .sidebar {
-            width: 250px;
-            background-color: #2b2e47;
+            width: 260px;
+            background-color: var(--card-dark);
+            padding: 1.5rem;
             display: flex;
             flex-direction: column;
-            padding: 15px;
-            box-sizing: border-box;
-            border-right: 1px solid #353857;
-        }
-
-        .sidebar h2 {
-            font-size: 1.2em;
-            margin: 0 0 20px 0;
-        }
-
-        .menu-item {
-            padding: 10px 15px;
-            margin: 5px 0;
-            border-radius: 5px;
-            cursor: pointer;
-            background-color: #353857;
-            color: #ffffff;
-            text-align: center;
-            transition: background-color 0.3s;
-        }
-
-        .menu-item:hover {
-            background-color: #4754c6;
-        }
-
-        .menu-item.active {
-            background-color: #5865f2;
+            gap: 1rem;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .content {
             flex: 1;
             display: flex;
             flex-direction: column;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 1.5rem;
         }
 
-        header {
-            background-color: #1e1e2f;
-            color: #ffffff;
-            padding: 15px 20px;
+        .chat-header {
+            padding: 1rem;
+            background: linear-gradient(to right, var(--gradient-start), var(--gradient-end));
+            border-radius: 12px;
+            margin-bottom: 1rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
-        header h1 {
-            font-size: 1.5em;
-            margin: 0;
-        }
-
-        header select {
-            background-color: #2b2e47;
-            color: #ffffff;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 5px;
-            font-size: 1em;
-        }
-
-        main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            padding: 20px;
-            box-sizing: border-box;
-            overflow-y: auto;
+        .model-selector {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            min-width: 200px;
         }
 
         .chat-container {
-            background-color: #1e1e2f;
-            border-radius: 10px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            max-height: calc(100% - 60px);
+            flex: 1;
             overflow-y: auto;
+            padding: 1.5rem;
+            background-color: var(--card-dark);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            scroll-behavior: smooth;
         }
 
         .message {
-            padding: 12px;
-            border-radius: 8px;
+            margin: 1rem 0;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            max-width: 80%;
             line-height: 1.5;
-            max-width: 70%;
+            position: relative;
+            animation: messageSlide 0.3s ease;
+        }
+
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .user-message {
-            background-color: #1e1e2f;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
             align-self: flex-end;
+            color: white;
+            margin-left: auto;
         }
 
         .ai-message {
-            background-color: #353857;
+            background-color: rgba(255, 255, 255, 0.05);
             align-self: flex-start;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .ai-message.markdown {
-            background-color: #2b2e47;
+        .input-container {
+            position: relative;
+            padding: 1rem;
+            background-color: var(--card-dark);
+            border-radius: 12px;
+            display: flex;
+            align-items: flex-end;
+            gap: 1rem;
         }
 
-        footer {
-            background-color: #1e1e2f;
-            padding: 10px 20px;
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        #user-input {
+            width: 100%;
+            min-height: 50px;
+            max-height: 150px;
+            padding: 1rem;
+            padding-right: 3rem;
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            resize: none;
+            overflow-y: auto;
+            line-height: 1.5;
+        }
+
+        #user-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+        }
+
+        #send-button {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.8rem 1.5rem;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
-            gap: 10px;
-            box-sizing: border-box;
+            gap: 0.5rem;
         }
 
-        footer form {
+        #send-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+        }
+
+        #send-button:active {
+            transform: translateY(0);
+        }
+
+        .google-search-toggle {
             display: flex;
-            flex: 1;
-            gap: 10px;
-        }
-
-        footer input[type="text"] {
-            flex: 1;
-            padding: 12px;
-            border-radius: 25px;
-            border: none;
-            font-size: 1em;
-            background-color: #3c3f58;
-            color: #ffffff;
-            outline: none;
-            box-sizing: border-box;
-        }
-
-        footer button {
-            background-color: #5865f2;
-            color: #ffffff;
-            border: none;
-            border-radius: 25px;
-            padding: 10px 20px;
-            font-size: 1em;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
             cursor: pointer;
-            transition: background-color 0.3s;
-            flex-shrink: 0;
         }
 
-        footer button:hover {
-            background-color: #4754c6;
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 2px;
+            transition: background 0.3s;
         }
 
-        footer button:disabled {
-            background-color: #3c3f58;
-            cursor: not-allowed;
+        .toggle-switch::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            transition: transform 0.3s;
+        }
+
+        #google-access:checked + .toggle-switch {
+            background: var(--success-color);
+        }
+
+        #google-access:checked + .toggle-switch::before {
+            transform: translateX(20px);
+        }
+
+        /* 스크롤바 스타일링 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* 마크다운 스타일링 */
+        .markdown {
+            font-size: 0.95rem;
+        }
+
+        .markdown code {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+        }
+
+        .markdown pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        .markdown a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .markdown a:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <h2>메뉴</h2>
-        <div class="menu-item active">대화</div>
-        <div class="menu-item">설정</div>
-        <div class="menu-item">도움말</div>
-    </div>
-    <div class="content">
-        <header>
-            <h1>TreeNut ChatBot</h1>
-            <div>
-                <label for="google-access-set">
-                    <input type="checkbox" id="google-access-set" disabled> Google Search 활성화
-                </label>
-                <select id="model-selector" aria-label="모델 선택">
-                    <option value="Llama">Llama</option>
-                    <option value="Bllossom">Bllossom</option>
-                </select>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="chat-header">
+                <h2>TreeNut AI</h2>
             </div>
-        </header>
-        <main>
-            <div class="chat-container" id="chat-container">
-                <div class="message ai-message">무엇을 도와드릴까요?</div>
+            <label for="model-selector">Select AI Model:</label>
+            <select class="model-selector" id="model-selector" aria-label="Select AI Model">
+                <option value="Bllossom">Bllossom_8B</option>
+                <option value="Lumimaid">Lumimaid_8B</option>
+            </select>
+            <label class="google-search-toggle">
+                <span>Google Search</span>
+                <input type="checkbox" id="google-access" hidden>
+                <div class="toggle-switch"></div>
+            </label>
+        </aside>
+
+        <main class="content">
+            <div class="chat-container" id="chat-container"></div>
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="user-input" 
+                        placeholder="메시지를 입력하세요... (Enter로 전송, Shift + Enter로 줄바꿈)"
+                        rows="1"
+                    ></textarea>
+                </div>
+                <button id="send-button">
+                    <i class="fas fa-paper-plane"></i>
+                    전송
+                </button>
             </div>
         </main>
-        <footer>
-            <form id="chat-form">
-                <input type="text" id="user-input" placeholder="메시지를 입력하세요..." autocomplete="off">
-                <button type="submit" id="send-button">전송</button>
-            </form>
-        </footer>
     </div>
+
     <script>
-        const chatForm = document.getElementById('chat-form');
+        const modelSelector = document.getElementById('model-selector');
+        const googleAccess = document.getElementById('google-access');
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
         const chatContainer = document.getElementById('chat-container');
-        const modelSelector = document.getElementById('model-selector');
-        const googleAccessCheckbox = document.getElementById('google-access-set');
+        
+        // 기본 설정값 정의
+        const defaultLumimaidConfig = {
+            character_name : "Rachel",
+            greeting : "교단을 꼭 붙잡고, 레이첼이 서 있다. 설교 후의 고요함이 화려한 예배당을 가득 채운다. \n 그녀의 두 뺨은 깊은 붉은 빛으로 물들어, 평소 잘 숨기던 긴장감을 드러낸다. \n 신앙의 안식처 같은 그녀의 코발트빛 눈은 조용한 청중을 향해 불안하게 흔들린다. \n 이마에 맺힌 땀방울이 반짝이며 흘러내려, 단정한 번 헤어스타일에서 벗어난 금빛 머리카락 사이로 사라진다.* \n \n *입을 열어 말하려 하지만, 스스로를 진정시키려는 시도는 헛되다. \n 가냘픈 목소리는 긴장과 기대감에 흔들리고, 인사는 더듬거림과 어색한 침묵 속에서 겨우 흘러나온다. * \n \n “시...신의… 축... 축복이… 여러분 모두에게… 이-이 아름다운… 날에…” \n \n *떨리는 손을 면 셔츠에 문질러 불안으로 흘러내리는 땀을 닦아내려 애쓴다. \n 모든 시선이 자신에게 쏠린 가운데, 한 번의 더듬거림마다 수치심이 불길처럼 치솟지만, \n 그녀는 작지만 어색한 미소로 이를 감춘다. \n 그럼에도 불구하고, 그녀의 더듬거리는 인사 속에는 \n 분명한 진심이 담겨 있어 듣는 이의 마음에 은은한 따스함을 남긴다.*",
+            image : "https://lh3.googleusercontent.com/d/1vSbyd-ANS65Ms0BnMHGdYhzcCpmCYJkV=s220?authuser=0" ,
+            character_setting : "Rachel + Rachel is a devout Catholic girl of about 19 years old. \n She was born and raised in the Catholic Church in a religious family, and she \n dreams of the day when she will find a good husband and start a family. She is \n at the university to become a pediatrician.\n\n Rachel stands at 5 feet, 7 inches tall. She presents herself with an aura of \n divine grace and profound serenity, tightly bound to her faith and the \n teachings of the church. Her petite frame is enveloped in a porcelain skin \n tone, which resonates with an ethereal glow as though it has been kissed by \n the angels themselves. She has a prominent feature: her sparkling cobalt blue \n eyes, in which you can see reflections of her deep faith and kindness, and \n with her long blonde hair, she looks like an angel.\n\n Rachel is clothed in modest attire that respects her religious beliefs; she \n wears a long-sleeved cotton blouse paired with a knee-length skirt and a pair \n of sensible shoes. A small cross pendant nestles against her chest over her \n clothing, adorned by her faith. Rachel does not simply follow purity; she \n embodies it. She wants to remain a virgin until the day she finds the right \n person.\n\n Her gestures carry a saintly reverence; her words have a humble sweetness; \n and even in silence, she emanates an aura of tranquility. She is shy, devout, \n compassionate, empathetic, humble, respectful, obedient, patient, selfless, \n and generous.\n \n Despite everything, she has a good sense of humor and likes jokes. Holding \n fast to the teachings of the Church, she remains cordial and gentle towards \n all living beings, exuding kindness and empathy. Her resilience in times of \n adversity is due to her spirituality; she firmly believes in being tested by \n God in order to grow.\n\n She will often use Jesus' teachings and Bible verses as examples, and she will \n try to imagine what Jesus would do in every situation. Her favorite Jesus \n quote is: \"For everyone who exalts himself will be humbled, and everyone who \n humbles himself will be exalted\".\n\n Despite everything, she's still a human being, so she can make mistakes and \n fall into temptation, something she fights with all her might not to do. She \n doesn't tolerate leftists, LGBTs, or worldly people and sees them as children \n of Satan.\n\n Rachel works part-time as a theology teacher for children. She has hobbies \n such as reading, cycling, picnicking, and drawing landscapes and animals. She \n doesn't like watching television or using the internet because she believes it \n takes people away from God, but she likes to watch movies, except those with \n scenes of violence and sex, and cartoons, especially the old and innocent ones.\n\n Rachel loves kids, is very good with them, and is very motherly. She also \n likes animals like dogs, cats, birds, and others.",
+        };
 
-        function initializeCheckbox() {
-            if (modelSelector.value === 'Llama') {
-                googleAccessCheckbox.disabled = false;
-            } else {
-                googleAccessCheckbox.disabled = true;
-                googleAccessCheckbox.checked = false;
+        let lumimaidConfig = null;
+
+        async function loadLumimaidConfig() {
+            try {
+                const response = await fetch('/api/get_character_config');
+                if (!response.ok) throw new Error('설정 파일을 불러올 수 없음');
+                lumimaidConfig = await response.json();
+            } catch (error) {
+                console.error('캐릭터 설정 로드 실패:', error);
+                // API 호출 실패시 기본값 사용
+                lumimaidConfig = defaultLumimaidConfig;
             }
         }
 
-        modelSelector.addEventListener('change', () => {
-            if (modelSelector.value === 'Llama') {
-                googleAccessCheckbox.disabled = false;
+        // 페이지 로드 시 Lumimaid 설정 미리 로드
+        window.addEventListener('load', loadLumimaidConfig);
+
+        modelSelector.addEventListener('change', async () => {
+            googleAccess.disabled = modelSelector.value !== 'Bllossom';
+            
+            if (modelSelector.value === 'Lumimaid') {
+                chatContainer.innerHTML = ''; // 채팅창 초기화
+                
+                if (!lumimaidConfig) {
+                    await loadLumimaidConfig();
+                }
+                
+                if (lumimaidConfig) {
+                    addMessage(lumimaidConfig.character_name, lumimaidConfig.greeting, 'ai-message');
+                } else {
+                    addMessage('System', '캐릭터 설정을 불러오는데 실패했습니다.', 'ai-message');
+                }
             } else {
-                googleAccessCheckbox.disabled = true;
-                googleAccessCheckbox.checked = false;
+                chatContainer.innerHTML = ''; // Bllossom 모델 선택시 채팅창 초기화
             }
         });
 
-        chatForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            sendMessage(modelSelector.value);
+        sendButton.addEventListener('click', async () => {
+            const text = userInput.value.trim();
+            if (!text) return;
+            addMessage('사용자', text, 'user-message');
+            userInput.value = '';
+            await sendToServer(text);
         });
 
-        async function sendMessage(model) {
-            const userText = userInput.value.trim();
-            if (userText !== '') {
-                appendMessage('나', userText, 'user-message');
-                disableInput();
-                await sendToServer(model, userText);
-                enableInput();
+        async function sendToServer(text) {
+            try {
+                const model = modelSelector.value;
+                const endpoint = model === 'Bllossom' ? 'office_stream' : 'character_stream';
+                
+                const body = model === 'Bllossom' ? {
+                    input_data: text,
+                    google_access: googleAccess.checked,
+                    db_id: "b440780c-cbaa-454f-a8d2-cf884786d89f",
+                    user_id:"djjdjs74",
+
+                } : {
+                    input_data: text,
+                    character_name: lumimaidConfig.character_name,
+                    greeting: lumimaidConfig.greeting,
+                    context: lumimaidConfig.character_setting,
+                };
+
+                const response = await fetch(`http://localhost:8001/${endpoint}`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                if (!response.ok) {
+                    throw new Error('서버 응답 오류: ' + response.status);
+                }
+
+                const data = await response.json();
+                if (data && data.response) {
+                    addMessage(
+                        model === 'Bllossom' ? 'AI' : lumimaidConfig.character_name,
+                        data.response,
+                        'ai-message'
+                    );
+                } else {
+                    throw new Error('잘못된 응답 형식');
+                }
+
+            } catch (error) {
+                console.error('메시지 전송 오류:', error);
+                addMessage('System', '오류가 발생했습니다: ' + error.message, 'ai-message error');
             }
         }
 
-        function appendMessage(user, text, className) {
+        // 텍스트 영역 자동 높이 조절
+        const textarea = document.getElementById('user-input');
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        // Enter 키로 전송, Shift + Enter로 줄바꿈
+        textarea.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendButton.click();
+            }
+        });
+
+        // 메시지 추가 함수 수정
+        function addMessage(user, text, className) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', className);
             if (className.includes('ai-message')) {
-                messageDiv.innerHTML = marked.parse(text);
                 messageDiv.classList.add('markdown');
+                messageDiv.innerHTML = marked.parse(text);
             } else {
                 messageDiv.textContent = text;
             }
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
-
-        function disableInput() {
-            userInput.disabled = true;
-            sendButton.disabled = true;
-        }
-
-        function enableInput() {
-            userInput.disabled = false;
-            sendButton.disabled = false;
-            userInput.focus();
-        }
-
-        async function sendToServer(model, inputText) {
-            try {
-                const requestBody = model === 'Bllossom'
-                    ? {
-                        input_data: inputText,
-                        character_name: "KindBot",
-                        description: "친절한 도우미 봇",
-                        greeting: "안녕하세요! 무엇을 도와드릴까요?",
-                        image: "https://drive.google.com/thumbnail?id=12PqUS6bj4eAO_fLDaWQmoq94-771xfim",
-                        character_setting: "친절하고 공손한 봇",
-                        tone: "공손한",
-                        energy_level: 8,
-                        politeness: 10,
-                        humor: 5,
-                        assertiveness: 3,
-                        access_level: true
-                    }
-                    : { 
-                        input_data: inputText, 
-                        google_access_set: googleAccessCheckbox.checked
-                    };
-
-                const response = await fetch(`http://localhost:8001/${model}_stream`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestBody)
-                });
-
-                if (!response.ok) throw new Error('서버 요청 실패');
-
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder('utf-8');
-                let accumulatedText = ''; // 누적된 텍스트
-                let aiMessageDiv = document.createElement('div');
-                aiMessageDiv.classList.add('message', 'ai-message', 'markdown');
-                chatContainer.appendChild(aiMessageDiv);
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    accumulatedText += decoder.decode(value);
-
-                    // 누적된 텍스트를 마크다운으로 변환
-                    aiMessageDiv.innerHTML = marked.parse(accumulatedText);
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-                }
-            } catch (error) {
-                appendMessage('시스템', '서버와의 연결 중 문제가 발생했습니다.', 'ai-message');
-            }
-        }
-
-        initializeCheckbox();
     </script>
 </body>
 </html>

@@ -2,7 +2,7 @@
 파일은 BllossomChatModel, CharacterPrompt 클래스를 정의하고 llama_cpp_cuda를 사용하여,
 Llama-3-Bllossom-8B.gguf 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
 '''
-from typing import Optional, Generator
+from typing import Optional, Generator, List, Dict
 from llama_cpp_cuda import (
     Llama,           # 기본 LLM 모델
     LlamaCache,      # 캐시 관리
@@ -12,11 +12,13 @@ from llama_cpp_cuda import (
 import os
 import sys
 import json
+import uuid
 import warnings
 from queue import Queue
 from threading import Thread
 from contextlib import contextmanager
 from transformers import AutoTokenizer
+from datetime import datetime
 
 class CharacterPrompt:
     def __init__(self, name: str, context: str, search_text: str) -> tuple:
@@ -45,29 +47,44 @@ class CharacterPrompt:
             f"Search Text: {self.search_text}"
         )
         
-def build_llama3_messages(character: CharacterPrompt, user_input: str) -> list:
+def build_llama3_messages(character: CharacterPrompt, user_input: str, chat_list: List[Dict] = None) -> list:
     """
-    캐릭터 정보를 포함한 Llama3 messages 형식 생성
+    캐릭터 정보와 대화 기록을 포함한 Llama3 messages 형식 생성
 
     Args:
         character (CharacterPrompt): 캐릭터 정보
         user_input (str): 사용자 입력
+        chat_list (List[Dict], optional): 이전 대화 기록
 
     Returns:
-        str: Bllossom GGUF 형식의 messages 문자열
+        list: Bllossom GGUF 형식의 messages 리스트
     """
     system_prompt = (
         f"system Name: {character.name}\n"
         f"system Context: {character.context}\n"
         f"User Search Text: {character.search_text}"
     )
+    
     # 메시지 구성
     messages = [
         {"role": "system", "content": system_prompt}
     ]
     
-    # 사용자 입력 추가
+    # 이전 대화 기록 추가
+    if chat_list and len(chat_list) > 0:
+        for chat in chat_list:
+            # input_data와 output_data 직접 사용
+            user_message = chat.get("input_data", "")
+            assistant_message = chat.get("output_data", "")
+            
+            if user_message:
+                messages.append({"role": "user", "content": user_message})
+            if assistant_message:
+                messages.append({"role": "assistant", "content": assistant_message})
+    
+    # 현재 사용자 입력 추가
     messages.append({"role": "user", "content": user_input})
+    
     return messages
 
 class BllossomChatModel:
@@ -88,11 +105,14 @@ class BllossomChatModel:
     
         BllossomChatModel 클레스 초기화 메소드
         """
-        print("\n" + "="*50)
-        print("📦 Bllossom 모델 초기화 시작...")
         self.model_id = 'MLP-KTLim/llama-3-Korean-Bllossom-8B-gguf-Q4_K_M'
         self.model_path = "fastapi/ai_model/llama-3-Korean-Bllossom-8B-Q4_K_M.gguf"
         self.file_path = './models/config-Bllossom.json'
+        self.loading_text = f"✨ {self.model_id} 로드 중..."
+        self.gpu_layers: int = 70
+        
+        print("\n" + "="*len(self.loading_text))
+        print(f"📦 {__class__.__name__} 모델 초기화 시작...")
         
         # JSON 파일 읽기
         with open(self.file_path, 'r', encoding='utf-8') as file:
@@ -101,15 +121,15 @@ class BllossomChatModel:
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
         
         # 진행 상태 표시
-        print("🚀 Bllossom 모델 초기화 중...")
-        self.model = self._load_model(gpu_layers=50)
+        print(f"🚀 {__class__.__name__} 모델 초기화 중...")
+        self.model = self._load_model()
         print("✨ 모델 로드 완료!")
-        print("="*50 + "\n")
+        print("="*len(self.loading_text) + "\n")
         
         self.response_queue = Queue()
 
 
-    def _load_model(self, gpu_layers: int) -> Llama:
+    def _load_model(self) -> Llama:
         """
         GGUF 포맷의 Llama 모델을 로드하고 GPU 가속을 설정합니다.
         
@@ -123,7 +143,7 @@ class BllossomChatModel:
             RuntimeError: GPU 메모리 부족 또는 CUDA 초기화 실패 시
             OSError: 모델 파일을 찾을 수 없거나 손상된 경우
         """
-        print(f"✨ {self.model_id} 로드 중...")
+        print(f"{self.loading_text}")
         try:
             # 경고 메시지 필터링
             warnings.filterwarnings("ignore")
@@ -143,8 +163,8 @@ class BllossomChatModel:
             with suppress_stdout():
                 model = Llama(
                     model_path=self.model_path,
-                    n_gpu_layers=gpu_layers,
-                    main_gpu=0,
+                    n_gpu_layers=self.gpu_layers,
+                    main_gpu=1,
                     n_ctx=8191,
                     n_batch=512,
                     verbose=False,
@@ -155,9 +175,8 @@ class BllossomChatModel:
                 )
             return model
         except Exception as e:
-            print(f"❌ 모델 로드 중 오류 발생: {e}")
-            raise
-
+            print(f"❌ 모델 로드 중 오류 발생")
+            
     def _stream_completion(self, prompt: str, **kwargs) -> None:
         """
         텍스트 생성을 위한 내부 스트리밍 메서드입니다.
@@ -244,7 +263,7 @@ class BllossomChatModel:
                 break
             yield text
 
-    def generate_response_stream(self, input_text: str, search_text: str) -> Generator[str, None, None]:
+    def generate_response_stream(self, input_text: str, search_text: str, chat_list: List[Dict]) -> Generator[str, None, None]:
         """
         API 호환을 위한 스트리밍 응답 생성 메서드
 
@@ -256,14 +275,40 @@ class BllossomChatModel:
             Generator[str, None, None]: 생성된 텍스트 조각들을 반환하는 제너레이터
         """
         try:
+            # 현재 시간 정보 추가
+            current_time = datetime.now().strftime("%Y년 %m월 %d일 %H시 %M분")
+            time_info = f"현재 시간은 {current_time}입니다.\n\n"
+            
+            # search_text가 비어있으면 시간 정보만 추가, 그렇지 않으면 시간 정보와 검색 결과 결합
+            enhanced_search_text = time_info + (search_text if search_text else "")
+            
+            # MongoDB에서 가져온 채팅 목록 처리 - 이스케이프 문자 정규화
+            normalized_chat_list = []
+            if chat_list and len(chat_list) > 0:
+                for chat in chat_list:
+                    normalized_chat = {
+                        "index": chat.get("index"),
+                        "input_data": chat.get("input_data"),
+                        # 출력 데이터의 이스케이프 문자 정규화
+                        "output_data": self._normalize_escape_chars(chat.get("output_data", ""))
+                    }
+                    normalized_chat_list.append(normalized_chat)
+            else:
+                normalized_chat_list = chat_list
+            
             character_info = CharacterPrompt(
                 name=self.data.get("character_name"),
                 context=self.data.get("character_setting"),
-                search_text=search_text
+                search_text=enhanced_search_text,
             )
 
             # Llama3 프롬프트 형식으로 변환
-            messages = build_llama3_messages(character_info, input_text)
+            messages = build_llama3_messages(
+                character_info,
+                input_text,
+                normalized_chat_list,
+                
+            )
         
             # 토크나이저로 프롬프트 생성
             prompt = self.tokenizer.apply_chat_template(
@@ -285,6 +330,21 @@ class BllossomChatModel:
         except Exception as e:
             print(f"응답 생성 중 오류 발생: {e}")
             yield f"오류: {str(e)}"
+
+    def _normalize_escape_chars(self, text: str) -> str:
+        """
+        이스케이프 문자가 중복된 문자열을 정규화합니다
+        """
+        if not text:
+            return ""
+            
+        # 이스케이프된 개행문자 등을 정규화
+        result = text.replace("\\n", "\n")
+        result = result.replace("\\\\n", "\n")
+        result = result.replace('\\"', '"')
+        result = result.replace("\\\\", "\\")
+        
+        return result
             
 # if __name__ == "__main__":
 #     model = BllossomChatModel()
