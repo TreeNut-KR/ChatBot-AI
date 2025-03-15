@@ -2,16 +2,15 @@
 파일은 LumimaidChatModel, CharacterPrompt 클래스를 정의하고 llama_cpp_cuda를 사용하여,
 Llama-3-Lumimaid-8B.gguf 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
 '''
-from typing import Optional, Generator
+from typing import Optional, Generator, List, Dict
 from llama_cpp_cuda import (
     Llama,           # 기본 LLM 모델
     LlamaCache,      # 캐시 관리
     LlamaGrammar,    # 문법 제어
     LogitsProcessor  # 로짓 처리
 )
-
-from threading import Thread
 from queue import Queue
+from threading import Thread
 
 class CharacterPrompt:
     def __init__(self, name: str, greeting: str, context: str):
@@ -20,7 +19,6 @@ class CharacterPrompt:
 
         Args:
             name (str): 캐릭터 이름
-            greetin (str): 캐릭터 인사말
             context (str): 캐릭터 설정
         """
         self.name = name
@@ -36,34 +34,52 @@ class CharacterPrompt:
         """
         return (
             f"Name: {self.name}\n"
-            f"Greeting: {self.greeting}\n"
+            f"greeting: {self.greeting}\n"
             f"Context: {self.context}"
         )
         
-def build_llama3_prompt(character: CharacterPrompt, user_input: str) -> str:
+def build_llama3_prompt(character: CharacterPrompt, user_input: str, chat_history: List[Dict] = None) -> str:
     """
-    캐릭터 정보를 포함한 Llama3 프롬프트 형식 생성
+    캐릭터 정보와 대화 기록을 포함한 Llama3 프롬프트 형식 생성
 
     Args:
         character (CharacterPrompt): 캐릭터 정보
         user_input (str): 사용자 입력
+        chat_history (List[Dict], optional): 이전 대화 기록
 
     Returns:
         str: Lumimaid GGUF 형식의 프롬프트 문자열
     """
     system_prompt = (
-        f"Character Name: {character.name}\n"
-        f"Character Context: {character.context}\n"
-        f"Initial Greeting: {character.greeting}"
+        f"System Name: {character.name}\n"
+        f"Initial Greeting: {character.greeting}\n"
+        f"System Context: {character.context}\n"
+        "Additional Instructions: Respond with detailed emotional expressions and actions. " +
+        "Include character's thoughts, feelings, and physical reactions. " +
+        "Maintain long, descriptive responses that show the character's personality. " +
+        "Use asterisks (*) to describe actions and emotions in detail."
     )
     
-    return (
+    # 기본 프롬프트 시작
+    prompt = (
         "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n"
         f"{system_prompt}<|eot_id|>"
+    )
+
+    # 이전 대화 기록 추가
+    if chat_history and len(chat_history) > 0:
+        for chat in chat_history:
+            if "dialogue" in chat:
+                prompt += chat["dialogue"]
+    
+    # 현재 사용자 입력 추가
+    prompt += (
         "<|start_header_id|>user<|end_header_id|>\n"
         f"{user_input}<|eot_id|>"
         "<|start_header_id|>assistant<|end_header_id|>\n"
     )
+    
+    return prompt
 
 class LumimaidChatModel:
     """
@@ -83,17 +99,18 @@ class LumimaidChatModel:
     
         LumimaidChatModel 클레스 초기화 메소드
         """
-        print("\n" + "="*50)
-        print("📦 Lumimaid 모델 초기화 시작...")
-        self.model_path: str = "fastapi/ai_model/v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat.gguf"
-        self.verbose: bool = False
-        self.gpu_layers: int = 50
+        self.model_id = "v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat"
+        self.model_path = "fastapi/ai_model/v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat.gguf"
+        self.loading_text = f"✨ {self.model_id} 로드 중..."
+        self.gpu_layers = 70
         
+        print("\n" + "="*len(self.loading_text))
+        print(f"📦 {__class__.__name__} 모델 초기화 시작...")
         # 진행 상태 표시
-        print("🚀 Lumimaid 모델 초기화 중...")
+        print(f"🚀 {__class__.__name__} 모델 초기화 중...")
         self.model: Llama = self._load_model()
         print("✨ 모델 로드 완료!")
-        print("="*50 + "\n")
+        print("="*len(self.loading_text) + "\n")
         
         self.response_queue: Queue = Queue()
 
@@ -104,19 +121,19 @@ class LumimaidChatModel:
         Returns:
             Llama: 로드된 Llama 모델 객체
         """
-        print("모델 로드 중...")
+        print(f"{self.loading_text}")
         try:
             model = Llama(
                 model_path=self.model_path,
                 n_gpu_layers=self.gpu_layers,
-                main_gpu=1,                # RTX 3060 사용
-                n_ctx=2048,
+                main_gpu=0,
+                n_ctx=8191,
                 n_batch=512,
-                verbose=self.verbose,
+                verbose=False,
                 offload_kqv=True,          # KQV 캐시를 GPU에 오프로드
                 use_mmap=False,            # 메모리 매핑 비활성화
                 use_mlock=True,            # 메모리 잠금 활성화
-                n_threads=8                # 스레드 수 제한
+                n_threads=8,               # 스레드 수 제한
             )
             return model
         except Exception as e:
@@ -126,8 +143,8 @@ class LumimaidChatModel:
     def _stream_completion(self,
                            prompt: str,
                            max_tokens: int = 256,
-                           temperature: float = 0.7,
-                           top_p: float = 0.80,
+                           temperature: float = 0.8,
+                           top_p: float = 0.95,
                            stop: Optional[list] = None) -> None:
         """
         별도 스레드에서 실행되어 응답을 큐에 넣는 메서드
@@ -135,7 +152,7 @@ class LumimaidChatModel:
         Args:
             prompt (str): 입력 프롬프트 (Llama3 형식)
             max_tokens (int, optional): 생성할 최대 토큰 수 (기본값 256)
-            temperature (float, optional): 생성 온도 (기본값 0.7)
+            temperature (float, optional): 생성 온도 (기본값 0.8)
             top_p (float, optional): top_p 샘플링 값 (기본값 0.95)
             stop (Optional[list], optional): 중지 토큰 리스트 (기본값 None)
         """
@@ -165,8 +182,8 @@ class LumimaidChatModel:
     def create_streaming_completion(self,
                                     prompt: str,
                                     max_tokens: int = 256,
-                                    temperature: float = 0.7,
-                                    top_p: float = 0.80,
+                                    temperature: float = 0.8,
+                                    top_p: float = 0.95,
                                     stop: Optional[list] = None) -> Generator[str, None, None]:
         """
         스트리밍 방식으로 텍스트 응답 생성
@@ -174,7 +191,7 @@ class LumimaidChatModel:
         Args:
             prompt (str): 입력 프롬프트 (Llama3 형식)
             max_tokens (int, optional): 생성할 최대 토큰 수 (기본값 256)
-            temperature (float, optional): 생성 온도 (기본값 0.7)
+            temperature (float, optional): 생성 온도 (기본값 0.8)
             top_p (float, optional): top_p 샘플링 값 (기본값 0.95)
             stop (Optional[list], optional): 중지 토큰 리스트 (기본값 None)
 
@@ -198,8 +215,8 @@ class LumimaidChatModel:
     def create_completion(self,
                           prompt: str,
                           max_tokens: int = 256,
-                          temperature: float = 0.7,
-                          top_p: float = 0.80,
+                          temperature: float = 0.8,
+                          top_p: float = 0.95,
                           stop: Optional[list] = None) -> str:
         """
         주어진 프롬프트로부터 텍스트 응답 생성
@@ -207,7 +224,7 @@ class LumimaidChatModel:
         Args:
             prompt (str): 입력 프롬프트 (Llama3 형식)
             max_tokens (int, optional): 생성할 최대 토큰 수 (기본값 256)
-            temperature (float, optional): 생성 온도 (기본값 0.7)
+            temperature (float, optional): 생성 온도 (기본값 0.8)
             top_p (float, optional): top_p 샘플링 값 (기본값 0.95)
             stop (Optional[list], optional): 중지 토큰 리스트 (기본값 None)
 
@@ -227,7 +244,7 @@ class LumimaidChatModel:
             print(f"응답 생성 중 오류 발생: {e}")
             return ""
 
-    def generate_response_stream(self, input_text: str, character_settings: dict = None) -> Generator[str, None, None]:
+    def generate_response_stream(self, input_text: str, character_settings: dict) -> Generator[str, None, None]:
         """
         API 호환을 위한 스트리밍 응답 생성 메서드
 
@@ -242,22 +259,17 @@ class LumimaidChatModel:
             # 캐릭터 정보 설정
             if character_settings:
                 character_info = CharacterPrompt(
-                    name=character_settings.get(
-                        "character_name",
-                        "Treenut Company's AI Agent"
-                    ),  # 기본 캐릭터 이름
-                    greeting=character_settings.get(
-                        "greeting",
-                        "Hello! How can I assist you today?"
-                    ),  # 기본 인사말
-                    context=character_settings.get(
-                        "character_setting",
-                        "Treenut Company's AI Agent"
-                    )   # 기본 캐릭터 설정
+                    name=character_settings.get("character_name"),
+                    greeting=character_settings.get("greeting"),
+                    context=character_settings.get("character_setting"),
                 )
 
                 # Llama3 프롬프트 형식으로 변환
-                prompt = build_llama3_prompt(character_info, input_text)
+                prompt = build_llama3_prompt(
+                    character_info,
+                    input_text,
+                    character_settings.get("chat_list"),
+                )
             else:
                 prompt = input_text
             
@@ -265,9 +277,9 @@ class LumimaidChatModel:
             for text_chunk in self.create_streaming_completion(
                 prompt=prompt,
                 max_tokens=8191,
-                temperature=0.7,
+                temperature=0.8,
                 top_p=0.95,
-                stop=["<|eot_id|>"]
+                stop=["<|eot_id|>"],
             ):
                 yield text_chunk
 
@@ -275,6 +287,21 @@ class LumimaidChatModel:
             print(f"응답 생성 중 오류 발생: {e}")
             yield f"오류: {str(e)}"
 
+    def _normalize_escape_chars(self, text: str) -> str:
+        """
+        이스케이프 문자가 중복된 문자열을 정규화합니다
+        """
+        if not text:
+            return ""
+            
+        # 이스케이프된 개행문자 등을 정규화
+        result = text.replace("\\n", "\n")
+        result = result.replace("\\\\n", "\n")
+        result = result.replace('\\"', '"')
+        result = result.replace("\\\\", "\\")
+        
+        return result
+    
 # if __name__ == "__main__":
 #     character_set = {
 #     "name": "Rachel",
@@ -312,7 +339,7 @@ class LumimaidChatModel:
 #     for response_chunk in model_handler.create_streaming_completion(
 #         prompt=llama3_prompt,
 #         max_tokens=2048,
-#         temperature=0.7,
+#         temperature=0.8,
 #         top_p=0.95,
 #         stop=["<|eot_id|>"]
 #     ):
