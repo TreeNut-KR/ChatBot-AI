@@ -8,6 +8,7 @@ numpy>=1.22.4,<2.0.0  # langchain 호환성을 위해 버전 제한
 # FastAPI 관련
 fastapi==0.112.0
 uvicorn==0.30.5
+hypercorn # uvicorn 대신 hypercorn 사용
 databases
 aiomysql
 motor
