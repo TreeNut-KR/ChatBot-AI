@@ -18,6 +18,7 @@ from asyncio import TimeoutError
 from pydantic import ValidationError
 from contextlib import asynccontextmanager
 
+from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import (APIRouter,  Query, FastAPI, HTTPException, Request)
@@ -31,6 +32,7 @@ load_dotenv()
 
 GREEN = "\033[32m"
 RED = "\033[31m"
+YELLOW = "\033[33m"
 RESET = "\033[0m"
 
 Bllossom_model = None                       # Bllossom 모델 전역 변수
@@ -120,13 +122,25 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             return await ChatError.generic_exception_handler(request, e)
 
-app.add_middleware(ExceptionMiddleware)
 
+app.mount(
+    "/.well-known/acme-challenge",
+    StaticFiles(
+        directory=os.path.join(
+            os.getcwd(),
+            os.getcwd(),
+            ".well-known",
+            "acme-challenge",
+            ),
+        ),
+    name="acme-challenge",
+    )
+
+app.add_middleware(ExceptionMiddleware)
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SESSION_KEY", "default-secret")
 )
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -174,8 +188,8 @@ def is_internal_ip(ip):
     """
     try:
         ip_obj = ipaddress.ip_address(ip)
-        # IP가 내부 네트워크 범위(192.168.219.0/24)에 있는지 확인합니다
-        return ip_obj in ipaddress.ip_network("192.168.219.0/24")
+        # IP가 내부 네트워크 범위(192.168.3.0/24)에 있는지 확인합니다
+        return ip_obj in ipaddress.ip_network("192.168.3.0/24")
     except ValueError:
         return False
 
@@ -204,10 +218,10 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
 
     try:
         # IP 및 내부 네트워크 범위에 따라 액세스 제한
-        # if (request.url.path in ["/office_stream", "/character_stream", "/docs", "/redoc", "/openapi.json"]
-        #        and client_ip not in allowed_ips
-        #        and not is_internal_ip(client_ip)):
-        #    raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
+        if (request.url.path in ["/office_stream", "/character_stream", "/docs", "/redoc", "/openapi.json"]
+               and client_ip not in allowed_ips
+               and not is_internal_ip(client_ip)):
+           raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
 
         # 사용자 에이전트 기반 봇 차단
         if any(bot in user_agent for bot in bot_user_agents):
@@ -265,7 +279,7 @@ async def office_stream(request: ChatModel.Bllossom_Request):
                     router = "office",
                 )
             except Exception as e:
-                print(f"{RED}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+                print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
         
         # DuckDuckGo 검색 결과 가져오기
         if request.google_access:  # 검색 옵션이 활성화된 경우
@@ -290,7 +304,7 @@ async def office_stream(request: ChatModel.Bllossom_Request):
                         "\n".join(formatted_results)
                     )
             except Exception:
-                print(f"{RED}ERROR{RESET}:    검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
+                print(f"{YELLOW}WARNING{RESET}:    검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
                 search_context = ""
                 
         # 일반 for 루프로 변경하여 응답 누적
@@ -337,7 +351,7 @@ async def character_stream(request: ChatModel.Lumimaid_Request):
                     router = "office",
                 )
             except Exception as e:
-                print(f"{RED}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+                print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
         
         # 캐릭터 설정 구성
         character_settings = {
@@ -489,7 +503,7 @@ async def character_sse(request: ChatModel.Lumimaid_Request):
 '''
 
 if __name__ == "__main__":
-    # uvicorn.run(app, host="0.0.0.0", port=8001)
+    # uvicorn.run(app, host="0.0.0.0", port=80)
     
     logging.basicConfig(level=logging.INFO, format=f"{GREEN}INFO{RESET}:     %(asctime)s - %(levelname)s - %(message)s")
     logger = logging.getLogger("hypercorn")
@@ -517,7 +531,7 @@ if __name__ == "__main__":
         raise FileNotFoundError("SSL 인증서 파일을 찾을 수 없습니다. 경로를 확인하세요.")
     
     config = Config()
-    config.bind = ["0.0.0.0:8001"]
+    config.bind = ["0.0.0.0:443"]
     config.certfile = ssl_certfile
     config.keyfile = ssl_keyfile
     config.alpn_protocols = ["h2", "http/1.1"]  # HTTP/2 활성화
