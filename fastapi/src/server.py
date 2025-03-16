@@ -5,8 +5,13 @@
 import os
 import yaml
 import torch
+
 import uvicorn
-import json
+import asyncio
+import logging
+import hypercorn.asyncio
+from hypercorn.config import Config
+
 import ipaddress
 from dotenv import load_dotenv
 from asyncio import TimeoutError
@@ -31,13 +36,13 @@ RESET = "\033[0m"
 Bllossom_model = None                       # Bllossom 모델 전역 변수
 Lumimaid_model = None                       # Lumimaid 모델 전역 변수
 
+languageprocessor = LanguageProcessor() # LanguageProcessor 초기화
+
 try:
-    languageprocessor = LanguageProcessor() # LanguageProcessor 초기화
-    mongo_handler = MongoDBHandler()        # MongoDB 핸들러 초기화
+    mongo_handler = MongoDBHandler()    # MongoDB 핸들러 초기화
 except ChatError.InternalServerErrorException as e:
-    component = "LanguageProcessor" if "languageprocessor" not in locals() else "MongoDBHandler"
-    print(f"{RED}ERROR{RESET}:    {component} 초기화 중 {e.__class__.__name__} 오류 발생: {str(e)}")
-    exit(1)
+    mongo_handler = None
+    print(f"{RED}ERROR{RESET}:    MongoDB 초기화 오류 발생: {str(e)}")
     
 def load_bot_list(file_path: str) -> list:
     """
@@ -142,7 +147,7 @@ def custom_openapi():
 
     openapi_schema = get_openapi(
         title="ChatBot-AI FastAPI",
-        version="v1.3.0",
+        version="v1.4.1",
         summary="AI 모델 관리 API",
         routes=app.routes,
         description=(
@@ -248,12 +253,19 @@ async def office_stream(request: ChatModel.Bllossom_Request):
         JSONResponse: JSON 방식으로 모델 응답
     """
     try:
-        chat_list = await mongo_handler.get_office_log(
-            user_id = request.user_id,
-            document_id = request.db_id,
-            router = "office",
-        )
-        search_context = ""  # search_context를 초기화
+        chat_list = []
+        search_context = ""
+        
+        # MongoDB에서 채팅 기록 가져오기
+        if mongo_handler:
+            try:
+                chat_list = await mongo_handler.get_office_log(
+                    user_id = request.user_id,
+                    document_id = request.db_id,
+                    router = "office",
+                )
+            except Exception as e:
+                print(f"{RED}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
         
         # DuckDuckGo 검색 결과 가져오기
         if request.google_access:  # 검색 옵션이 활성화된 경우
@@ -314,11 +326,19 @@ async def character_stream(request: ChatModel.Lumimaid_Request):
         JSONResponse: JSON 방식으로 모델 응답
     """
     try:
-        chat_list = await mongo_handler.get_character_log(
-            user_id = request.user_id,
-            document_id = request.db_id,
-            router = "chatbot",
-        )
+        chat_list = []
+        
+        # MongoDB에서 채팅 기록 가져오기
+        if mongo_handler:
+            try:
+                chat_list = await mongo_handler.get_office_log(
+                    user_id = request.user_id,
+                    document_id = request.db_id,
+                    router = "office",
+                )
+            except Exception as e:
+                print(f"{RED}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+        
         # 캐릭터 설정 구성
         character_settings = {
             "character_name": request.character_name,
@@ -346,6 +366,7 @@ async def character_stream(request: ChatModel.Lumimaid_Request):
         print(f"처리되지 않은 예외: {e}")
         raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
 
+'''
 @app.post("/office_sse", summary="스트리밍 방식으로 검색 결과를 활용하여 Bllossom 모델델 답변 생성")
 async def office_sse(request: ChatModel.Bllossom_Request):
     """
@@ -465,7 +486,45 @@ async def character_sse(request: ChatModel.Lumimaid_Request):
     except Exception as e:
         print(f"처리되지 않은 예외: {e}")
         raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
-
+'''
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    # uvicorn.run(app, host="0.0.0.0", port=8001)
+    
+    logging.basicConfig(level=logging.INFO, format=f"{GREEN}INFO{RESET}:     %(asctime)s - %(levelname)s - %(message)s")
+    logger = logging.getLogger("hypercorn")
+
+    key_pem = os.getenv("KEY_PEM")
+    crt_pem = os.getenv("CRT_PEM")
+    
+    certificates_dir = os.path.abspath(
+        os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "certificates",
+        )
+    )
+    ssl_keyfile = os.path.join(
+        certificates_dir,
+        key_pem,
+    )
+    ssl_certfile = os.path.join(
+        certificates_dir,
+        crt_pem,
+    )
+    
+    if not os.path.isfile(ssl_keyfile) or not os.path.isfile(ssl_certfile):
+        raise FileNotFoundError("SSL 인증서 파일을 찾을 수 없습니다. 경로를 확인하세요.")
+    
+    config = Config()
+    config.bind = ["0.0.0.0:8001"]
+    config.certfile = ssl_certfile
+    config.keyfile = ssl_keyfile
+    config.alpn_protocols = ["h2", "http/1.1"]  # HTTP/2 활성화
+    config.accesslog = "-"  # 요청 로그 활성화
+
+    async def serve():
+        logger.info("Starting Hypercorn server...")
+        await hypercorn.asyncio.serve(app, config)
+        
+    asyncio.run(serve())
