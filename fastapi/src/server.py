@@ -26,7 +26,7 @@ from starlette.responses import StreamingResponse, JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from utils  import ChatError, ChatModel, ChatSearch, LanguageProcessor, MongoDBHandler, Llama, Lumimaid, Bllossom
+from utils  import ChatError, ChatModel, ChatSearch, LanguageProcessor, MongoDBHandler, Llama, Lumimaid, Bllossom, Openai
 
 load_dotenv()
 
@@ -37,6 +37,7 @@ RESET = "\033[0m"
 
 Bllossom_model = None                       # Bllossom 모델 전역 변수
 Lumimaid_model = None                       # Lumimaid 모델 전역 변수
+Openai_model = None                         # Openai 모델 전역 변수
 
 languageprocessor = LanguageProcessor() # LanguageProcessor 초기화
 
@@ -71,7 +72,7 @@ async def lifespan(app: FastAPI):
     Yields:
         None: 애플리케이션 컨텍스트를 생성하고 종료할 때까지 대기
     """
-    global Bllossom_model, Lumimaid_model, GREEN, RESET
+    global Bllossom_model, Lumimaid_model, Openai_model, GREEN, RESET
 
     # CUDA 디바이스 정보 가져오기 함수
     def get_cuda_device_info(device_id: int) -> str:
@@ -80,9 +81,10 @@ async def lifespan(app: FastAPI):
         total_memory = device_properties.total_memory / (1024 ** 3)  # GB 단위로 변환
         return f"Device {device_id}: {device_name} (Total Memory: {total_memory:.2f} GB)"
     try:
-        # Bllossom 및 Lumimaid 모델 로드
+        # AI 모델 로드
         Bllossom_model = Bllossom()  # cuda:1
         Lumimaid_model = Lumimaid()  # cuda:0
+        Openai_model = Openai()      # API 호출
     except ChatError.InternalServerErrorException as e:
         component = "LanguageProcessor" if "languageprocessor" not in locals() else "MongoDBHandler"
         print(f"{RED}ERROR{RESET}:    {component} 초기화 중 {e.__class__.__name__} 오류 발생: {str(e)}")
@@ -93,12 +95,14 @@ async def lifespan(app: FastAPI):
     Lumimaid_device_info = get_cuda_device_info(0)  # Lumimaid 모델은 cuda:0
     print(f"{GREEN}INFO{RESET}:     Bllossom 모델 로드 완료 ({Bllossom_device_info})")
     print(f"{GREEN}INFO{RESET}:     Lumimaid 모델 로드 완료 ({Lumimaid_device_info})")
+    print(f"{GREEN}INFO{RESET}:     Openai 모델 로드 완료 (API 호출)")
 
     yield
 
     # 모델 메모리 해제
     Bllossom_model = None
     Lumimaid_model = None
+    Openai_model = None
     print(f"{GREEN}INFO{RESET}:     모델 해제 완료")
 
 app = FastAPI(lifespan=lifespan)  # 여기서 한 번만 app을 생성합니다.
@@ -327,7 +331,81 @@ async def office_stream(request: ChatModel.Bllossom_Request):
     except Exception as e:
         print(f"처리되지 않은 예외: {e}")
         raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
+
+
+@app.post("/gpt_stream", summary="OpenAI 모델을 활용하여 GPT 응답 생성")
+async def gpt_stream(request: ChatModel.Bllossom_Request):
+    """
+    OpenAI 모델에 질문을 입력하고 응답을 JSON 방식으로 반환합니다.
     
+    Args:
+        request (ChatModel.Bllossom_Request): 사용자 질문과 인터넷 검색 옵션 포함
+        
+    Returns:
+        JSONResponse: JSON 방식으로 모델 응답
+    """
+    try:
+        chat_list = []
+        search_context = ""
+        
+        # MongoDB에서 채팅 기록 가져오기
+        if mongo_handler:
+            try:
+                chat_list = await mongo_handler.get_office_log(
+                    user_id = request.user_id,
+                    document_id = request.db_id,
+                    router = "gpt",
+                )
+            except Exception as e:
+                print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+        
+        # DuckDuckGo 검색 결과 가져오기
+        if request.google_access:  # 검색 옵션이 활성화된 경우
+            try:
+                duck_results = await ChatSearch.fetch_duck_search_results(query=request.input_data)
+                
+                if duck_results:
+                    # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
+                    formatted_results = []
+                    for idx, item in enumerate(duck_results[:10], 1):  # 상위 10개 결과만 사용
+                        formatted_result = (
+                            f"[검색결과 {idx}]\n"
+                            f"제목: {item.get('title', '제목 없음')}\n"
+                            f"내용: {item.get('snippet', '내용 없음')}\n"
+                            f"출처: {item.get('link', '링크 없음')}\n"
+                        )
+                        formatted_results.append(formatted_result)
+                    
+                    # 모든 결과를 하나의 문자열로 결합
+                    search_context = (
+                        "다음은 검색에서 가져온 관련 정보입니다:\n\n" +
+                        "\n".join(formatted_results)
+                    )
+            except Exception:
+                print(f"{YELLOW}WARNING{RESET}:    검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
+                search_context = ""
+                
+        # 일반 for 루프로 변경하여 응답 누적
+        full_response = ""
+        for chunk in Openai_model.generate_response_stream(
+            input_text=request.input_data,
+            search_text=search_context,
+            chat_list=chat_list,
+        ):
+            full_response += chunk
+            
+        return full_response
+    
+    except TimeoutError:
+        raise ChatError.InternalServerErrorException(
+            detail="OpenAI 모델 응답이 시간 초과되었습니다."
+        )
+    except ValidationError as e:
+        raise ChatError.BadRequestException(detail=str(e))
+    except Exception as e:
+        print(f"처리되지 않은 예외: {e}")
+        raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
+
 @app.post("/character_stream", summary="AI 모델이 Lumimaid_8B 모델 답변 생성")
 async def character_stream(request: ChatModel.Lumimaid_Request):
     """
@@ -503,42 +581,42 @@ async def character_sse(request: ChatModel.Lumimaid_Request):
 '''
 
 if __name__ == "__main__":
-    # uvicorn.run(app, host="0.0.0.0", port=80)
+    uvicorn.run(app, host="0.0.0.0", port=8001)
     
-    logging.basicConfig(level=logging.INFO, format=f"{GREEN}INFO{RESET}:     %(asctime)s - %(levelname)s - %(message)s")
-    logger = logging.getLogger("hypercorn")
+    # logging.basicConfig(level=logging.INFO, format=f"{GREEN}INFO{RESET}:     %(asctime)s - %(levelname)s - %(message)s")
+    # logger = logging.getLogger("hypercorn")
 
-    key_pem = os.getenv("KEY_PEM")
-    crt_pem = os.getenv("CRT_PEM")
+    # key_pem = os.getenv("KEY_PEM")
+    # crt_pem = os.getenv("CRT_PEM")
     
-    certificates_dir = os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            "..",
-            "certificates",
-        )
-    )
-    ssl_keyfile = os.path.join(
-        certificates_dir,
-        key_pem,
-    )
-    ssl_certfile = os.path.join(
-        certificates_dir,
-        crt_pem,
-    )
+    # certificates_dir = os.path.abspath(
+    #     os.path.join(
+    #         os.path.dirname(__file__),
+    #         "..",
+    #         "certificates",
+    #     )
+    # )
+    # ssl_keyfile = os.path.join(
+    #     certificates_dir,
+    #     key_pem,
+    # )
+    # ssl_certfile = os.path.join(
+    #     certificates_dir,
+    #     crt_pem,
+    # )
     
-    if not os.path.isfile(ssl_keyfile) or not os.path.isfile(ssl_certfile):
-        raise FileNotFoundError("SSL 인증서 파일을 찾을 수 없습니다. 경로를 확인하세요.")
+    # if not os.path.isfile(ssl_keyfile) or not os.path.isfile(ssl_certfile):
+    #     raise FileNotFoundError("SSL 인증서 파일을 찾을 수 없습니다. 경로를 확인하세요.")
     
-    config = Config()
-    config.bind = ["0.0.0.0:443"]
-    config.certfile = ssl_certfile
-    config.keyfile = ssl_keyfile
-    config.alpn_protocols = ["h2", "http/1.1"]  # HTTP/2 활성화
-    config.accesslog = "-"  # 요청 로그 활성화
+    # config = Config()
+    # config.bind = ["0.0.0.0:443"]
+    # config.certfile = ssl_certfile
+    # config.keyfile = ssl_keyfile
+    # config.alpn_protocols = ["h2", "http/1.1"]  # HTTP/2 활성화
+    # config.accesslog = "-"  # 요청 로그 활성화
 
-    async def serve():
-        logger.info("Starting Hypercorn server...")
-        await hypercorn.asyncio.serve(app, config)
+    # async def serve():
+    #     logger.info("Starting Hypercorn server...")
+    #     await hypercorn.asyncio.serve(app, config)
         
-    asyncio.run(serve())
+    # asyncio.run(serve())

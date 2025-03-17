@@ -8,6 +8,7 @@ AI Models:
     - lumimaid_model: Lumimaid 모델을 사용하는 대화 생성 모델
     - llama_model: Llama 모델을 사용하는 대화 생성 모델
     - bllossom_model: Bllossom 모델을 사용하는 대화 생성 모델
+    - openai_model: OpenAI GPT 4o mini 모델을 사용하는 대화 생성 모델
 
 Handlers:
     - error_handler: FastAPI 예외 처리
@@ -25,6 +26,7 @@ Services:
 from .ai_models.lumimaid_model import LumimaidChatModel as Lumimaid
 from .ai_models.llama_model import LlamaChatModel as Llama
 from .ai_models.bllossom_model import BllossomChatModel as Bllossom
+from .ai_models.openai_model import OpenAIChatModel as Openai
 
 # Handlers
 from .handlers import error_handler as ChatError
@@ -42,6 +44,7 @@ __all__ = [
     'Lumimaid',
     'Llama',
     'Bllossom',
+    'Openai',
     
     # Handlers
     'ChatError',
