@@ -4,16 +4,16 @@ gpt-4o-mini 모델을 사용하여 대화를 생성하는 데 필요한 모든 �
 '''
 import os
 import json
-import sys
-import uuid
 import warnings
-from typing import Optional, Generator, List, Dict
+from typing import Generator, List, Dict
 from queue import Queue
 from threading import Thread
-from contextlib import contextmanager
 from datetime import datetime
 from dotenv import load_dotenv
 from openai import OpenAI
+
+BLUE = "\033[34m"
+RESET = "\033[0m"
 
 class CharacterPrompt:
     def __init__(self, name: str, context: str, search_text: str) -> None:
@@ -98,10 +98,9 @@ class OpenAIChatModel:
         """
         self.model_id = 'gpt-4o-mini'
         self.file_path = './models/config-OpenAI.json'
-        self.loading_text = f"✨ {self.model_id} 로드 중..."
         
-        print("\n" + "="*len(self.loading_text))
-        print(f"📦 {__class__.__name__} 모델 초기화 시작...")
+        print("\n"+ f"{BLUE}LOADING:{RESET}  " + "="*50)
+        print(f"{BLUE}LOADING:{RESET}  📦 {__class__.__name__} 모델 초기화 시작...")
         
         # 환경 변수 파일 경로 설정 수정
         current_directory = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -134,9 +133,9 @@ class OpenAIChatModel:
         self.client = self._init_client()
         
         # 진행 상태 표시
-        print(f"🚀 {__class__.__name__} 모델 초기화 중...")
-        print("✨ 모델 로드 완료!")
-        print("="*len(self.loading_text) + "\n")
+        print(f"{BLUE}LOADING:{RESET}  🚀 {__class__.__name__} 모델 초기화 중...")
+        print(f"{BLUE}LOADING:{RESET}  ✨ 모델 로드 완료!")
+        print(f"{BLUE}LOADING:{RESET}  " + "="*50 + "\n")
         
         self.response_queue = Queue()
 

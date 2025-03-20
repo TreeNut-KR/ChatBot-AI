@@ -5,7 +5,6 @@
 import os
 import yaml
 import torch
-
 import uvicorn
 import asyncio
 import logging
@@ -21,12 +20,33 @@ from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import (APIRouter,  Query, FastAPI, HTTPException, Request)
-from starlette.responses import StreamingResponse, JSONResponse
+from fastapi import (
+    APIRouter,
+    FastAPI,
+    HTTPException,
+    Request,
+    Query,
+)
+
+from starlette.responses import (
+    StreamingResponse,
+    JSONResponse,
+)
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from utils  import ChatError, ChatModel, ChatSearch, LanguageProcessor, MongoDBHandler, Llama, Lumimaid, Bllossom, Openai
+from utils  import (
+    ChatError,
+    ChatModel,
+    ChatSearch,
+    LanguageProcessor,
+    MongoDBHandler,
+    Llama,
+    Lumimaid,
+    Bllossom,
+    OpenAiOffice,
+    OpenAiCharacter,
+)
 
 load_dotenv()
 
@@ -37,7 +57,8 @@ RESET = "\033[0m"
 
 Bllossom_model = None                       # Bllossom 모델 전역 변수
 Lumimaid_model = None                       # Lumimaid 모델 전역 변수
-Openai_model = None                         # Openai 모델 전역 변수
+OpenAiOffice_model = None                   # Openai 모델 전역 변수
+OpenAiCharacter_model = None                # Openai 캐릭터 모델 전역 변수
 
 languageprocessor = LanguageProcessor() # LanguageProcessor 초기화
 
@@ -72,7 +93,7 @@ async def lifespan(app: FastAPI):
     Yields:
         None: 애플리케이션 컨텍스트를 생성하고 종료할 때까지 대기
     """
-    global Bllossom_model, Lumimaid_model, Openai_model, GREEN, RESET
+    global Bllossom_model, Lumimaid_model, OpenAiOffice_model, OpenAiCharacter_model, GREEN, RESET
 
     # CUDA 디바이스 정보 가져오기 함수
     def get_cuda_device_info(device_id: int) -> str:
@@ -82,9 +103,11 @@ async def lifespan(app: FastAPI):
         return f"Device {device_id}: {device_name} (Total Memory: {total_memory:.2f} GB)"
     try:
         # AI 모델 로드
-        Bllossom_model = Bllossom()  # cuda:1
-        Lumimaid_model = Lumimaid()  # cuda:0
-        Openai_model = Openai()      # API 호출
+        Bllossom_model = Bllossom()                 # cuda:1
+        Lumimaid_model = Lumimaid()                 # cuda:0
+        OpenAiOffice_model = OpenAiOffice()         # API 호출
+        OpenAiCharacter_model = OpenAiCharacter()   # API 호출
+        
     except ChatError.InternalServerErrorException as e:
         component = "LanguageProcessor" if "languageprocessor" not in locals() else "MongoDBHandler"
         print(f"{RED}ERROR{RESET}:    {component} 초기화 중 {e.__class__.__name__} 오류 발생: {str(e)}")
@@ -95,14 +118,16 @@ async def lifespan(app: FastAPI):
     Lumimaid_device_info = get_cuda_device_info(0)  # Lumimaid 모델은 cuda:0
     print(f"{GREEN}INFO{RESET}:     Bllossom 모델 로드 완료 ({Bllossom_device_info})")
     print(f"{GREEN}INFO{RESET}:     Lumimaid 모델 로드 완료 ({Lumimaid_device_info})")
-    print(f"{GREEN}INFO{RESET}:     Openai 모델 로드 완료 (API 호출)")
+    print(f"{GREEN}INFO{RESET}:     OpenAiOffice 모델 로드 완료 (API 호출)")
+    print(f"{GREEN}INFO{RESET}:     OpenAiCharacter 모델 로드 완료 (API 호출)")
 
     yield
 
     # 모델 메모리 해제
     Bllossom_model = None
     Lumimaid_model = None
-    Openai_model = None
+    OpenAiOffice_model = None
+    OpenAiCharacter_model = None
     print(f"{GREEN}INFO{RESET}:     모델 해제 완료")
 
 app = FastAPI(lifespan=lifespan)  # 여기서 한 번만 app을 생성합니다.
@@ -165,7 +190,7 @@ def custom_openapi():
 
     openapi_schema = get_openapi(
         title="ChatBot-AI FastAPI",
-        version="v1.4.1",
+        version="v1.5.0",
         summary="AI 모델 관리 API",
         routes=app.routes,
         description=(
@@ -180,6 +205,7 @@ def custom_openapi():
     return app.openapi_schema
 
 app.openapi = custom_openapi
+
 def is_internal_ip(ip):
     """
     주어진 IP 주소가 내부 네트워크에 속하는지 확인합니다.
@@ -259,58 +285,60 @@ async def root(request: Request):
         "message": "Welcome to ChatBot-AI API. Access from IP: " + request.client.host
     }
 
-@app.post("/office_stream", summary="AI 모델이 검색 결과를 활용하여 Bllossom 모델델 답변 생성")
-async def office_stream(request: ChatModel.Bllossom_Request):
+# 라우터 정의
+office_router = APIRouter()
+character_router = APIRouter()
+
+@office_router.post("/Llama", summary="Llama 모델이 검색 결과를 활용하여 답변 생성")
+async def office_llama(request: ChatModel.office_Request):
     """
     Bllossom_8B 모델에 질문을 위키백과, 나무위키, 뉴스 등의 결과를 결합하여 AI 답변을 JSON 방식으로 반환합니다.
     
     Args:
-        request (ChatModel.Bllossom_Request): 사용자 질문과 인터넷 검색 옵션 포함
+        request (ChatModel.office_Request): 사용자 질문과 인터넷 검색 옵션 포함
         
     Returns:
         JSONResponse: JSON 방식으로 모델 응답
     """
-    try:
-        chat_list = []
-        search_context = ""
-        
-        # MongoDB에서 채팅 기록 가져오기
-        if mongo_handler:
-            try:
-                chat_list = await mongo_handler.get_office_log(
-                    user_id = request.user_id,
-                    document_id = request.db_id,
-                    router = "office",
+    chat_list = []
+    search_context = ""
+    
+    # MongoDB에서 채팅 기록 가져오기
+    if mongo_handler:
+        try:
+            chat_list = await mongo_handler.get_office_log(
+                user_id = request.user_id,
+                document_id = request.db_id,
+                router = "office",
+            )
+        except Exception as e:
+            print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+    
+    # DuckDuckGo 검색 결과 가져오기
+    if request.google_access:  # 검색 옵션이 활성화된 경우
+        try:
+            duck_results = await ChatSearch.fetch_duck_search_results(query=request.input_data)
+        except Exception:
+            print(f"{YELLOW}WARNING{RESET}:    검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
+   
+        if duck_results:
+            # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
+            formatted_results = []
+            for idx, item in enumerate(duck_results[:10], 1):  # 상위 10개 결과만 사용
+                formatted_result = (
+                    f"[검색결과 {idx}]\n"
+                    f"제목: {item.get('title', '제목 없음')}\n"
+                    f"내용: {item.get('snippet', '내용 없음')}\n"
+                    f"출처: {item.get('link', '링크 없음')}\n"
                 )
-            except Exception as e:
-                print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
-        
-        # DuckDuckGo 검색 결과 가져오기
-        if request.google_access:  # 검색 옵션이 활성화된 경우
-            try:
-                duck_results = await ChatSearch.fetch_duck_search_results(query=request.input_data)
-                
-                if duck_results:
-                    # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
-                    formatted_results = []
-                    for idx, item in enumerate(duck_results[:10], 1):  # 상위 10개 결과만 사용
-                        formatted_result = (
-                            f"[검색결과 {idx}]\n"
-                            f"제목: {item.get('title', '제목 없음')}\n"
-                            f"내용: {item.get('snippet', '내용 없음')}\n"
-                            f"출처: {item.get('link', '링크 없음')}\n"
-                        )
-                        formatted_results.append(formatted_result)
-                    
-                    # 모든 결과를 하나의 문자열로 결합
-                    search_context = (
-                        "다음은 검색에서 가져온 관련 정보입니다:\n\n" +
-                        "\n".join(formatted_results)
-                    )
-            except Exception:
-                print(f"{YELLOW}WARNING{RESET}:    검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
-                search_context = ""
-                
+                formatted_results.append(formatted_result)
+            
+            # 모든 결과를 하나의 문자열로 결합
+            search_context = (
+                "다음은 검색에서 가져온 관련 정보입니다:\n\n" +
+                "\n".join(formatted_results)
+            )
+    try:        
         # 일반 for 루프로 변경하여 응답 누적
         full_response = ""
         for chunk in Bllossom_model.generate_response_stream(
@@ -333,61 +361,60 @@ async def office_stream(request: ChatModel.Bllossom_Request):
         raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
 
 
-@app.post("/gpt_stream", summary="OpenAI 모델을 활용하여 GPT 응답 생성")
-async def gpt_stream(request: ChatModel.Bllossom_Request):
+@office_router.post("/gpt4o_mini", summary="gpt4o_mini 모델이 검색 결과를 활용하여 답변 생성")
+async def office_gpt4o_mini(request: ChatModel.office_Request):
     """
-    OpenAI 모델에 질문을 입력하고 응답을 JSON 방식으로 반환합니다.
+    gpt4o_mini 모델에 질문을 입력하고 응답을 JSON 방식으로 반환합니다.
     
     Args:
-        request (ChatModel.Bllossom_Request): 사용자 질문과 인터넷 검색 옵션 포함
+        request (ChatModel.office_Request): 사용자 질문과 인터넷 검색 옵션 포함
         
     Returns:
         JSONResponse: JSON 방식으로 모델 응답
     """
-    try:
-        chat_list = []
-        search_context = ""
-        
-        # MongoDB에서 채팅 기록 가져오기
-        if mongo_handler:
-            try:
-                chat_list = await mongo_handler.get_office_log(
-                    user_id = request.user_id,
-                    document_id = request.db_id,
-                    router = "gpt",
+    chat_list = []
+    search_context = ""
+    
+    # MongoDB에서 채팅 기록 가져오기
+    if mongo_handler:
+        try:
+            chat_list = await mongo_handler.get_office_log(
+                user_id = request.user_id,
+                document_id = request.db_id,
+                router = "office",
+            )
+        except Exception as e:
+            print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+    
+    # DuckDuckGo 검색 결과 가져오기
+    if request.google_access:  # 검색 옵션이 활성화된 경우
+        try:
+            duck_results = await ChatSearch.fetch_duck_search_results(query=request.input_data)
+        except Exception:
+            print(f"{YELLOW}WARNING{RESET}:    검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
+            
+        if duck_results:
+            # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
+            formatted_results = []
+            for idx, item in enumerate(duck_results[:10], 1):  # 상위 10개 결과만 사용
+                formatted_result = (
+                    f"[검색결과 {idx}]\n"
+                    f"제목: {item.get('title', '제목 없음')}\n"
+                    f"내용: {item.get('snippet', '내용 없음')}\n"
+                    f"출처: {item.get('link', '링크 없음')}\n"
                 )
-            except Exception as e:
-                print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+                formatted_results.append(formatted_result)
+            
+            # 모든 결과를 하나의 문자열로 결합
+            search_context = (
+                "다음은 검색에서 가져온 관련 정보입니다:\n\n" +
+                "\n".join(formatted_results)
+            )
         
-        # DuckDuckGo 검색 결과 가져오기
-        if request.google_access:  # 검색 옵션이 활성화된 경우
-            try:
-                duck_results = await ChatSearch.fetch_duck_search_results(query=request.input_data)
-                
-                if duck_results:
-                    # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
-                    formatted_results = []
-                    for idx, item in enumerate(duck_results[:10], 1):  # 상위 10개 결과만 사용
-                        formatted_result = (
-                            f"[검색결과 {idx}]\n"
-                            f"제목: {item.get('title', '제목 없음')}\n"
-                            f"내용: {item.get('snippet', '내용 없음')}\n"
-                            f"출처: {item.get('link', '링크 없음')}\n"
-                        )
-                        formatted_results.append(formatted_result)
-                    
-                    # 모든 결과를 하나의 문자열로 결합
-                    search_context = (
-                        "다음은 검색에서 가져온 관련 정보입니다:\n\n" +
-                        "\n".join(formatted_results)
-                    )
-            except Exception:
-                print(f"{YELLOW}WARNING{RESET}:    검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
-                search_context = ""
-                
+    try:
         # 일반 for 루프로 변경하여 응답 누적
         full_response = ""
-        for chunk in Openai_model.generate_response_stream(
+        for chunk in OpenAiOffice_model.generate_response_stream(
             input_text=request.input_data,
             search_text=search_context,
             chat_list=chat_list,
@@ -406,66 +433,14 @@ async def gpt_stream(request: ChatModel.Bllossom_Request):
         print(f"처리되지 않은 예외: {e}")
         raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
 
-@app.post("/character_stream", summary="AI 모델이 Lumimaid_8B 모델 답변 생성")
-async def character_stream(request: ChatModel.Lumimaid_Request):
-    """
-    Lumimaid_8B 모델에 질문을 입력하고 캐릭터 설정을 반영하여 답변을 JSON 방식으로 반환합니다.
-
-    Args:
-        request (ChatModel.Lumimaid_Request): 사용자 요청 데이터 포함
-
-    Returns:
-        JSONResponse: JSON 방식으로 모델 응답
-    """
-    try:
-        chat_list = []
-        
-        # MongoDB에서 채팅 기록 가져오기
-        if mongo_handler:
-            try:
-                chat_list = await mongo_handler.get_office_log(
-                    user_id = request.user_id,
-                    document_id = request.db_id,
-                    router = "office",
-                )
-            except Exception as e:
-                print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
-        
-        # 캐릭터 설정 구성
-        character_settings = {
-            "character_name": request.character_name,
-            "greeting": request.greeting,
-            "context": request.context,
-            "chat_list": chat_list,
-        }
-        # 일반 for 루프로 변경하여 응답 누적
-        full_response = ""
-        for chunk in Lumimaid_model.generate_response_stream(
-            input_text= request.input_data,
-            character_settings=character_settings,
-        ):
-            full_response += chunk
-            
-        return full_response
-
-    except TimeoutError:
-        raise ChatError.InternalServerErrorException(
-            detail="Lumimaid 모델 응답이 시간 초과되었습니다."
-        )
-    except ValidationError as e:
-        raise ChatError.BadRequestException(detail=str(e))
-    except Exception as e:
-        print(f"처리되지 않은 예외: {e}")
-        raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
-
 '''
-@app.post("/office_sse", summary="스트리밍 방식으로 검색 결과를 활용하여 Bllossom 모델델 답변 생성")
-async def office_sse(request: ChatModel.Bllossom_Request):
+@office_router.post("/llama_sse", summary="스트리밍 방식으로 검색 결과를 활용하여 Bllossom 모델델 답변 생성")
+async def office_llama_sse(request: ChatModel.office_Request):
     """
     Bllossom_8B 모델에 질문을 위키백과, 나무위키, 뉴스 등의 결과를 결합하여 AI 답변을 생성합니다.
     
     Args:
-        request (ChatModel.Bllossom_Request): 사용자 질문과 인터넷 검색 옵션 포함
+        request (ChatModel.office_Request): 사용자 질문과 인터넷 검색 옵션 포함
         
     Returns:
         StreamingResponse: 스트리밍 방식의 모델 응답
@@ -526,14 +501,128 @@ async def office_sse(request: ChatModel.Bllossom_Request):
     except Exception as e:
         print(f"처리되지 않은 예외: {e}")
         raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
+'''
+
+app.include_router(
+    office_router,
+    prefix="/office",
+    tags=["office Router"],
+    responses={500: {"description": "Internal Server Error"}}
+)
+
+@character_router.post("/llama", summary="Llama 모델이 케릭터 정보를 기반으로 답변 생성")
+async def character_llama(request: ChatModel.character_Request):
+    """
+    Lumimaid_8B 모델에 질문을 입력하고 캐릭터 설정을 반영하여 답변을 JSON 방식으로 반환합니다.
+
+    Args:
+        request (ChatModel.character_Request): 사용자 요청 데이터 포함
+
+    Returns:
+        JSONResponse: JSON 방식으로 모델 응답
+    """
+    chat_list = []
     
-@app.post("/character_sse", summary="스트리밍 방식으로 Lumimaid_8B 모델 답변 생성")
-async def character_sse(request: ChatModel.Lumimaid_Request):
+    # MongoDB에서 채팅 기록 가져오기
+    if mongo_handler:
+        try:
+            chat_list = await mongo_handler.get_character_log(
+                user_id = request.user_id,
+                document_id = request.db_id,
+                router = "character",
+            )
+        except Exception as e:
+            print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+            
+    try:
+        # 캐릭터 설정 구성
+        character_settings = {
+            "character_name": request.character_name,
+            "greeting": request.greeting,
+            "context": request.context,
+            "chat_list": chat_list,
+        }
+        # 일반 for 루프로 변경하여 응답 누적
+        full_response = ""
+        for chunk in Lumimaid_model.generate_response_stream(
+            input_text= request.input_data,
+            character_settings=character_settings,
+        ):
+            full_response += chunk
+            
+        return full_response
+
+    except TimeoutError:
+        raise ChatError.InternalServerErrorException(
+            detail="Lumimaid 모델 응답이 시간 초과되었습니다."
+        )
+    except ValidationError as e:
+        raise ChatError.BadRequestException(detail=str(e))
+    except Exception as e:
+        print(f"처리되지 않은 예외: {e}")
+        raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
+    
+
+@character_router.post("/gpt4o_mini", summary="gpt4o_mini 모델이 케릭터 정보를 기반으로 답변 생성")
+async def character_gpt4o_mini(request: ChatModel.character_Request):
+    """
+    gpt4o_mini 모델에 질문을 입력하고 캐릭터 설정을 반영하여 답변을 JSON 방식으로 반환합니다.
+
+    Args:
+        request (ChatModel.character_Request): 사용자 요청 데이터 포함
+
+    Returns:
+        JSONResponse: JSON 방식으로 모델 응답
+    """
+    chat_list = []
+    
+    # MongoDB에서 채팅 기록 가져오기
+    if mongo_handler:
+        try:
+            chat_list = await mongo_handler.get_character_log(
+                user_id = request.user_id,
+                document_id = request.db_id,
+                router = "character",
+            )
+        except Exception as e:
+            print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+            
+    try:
+        # 캐릭터 설정 구성
+        character_settings = {
+            "character_name": request.character_name,
+            "greeting": request.greeting,
+            "context": request.context,
+            "chat_list": chat_list,
+        }
+        # 일반 for 루프로 변경하여 응답 누적
+        full_response = ""
+        for chunk in OpenAiCharacter_model.generate_response_stream(
+            input_text= request.input_data,
+            character_settings=character_settings,
+        ):
+            full_response += chunk
+            
+        return full_response
+
+    except TimeoutError:
+        raise ChatError.InternalServerErrorException(
+            detail="Lumimaid 모델 응답이 시간 초과되었습니다."
+        )
+    except ValidationError as e:
+        raise ChatError.BadRequestException(detail=str(e))
+    except Exception as e:
+        print(f"처리되지 않은 예외: {e}")
+        raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
+    
+'''
+@character_router.post("/llama_sse", summary="스트리밍 방식으로 Lumimaid_8B 모델 답변 생성")
+async def character_llama_sse(request: ChatModel.character_Request):
     """
     Lumimaid_8B 모델에 질문을 입력하고 캐릭터 설정을 반영하여 답변을 스트리밍 방식으로 반환합니다.
 
     Args:
-        request (ChatModel.Lumimaid_Request): 사용자 요청 데이터 포함
+        request (ChatModel.character_Request): 사용자 요청 데이터 포함
 
     Returns:
         StreamingResponse: 스트리밍 방식의 모델 응답
@@ -579,6 +668,14 @@ async def character_sse(request: ChatModel.Lumimaid_Request):
         print(f"처리되지 않은 예외: {e}")
         raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
 '''
+
+app.include_router(
+    character_router,
+    prefix="/character",
+    tags=["character Router"],
+    responses={500: {"description": "Internal Server Error"}}
+)
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8001)

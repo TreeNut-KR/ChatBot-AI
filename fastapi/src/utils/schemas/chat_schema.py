@@ -77,8 +77,8 @@ user_id_set = Field(
         description="유저 id 길이 제약"
 )
 
-# Bllossom Request Field
-Bllossom_input_data_set = Field(
+# office Request Field
+office_input_data_set = Field(
     examples=["Llama AI 모델의 출시일과 버전들을 각각 알려줘."],
     title="사용자 입력 문장",
     description="사용자 입력 문장 길이 제약",
@@ -91,8 +91,8 @@ google_access_set = Field(
     description="검색 기반 액세스 수준을 나타냅니다. True: 검색 기반 활성화. False: 검색 기반 제한됨."
 )
 
-# Bllossom Response Field
-Bllossom_output_data_set = Field(
+# office Response Field
+office_output_data_set = Field(
     examples=['''
     물론이죠! Llama AI 모델의 출시일과 버전들은 다음과 같습니다:
 
@@ -108,11 +108,11 @@ Bllossom_output_data_set = Field(
     title="Llama 답변"
 )
 
-# Lumimaid Request Field
-Lumimaid_input_data_set = Field(
+# character Request Field
+character_input_data_set = Field(
     examples=["*I approach Rachel and talk to her.*"],
-    title="Lumimaid 사용자 입력 문장",
-    description="Lumimaid 사용자 입력 문장 길이 제약",
+    title="character 사용자 입력 문장",
+    description="character 사용자 입력 문장 길이 제약",
     min_length=1, max_length=500
 )
 character_name_set = Field(
@@ -175,8 +175,8 @@ access_level_set = Field(
     description="봇의 액세스 수준을 나타냅니다. True: 특정 기능이나 영역에 대한 접근 권한이 허용됨. False: 제한됨."
 )
 
-# Lumimaid Response Field
-Lumimaid_output_data_set = Field(
+# character Response Field
+character_output_data_set = Field(
     examples=['''*As you approach, Rachel's eyes dart towards you, a mixture of 
     relief and apprehension crossing her features. She straightens up slightly, 
     her grip on the lectern easing as she attempts to compose herself further.* 
@@ -192,13 +192,13 @@ Lumimaid_output_data_set = Field(
     her shoulders relaxing ever so slightly as she sees that you're willing to 
     engage with her.*
     '''],
-    title="Lumimaid 답변"
+    title="character 답변"
 )
 
 # BaseModel 설정
-class Bllossom_Request(BaseModel):
+class office_Request(BaseModel):
     """
-    Bllossom 모델에 대한 요청 데이터를 정의하는 Pydantic 모델입니다.
+    office 모델에 대한 요청 데이터를 정의하는 Pydantic 모델입니다.
     
     Attributes:
         input_data (str): 사용자의 입력 텍스트
@@ -206,24 +206,24 @@ class Bllossom_Request(BaseModel):
         db_id (uuid.UUID): 캐릭터의 DB ID
         user_id (str): 유저 id
     """
-    input_data: str = Bllossom_input_data_set
+    input_data: str = office_input_data_set
     google_access: bool = google_access_set
     db_id: str | None = db_id_set
     user_id: str | None = user_id_set
     
     
-class Bllossom_Response(BaseModel):
+class office_Response(BaseModel):
     """
-    Bllossom 모델의 응답 데이터를 정의하는 Pydantic 모델입니다.
+    office 모델의 응답 데이터를 정의하는 Pydantic 모델입니다.
     
     Attributes:
         output_data (str): 모델이 생성한 응답 텍스트
     """
-    output_data: str = Bllossom_output_data_set
+    output_data: str = office_output_data_set
     
-class Lumimaid_Request(BaseModel):
+class character_Request(BaseModel):
     """
-    Lumimaid 모델에 대한 요청 데이터를 정의하는 Pydantic 모델입니다.
+    character 모델에 대한 요청 데이터를 정의하는 Pydantic 모델입니다.
     
     Attributes:
         input_data (str): 사용자의 입력 텍스트
@@ -234,18 +234,18 @@ class Lumimaid_Request(BaseModel):
         user_id (str): 유저 id
     """
         
-    input_data: str = Lumimaid_input_data_set
+    input_data: str = character_input_data_set
     character_name: str = character_name_set
     greeting: str = greeting_set
     context: str = context_set
     db_id: str | None = db_id_set
     user_id: str | None = user_id_set
     
-class Lumimaid_Response(BaseModel):
+class character_Response(BaseModel):
     """
-    Lumimaid 모델의 응답 데이터를 정의하는 Pydantic 모델입니다.
+    character 모델의 응답 데이터를 정의하는 Pydantic 모델입니다.
     
     Attributes:
         output_data (str): 모델이 생성한 응답 텍스트
     """
-    output_data: str = Lumimaid_output_data_set
+    output_data: str = character_output_data_set

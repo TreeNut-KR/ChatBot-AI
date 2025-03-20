@@ -5,28 +5,30 @@ utils 패키지 초기화 모듈
 이 모듈은 utils 패키지의 초기화를 담당하며, 다음과 같은 하위 모듈들을 포함합니다:
 
 AI Models:
-    - lumimaid_model: Lumimaid 모델을 사용하는 대화 생성 모델
-    - llama_model: Llama 모델을 사용하는 대화 생성 모델
-    - bllossom_model: Bllossom 모델을 사용하는 대화 생성 모델
-    - openai_model: OpenAI GPT 4o mini 모델을 사용하는 대화 생성 모델
+    - lumimaid_model (Lumimaid): Lumimaid 모델을 사용하는 대화 생성 모델
+    - llama_model (Llama): Llama 모델을 사용하는 대화 생성 모델
+    - bllossom_model (Bllossom): Bllossom 모델을 사용하는 대화 생성 모델
+    - openai_office_model (OpenAiOffice): OpenAI GPT 4o mini 모델을 사용하는 대화 생성 모델
+    - openai_character_model (OpenAiCharacter): OpenAI GPT 4o mini 모델을 사용하는 대화 생성 모델
 
 Handlers:
-    - error_handler: FastAPI 예외 처리
-    - language_handler: 자연어 처리
-    - mongodb_handler: MongoDB 데이터베이스 처리
+    - error_handler (ChatError): FastAPI 예외 처리
+    - language_handler (LanguageProcessor): 자연어 처리
+    - mongodb_handler (MongoDBHandler): MongoDB 데이터베이스 처리
 
 Schemas:
-    - chat_schema: FastAPI Pydantic 모델 정의
+    - chat_schema (ChatModel): FastAPI Pydantic 모델 정의
 
 Services:
-    - search_service: 구글 검색 서비스
+    - search_service(ChatSearch): 구글 검색 서비스
 """
 
 # AI Models
 from .ai_models.lumimaid_model import LumimaidChatModel as Lumimaid
 from .ai_models.llama_model import LlamaChatModel as Llama
 from .ai_models.bllossom_model import BllossomChatModel as Bllossom
-from .ai_models.openai_model import OpenAIChatModel as Openai
+from .ai_models.openai_office_model import OpenAIChatModel as OpenAiOffice
+from .ai_models.openai_character_model import OpenAICharacterModel as OpenAiCharacter
 
 # Handlers
 from .handlers import error_handler as ChatError
@@ -44,7 +46,8 @@ __all__ = [
     'Lumimaid',
     'Llama',
     'Bllossom',
-    'Openai',
+    'OpenAiOffice',
+    'OpenAiCharacter',
     
     # Handlers
     'ChatError',
