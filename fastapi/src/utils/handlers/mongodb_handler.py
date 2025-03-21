@@ -63,9 +63,9 @@ class MongoDBHandler:
             self.mongo_uri = (
                 f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}:{mongo_port}/{mongo_db}"
                 "?authSource=admin"  # 첫 번째 옵션
-                "&serverSelectionTimeoutMS=5000"  # 두 번째 옵션
-                "&connectTimeoutMS=10000"  # 세 번째 옵션
-                "&socketTimeoutMS=60000"   # 네 번째 옵션
+                "&serverSelectionTimeoutMS=500"  # 두 번째 옵션
+                "&connectTimeoutMS=1000"  # 세 번째 옵션
+                "&socketTimeoutMS=6000"   # 네 번째 옵션
             )
             
             # 이벤트 루프 가져오기
@@ -75,9 +75,9 @@ class MongoDBHandler:
             self.client = AsyncIOMotorClient(
                 self.mongo_uri,
                 io_loop=self.loop,
-                serverSelectionTimeoutMS=5000,
-                connectTimeoutMS=10000,
-                socketTimeoutMS=60000
+                serverSelectionTimeoutMS=500,
+                connectTimeoutMS=1000,
+                socketTimeoutMS=6000
             )
             
             # 연결 테스트는 비동기로 수행
