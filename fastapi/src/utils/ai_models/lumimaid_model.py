@@ -12,6 +12,9 @@ from llama_cpp_cuda import (
 from queue import Queue
 from threading import Thread
 
+BLUE = "\033[34m"
+RESET = "\033[0m"
+
 class CharacterPrompt:
     def __init__(self, name: str, greeting: str, context: str):
         """
@@ -101,25 +104,33 @@ class LumimaidChatModel:
         """
         self.model_id = "v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat"
         self.model_path = "fastapi/ai_model/v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat.gguf"
-        self.loading_text = f"✨ {self.model_id} 로드 중..."
-        self.gpu_layers = 70
+        self.loading_text = f"{BLUE}LOADING:{RESET}  ✨ {self.model_id} 로드 중..."
+        self.gpu_layers: int = 70
         
-        print("\n" + "="*len(self.loading_text))
-        print(f"📦 {__class__.__name__} 모델 초기화 시작...")
+        print("\n"+ f"{BLUE}LOADING:{RESET}  " + "="*len(self.loading_text))
+        print(f"{BLUE}LOADING:{RESET}  📦 {__class__.__name__} 모델 초기화 시작...")
+        
         # 진행 상태 표시
-        print(f"🚀 {__class__.__name__} 모델 초기화 중...")
+        print(f"{BLUE}LOADING:{RESET}  🚀 {__class__.__name__} 모델 초기화 중...")
         self.model: Llama = self._load_model()
-        print("✨ 모델 로드 완료!")
-        print("="*len(self.loading_text) + "\n")
+        print(f"{BLUE}LOADING:{RESET}  ✨ 모델 로드 완료!")
+        print(f"{BLUE}LOADING:{RESET}  " + "="*len(self.loading_text) + "\n")
         
         self.response_queue: Queue = Queue()
 
     def _load_model(self) -> Llama:
         """
-        Llama 모델을 CUDA:1 디바이스(RTX 3060)에만 로드
-
+        GGUF 포맷의 Llama 모델을 로드하고 GPU 가속을 설정합니다.
+        
+        Args:
+            gpu_layers (int): GPU에 오프로드할 레이어 수 (기본값: 50)
+            
         Returns:
-            Llama: 로드된 Llama 모델 객체
+            Llama: 초기화된 Llama 모델 인스턴스
+            
+        Raises:
+            RuntimeError: GPU 메모리 부족 또는 CUDA 초기화 실패 시
+            OSError: 모델 파일을 찾을 수 없거나 손상된 경우
         """
         print(f"{self.loading_text}")
         try:

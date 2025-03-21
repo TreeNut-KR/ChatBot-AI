@@ -4,6 +4,7 @@ torchvision==0.18.1+cu118
 torchaudio==2.3.1+cu118
 -f https://download.pytorch.org/whl/torch_stable.html
 numpy>=1.22.4,<2.0.0  # langchain 호환성을 위해 버전 제한
+openai
 
 # FastAPI 관련
 fastapi==0.112.0
@@ -49,7 +50,6 @@ networkx
 gguf
 duckduckgo-search
 langchain-community
-
 
 # NLP 도구
 konlpy
