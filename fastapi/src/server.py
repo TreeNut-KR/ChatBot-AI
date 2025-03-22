@@ -42,7 +42,7 @@ from utils  import (
     LanguageProcessor,
     MongoDBHandler,
     Llama,
-    Lumimaid,
+    # Lumimaid,
     Bllossom,
     OpenAiOffice,
     OpenAiCharacter,
@@ -104,7 +104,7 @@ async def lifespan(app: FastAPI):
     try:
         # AI 모델 로드
         Bllossom_model = Bllossom()                 # cuda:1
-        Lumimaid_model = Lumimaid()                 # cuda:0
+        # Lumimaid_model = Lumimaid()                 # cuda:0
         OpenAiOffice_model = OpenAiOffice()         # API 호출
         OpenAiCharacter_model = OpenAiCharacter()   # API 호출
         
@@ -114,10 +114,10 @@ async def lifespan(app: FastAPI):
         exit(1)
         
     # 디버깅용 출력
-    Bllossom_device_info = get_cuda_device_info(1)  # Bllossom 모델은 cuda:1
-    Lumimaid_device_info = get_cuda_device_info(0)  # Lumimaid 모델은 cuda:0
+    Bllossom_device_info = get_cuda_device_info(0)  # Bllossom 모델은 cuda:1
+    # Lumimaid_device_info = get_cuda_device_info(0)  # Lumimaid 모델은 cuda:0
     print(f"{GREEN}INFO{RESET}:     Bllossom 모델 로드 완료 ({Bllossom_device_info})")
-    print(f"{GREEN}INFO{RESET}:     Lumimaid 모델 로드 완료 ({Lumimaid_device_info})")
+    # print(f"{GREEN}INFO{RESET}:     Lumimaid 모델 로드 완료 ({Lumimaid_device_info})")
     print(f"{GREEN}INFO{RESET}:     OpenAiOffice 모델 로드 완료 (API 호출)")
     print(f"{GREEN}INFO{RESET}:     OpenAiCharacter 모델 로드 완료 (API 호출)")
 
@@ -510,57 +510,57 @@ app.include_router(
     responses={500: {"description": "Internal Server Error"}}
 )
 
-@character_router.post("/llama", summary="Llama 모델이 케릭터 정보를 기반으로 답변 생성")
-async def character_llama(request: ChatModel.character_Request):
-    """
-    Lumimaid_8B 모델에 질문을 입력하고 캐릭터 설정을 반영하여 답변을 JSON 방식으로 반환합니다.
+# @character_router.post("/llama", summary="Llama 모델이 케릭터 정보를 기반으로 답변 생성")
+# async def character_llama(request: ChatModel.character_Request):
+#     """
+#     Lumimaid_8B 모델에 질문을 입력하고 캐릭터 설정을 반영하여 답변을 JSON 방식으로 반환합니다.
 
-    Args:
-        request (ChatModel.character_Request): 사용자 요청 데이터 포함
+#     Args:
+#         request (ChatModel.character_Request): 사용자 요청 데이터 포함
 
-    Returns:
-        JSONResponse: JSON 방식으로 모델 응답
-    """
-    chat_list = []
+#     Returns:
+#         JSONResponse: JSON 방식으로 모델 응답
+#     """
+#     chat_list = []
     
-    # MongoDB에서 채팅 기록 가져오기
-    if mongo_handler:
-        try:
-            chat_list = await mongo_handler.get_character_log(
-                user_id = request.user_id,
-                document_id = request.db_id,
-                router = "character",
-            )
-        except Exception as e:
-            print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+#     # MongoDB에서 채팅 기록 가져오기
+#     if mongo_handler:
+#         try:
+#             chat_list = await mongo_handler.get_character_log(
+#                 user_id = request.user_id,
+#                 document_id = request.db_id,
+#                 router = "character",
+#             )
+#         except Exception as e:
+#             print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
             
-    try:
-        # 캐릭터 설정 구성
-        character_settings = {
-            "character_name": request.character_name,
-            "greeting": request.greeting,
-            "context": request.context,
-            "chat_list": chat_list,
-        }
-        # 일반 for 루프로 변경하여 응답 누적
-        full_response = ""
-        for chunk in Lumimaid_model.generate_response_stream(
-            input_text= request.input_data,
-            character_settings=character_settings,
-        ):
-            full_response += chunk
+#     try:
+#         # 캐릭터 설정 구성
+#         character_settings = {
+#             "character_name": request.character_name,
+#             "greeting": request.greeting,
+#             "context": request.context,
+#             "chat_list": chat_list,
+#         }
+#         # 일반 for 루프로 변경하여 응답 누적
+#         full_response = ""
+#         for chunk in Lumimaid_model.generate_response_stream(
+#             input_text= request.input_data,
+#             character_settings=character_settings,
+#         ):
+#             full_response += chunk
             
-        return full_response
+#         return full_response
 
-    except TimeoutError:
-        raise ChatError.InternalServerErrorException(
-            detail="Lumimaid 모델 응답이 시간 초과되었습니다."
-        )
-    except ValidationError as e:
-        raise ChatError.BadRequestException(detail=str(e))
-    except Exception as e:
-        print(f"처리되지 않은 예외: {e}")
-        raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
+#     except TimeoutError:
+#         raise ChatError.InternalServerErrorException(
+#             detail="Lumimaid 모델 응답이 시간 초과되었습니다."
+#         )
+#     except ValidationError as e:
+#         raise ChatError.BadRequestException(detail=str(e))
+#     except Exception as e:
+#         print(f"처리되지 않은 예외: {e}")
+#         raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
     
 
 @character_router.post("/gpt4o_mini", summary="gpt4o_mini 모델이 케릭터 정보를 기반으로 답변 생성")
