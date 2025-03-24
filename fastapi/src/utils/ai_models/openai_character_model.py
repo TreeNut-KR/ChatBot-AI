@@ -91,8 +91,8 @@ class OpenAICharacterModel:
         self.model_id = 'gpt-4o-mini'
         self.file_path = './models/config-OpenAI.json'
         
-        print("\n"+ f"{BLUE}LOADING:{RESET}  " + "="*50)
-        print(f"{BLUE}LOADING:{RESET}  📦 {__class__.__name__} 모델 초기화 시작...")
+        print("\n"+ f"{BLUE}LOADING{RESET}:  " + "="*50)
+        print(f"{BLUE}LOADING{RESET}:  📦 {__class__.__name__} 모델 초기화 시작...")
         
         # 환경파일 로드
         current_directory = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -123,9 +123,9 @@ class OpenAICharacterModel:
         self.client = self._init_client()
         
         # 진행 상태 표시
-        print(f"{BLUE}LOADING:{RESET}  🚀 {__class__.__name__} 모델 초기화 중...")
-        print(f"{BLUE}LOADING:{RESET}  ✨ 모델 로드 완료!")
-        print(f"{BLUE}LOADING:{RESET}  " + "="*50 + "\n")
+        print(f"{BLUE}LOADING{RESET}:  🚀 {__class__.__name__} 모델 초기화 중...")
+        print(f"{BLUE}LOADING{RESET}:  ✨ 모델 로드 완료!")
+        print(f"{BLUE}LOADING{RESET}:  " + "="*50 + "\n")
         
         self.response_queue = Queue()
 

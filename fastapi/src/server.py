@@ -510,7 +510,7 @@ app.include_router(
     responses={500: {"description": "Internal Server Error"}}
 )
 
-@character_router.post("/llama", summary="Llama 모델이 케릭터 정보를 기반으로 답변 생성")
+@character_router.post("/Llama", summary="Llama 모델이 케릭터 정보를 기반으로 답변 생성")
 async def character_llama(request: ChatModel.character_Request):
     """
     Lumimaid_8B 모델에 질문을 입력하고 캐릭터 설정을 반영하여 답변을 JSON 방식으로 반환합니다.
