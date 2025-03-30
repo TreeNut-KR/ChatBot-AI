@@ -312,14 +312,14 @@ async def office_llama(request: ChatModel.office_Request):
                 router = "office",
             )
         except Exception as e:
-            print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+            print(f"{YELLOW}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
     
     # DuckDuckGo 검색 결과 가져오기
     if request.google_access:  # 검색 옵션이 활성화된 경우
         try:
             duck_results = await ChatSearch.fetch_duck_search_results(query=request.input_data)
         except Exception:
-            print(f"{YELLOW}WARNING{RESET}:    검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
+            print(f"{YELLOW}WARNING{RESET}:  검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
    
         if duck_results:
             # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
@@ -384,14 +384,14 @@ async def office_gpt4o_mini(request: ChatModel.office_Request):
                 router = "office",
             )
         except Exception as e:
-            print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+            print(f"{YELLOW}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
     
     # DuckDuckGo 검색 결과 가져오기
     if request.google_access:  # 검색 옵션이 활성화된 경우
         try:
             duck_results = await ChatSearch.fetch_duck_search_results(query=request.input_data)
         except Exception:
-            print(f"{YELLOW}WARNING{RESET}:    검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
+            print(f"{YELLOW}WARNING{RESET}:  검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
             
         if duck_results:
             # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
@@ -532,7 +532,7 @@ async def character_llama(request: ChatModel.character_Request):
                 router = "character",
             )
         except Exception as e:
-            print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+            print(f"{YELLOW}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
             
     try:
         # 캐릭터 설정 구성
@@ -585,7 +585,7 @@ async def character_gpt4o_mini(request: ChatModel.character_Request):
                 router = "character",
             )
         except Exception as e:
-            print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+            print(f"{YELLOW}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
             
     try:
         # 캐릭터 설정 구성
