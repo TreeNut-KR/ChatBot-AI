@@ -8,8 +8,8 @@ AI Models:
     - lumimaid_model (Lumimaid): Lumimaid 모델을 사용하는 대화 생성 모델
     - llama_model (Llama): Llama 모델을 사용하는 대화 생성 모델
     - bllossom_model (Bllossom): Bllossom 모델을 사용하는 대화 생성 모델
-    - openai_office_model (OpenAiOffice): OpenAI GPT 4o mini 모델을 사용하는 대화 생성 모델
-    - openai_character_model (OpenAiCharacter): OpenAI GPT 4o mini 모델을 사용하는 대화 생성 모델
+    - openai_office_model (OpenAiOffice): OpenAI GPT 모델을 사용하는 대화 생성 모델
+    - openai_character_model (OpenAiCharacter): OpenAI GPT 모델을 사용하는 대화 생성 모델
 
 Handlers:
     - error_handler (ChatError): FastAPI 예외 처리

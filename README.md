@@ -6,10 +6,10 @@
 작업자 
 | 구성원 | 업무 | 사용 기술 |  
 |--------|--------|------------|  
-| [서정훈 (CutTheWire)](https://github.com/CutTheWire) | AI API 구축 | FastAPI, llama_cpp_cuda, transformers |  
+| [서정훈 (CutTheWire)](https://github.com/CutTheWire) | AI API 구축 | FastAPI, llama_cpp_cuda, OpenAI, transformers |  
 
 
-# 웹웹서버 리포지토리
+# 웹서버 리포지토리
 [➡️ TreeNut-KR/ChatBot](https://github.com/TreeNut-KR/ChatBot)
 
 ## 📋 프로젝트 구조
@@ -17,28 +17,52 @@
 ```
 ChatBot-AI/
 ├── fastapi/
-│   ├── ai_model/      # AI 모델 관련 파일
-│   ├── batchfile/     # 환경 설정 배치 파일
-│   ├── certificates/  # httpp .pem 파일
-│   ├── datasets/      # 학습 데이터셋
-│   └── src/           # API 서버 코드 파일일
+│   ├── ai_model/         # AI 모델 관련 파일
+│   ├── batch/            # 환경 설정 배치 파일
+│   ├── certificates/     # http .pem 파일
+│   ├── datasets/         # 학습 데이터셋
+│   └── src/              # API 서버 코드 파일
+│       ├── prototypes/   # 실험/프로토타입 코드 파일
+│       ├── utils/        # 유틸리티, 핸들러, 서비스, 스키마 등 서버 기능 코드 파일
+│       │   ├── ai_models/
+│       │   │   ├── bllossom_model.py
+│       │   │   ├── llama_model.py    # ⚠️사용 안함(llama-cpp-cuda 도입 전 코드)
+│       │   │   ├── lumimaid_model.py
+│       │   │   ├── openai_character_model.py
+│       │   │   └── openai_office_model.py
+│       │   ├── handlers/
+│       │   │   ├── error_handler.py
+│       │   │   ├── language_handler.py
+│       │   │   └── mongodb_handler.py
+│       │   ├── schemas/
+│       │   │   └── chat_schema.py
+│       │   ├── services/
+│       │   │   └── search_service.py
+│       │   └── __init__.py
+│       ├── .env
+│       ├── bot.yaml
+│       ├── index.html
+│       └── server.py     # 서버 구동 코드 파일
 ```
 
 ## 🚀 주요 기능
 
 - **AI 모델**:
-  - Llama-3.1-8B-Instruct (기본 추론)
   - Llama-3-Lumimaid-8B (GGUF 최적화)
-  - Llama-3-Korean-Bllossom-8B (GGUF 최적화화)
+  - Llama-3-Korean-Bllossom-8B (GGUF 최적화)
+  - OpenAI 
+    - GPT4o-mini
+    - GPT4.1
+    - GPT4.1-mini
 - **데이터셋**:
-  - ko_wikidata_QA (137,505개 한국어 QA 쌍)
+  - ~~ko_wikidata_QA (137,505개 한국어 QA 쌍)~~ ⚠️ **사용 안함**
 
 ## ⚙️ 환경 설정
 
 ### 필수 요구사항
 - Python 3.11
 - CUDA 지원 GPU
-- Windows 운영체제
+- Windows 10 이상 운영체제
 
 ### 설치 방법
 1. 환경 구성
@@ -127,12 +151,12 @@ ChatBot-AI/
 ## 🔑 라이선스
 
 - **AI 모델**: Meta AI 라이선스
-- **데이터셋**: 비상업적 사용 (학습된 모델은 상업적 사용 가능, 현재는 사용하지 않음음)
+- **데이터셋**: 비상업적 사용 (학습된 모델은 상업적 사용 가능, 현재는 사용하지 않음)
 
 ## 📌 참고사항
 
 자세한 모델 및 데이터셋 정보는 각 폴더의 README.md를 참고해주세요:
-- [AI 모델 정보](./fastapi/ai_model/README.md)
+- ⚠️ 중요 [AI 모델 정보](./fastapi/ai_model/README.md)
 - [데이터셋 정보](./fastapi/datasets/README.md)
 - [도메인 설정](./fastapi/certificates/DNS_README.md)
 - [.pem 파일 생성](./fastapi/certificates/PEM_README.md)
