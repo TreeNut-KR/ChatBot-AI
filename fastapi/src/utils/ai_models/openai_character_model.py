@@ -11,9 +11,6 @@ from threading import Thread
 from dotenv import load_dotenv
 from openai import OpenAI
 
-BLUE = "\033[34m"
-RESET = "\033[0m"
-
 class CharacterPrompt:
     def __init__(self, name: str, greeting: str, context: str) -> None:
         """
@@ -83,16 +80,13 @@ class OpenAICharacterModel:
     OpenAI API를 사용하여 대화를 생성하는 클래스입니다.
     
     모델 정보:
-    - 모델명: gpt-4o-mini
+    - 모델명: gpt-4o-mini, gpt-4.1, gpt-4.1-mini
     - 제작자: OpenAI
     - 소스: [OpenAI API](https://platform.openai.com/docs/models/gpt-4o-mini)
     """
-    def __init__(self) -> None:
-        self.model_id = 'gpt-4o-mini'
+    def __init__(self, model_id = 'gpt-4o-mini') -> None:
+        self.model_id = model_id
         self.file_path = './models/config-OpenAI.json'
-        
-        print("\n"+ f"{BLUE}LOADING:{RESET}  " + "="*50)
-        print(f"{BLUE}LOADING:{RESET}  📦 {__class__.__name__} 모델 초기화 시작...")
         
         # 환경파일 로드
         current_directory = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -121,12 +115,6 @@ class OpenAICharacterModel:
             
         # OpenAI 클라이언트 초기화
         self.client = self._init_client()
-        
-        # 진행 상태 표시
-        print(f"{BLUE}LOADING:{RESET}  🚀 {__class__.__name__} 모델 초기화 중...")
-        print(f"{BLUE}LOADING:{RESET}  ✨ 모델 로드 완료!")
-        print(f"{BLUE}LOADING:{RESET}  " + "="*50 + "\n")
-        
         self.response_queue = Queue()
 
     def _init_client(self) -> OpenAI:
@@ -178,7 +166,7 @@ class OpenAICharacterModel:
 
     def create_streaming_completion(self,
                                     messages: list,
-                                    max_tokens: int = 300,
+                                    max_tokens: int = 1000,
                                     temperature: float = 0.7,
                                     top_p: float = 0.95) -> Generator[str, None, None]:
         """
@@ -186,7 +174,7 @@ class OpenAICharacterModel:
         
         Args:
             messages (list): OpenAI API에 전달할 메시지 목록
-            max_tokens (int, optional): 생성할 최대 토큰 수. 기본값: 300
+            max_tokens (int, optional): 생성할 최대 토큰 수. 기본값: 1000
             temperature (float, optional): 샘플링 온도 (0~2). 기본값: 0.7
             top_p (float, optional): 누적 확률 임계값 (0~1). 기본값: 0.95
             
@@ -209,7 +197,7 @@ class OpenAICharacterModel:
 
     def create_completion(self,
                           messages: list,
-                          max_tokens: int = 300,
+                          max_tokens: int = 1000,
                           temperature: float = 0.7,
                           top_p: float = 0.95) -> str:
         """
@@ -217,8 +205,8 @@ class OpenAICharacterModel:
 
         Args:
             prompt (str): 입력 프롬프트 (Llama3 형식)
-            max_tokens (int, optional): 생성할 최대 토큰 수 (기본값 256)
-            temperature (float, optional): 생성 온도 (기본값 0.8)
+            max_tokens (int, optional): 생성할 최대 토큰 수 (기본값 1000)
+            temperature (float, optional): 생성 온도 (기본값 0.7)
             top_p (float, optional): top_p 샘플링 값 (기본값 0.95)
 
         Returns:

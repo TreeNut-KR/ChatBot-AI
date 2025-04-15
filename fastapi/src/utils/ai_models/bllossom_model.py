@@ -111,11 +111,11 @@ class BllossomChatModel:
         self.model_id = 'MLP-KTLim/llama-3-Korean-Bllossom-8B-gguf-Q4_K_M'
         self.model_path = "fastapi/ai_model/llama-3-Korean-Bllossom-8B-Q4_K_M.gguf"
         self.file_path = './models/config-Bllossom.json'
-        self.loading_text = f"{BLUE}LOADING:{RESET}  ✨ {self.model_id} 로드 중..."
+        self.loading_text = f"{BLUE}LOADING{RESET}:  ✨ {self.model_id} 로드 중..."
         self.gpu_layers: int = 70
         
-        print("\n"+ f"{BLUE}LOADING:{RESET}  " + "="*len(self.loading_text))
-        print(f"{BLUE}LOADING:{RESET}  📦 {__class__.__name__} 모델 초기화 시작...")
+        print("\n"+ f"{BLUE}LOADING{RESET}:  " + "="*len(self.loading_text))
+        print(f"{BLUE}LOADING{RESET}:  📦 {__class__.__name__} 모델 초기화 시작...")
         
         # JSON 파일 읽기
         with open(self.file_path, 'r', encoding='utf-8') as file:
@@ -124,10 +124,10 @@ class BllossomChatModel:
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
         
         # 진행 상태 표시
-        print(f"{BLUE}LOADING:{RESET}  🚀 {__class__.__name__} 모델 초기화 중...")
+        print(f"{BLUE}LOADING{RESET}:  🚀 {__class__.__name__} 모델 초기화 중...")
         self.model: Llama = self._load_model()
-        print(f"{BLUE}LOADING:{RESET}  ✨ 모델 로드 완료!")
-        print(f"{BLUE}LOADING:{RESET}  " + "="*len(self.loading_text) + "\n")
+        print(f"{BLUE}LOADING{RESET}:  ✨ 모델 로드 완료!")
+        print(f"{BLUE}LOADING{RESET}:  " + "="*len(self.loading_text) + "\n")
         
         self.response_queue: Queue = Queue()
 
