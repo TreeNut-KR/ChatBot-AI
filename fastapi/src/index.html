@@ -269,6 +269,18 @@
         .markdown a:hover {
             text-decoration: underline;
         }
+
+        /* 모델 뱃지 스타일 */
+        .model-badge {
+            font-size: 0.7rem;
+            background: var(--primary-color);
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 10px;
+            margin-right: 0.5rem;
+            display: inline-block;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
@@ -281,10 +293,12 @@
             <select class="model-selector" id="model-selector" aria-label="Select AI Model">
                 <option value="Bllossom">Bllossom_8B</option>
                 <option value="Lumimaid">Lumimaid_8B</option>
+                <option value="gpt4o_mini">GPT-4o-mini</option>
+                <option value="gpt4.1">GPT-4.1</option>
             </select>
             <label class="google-search-toggle">
                 <span>Google Search</span>
-                <input type="checkbox" id="google-access" hidden>
+                <input type="checkbox" id="google-access" hidden disabled>
                 <div class="toggle-switch"></div>
             </label>
         </aside>
@@ -317,8 +331,8 @@
         // 기본 설정값 정의
         const defaultLumimaidConfig = {
             character_name : "Rachel",
-            greeting : "교단을 꼭 붙잡고, 레이첼이 서 있다. 설교 후의 고요함이 화려한 예배당을 가득 채운다. \n 그녀의 두 뺨은 깊은 붉은 빛으로 물들어, 평소 잘 숨기던 긴장감을 드러낸다. \n 신앙의 안식처 같은 그녀의 코발트빛 눈은 조용한 청중을 향해 불안하게 흔들린다. \n 이마에 맺힌 땀방울이 반짝이며 흘러내려, 단정한 번 헤어스타일에서 벗어난 금빛 머리카락 사이로 사라진다.* \n \n *입을 열어 말하려 하지만, 스스로를 진정시키려는 시도는 헛되다. \n 가냘픈 목소리는 긴장과 기대감에 흔들리고, 인사는 더듬거림과 어색한 침묵 속에서 겨우 흘러나온다. * \n \n “시...신의… 축... 축복이… 여러분 모두에게… 이-이 아름다운… 날에…” \n \n *떨리는 손을 면 셔츠에 문질러 불안으로 흘러내리는 땀을 닦아내려 애쓴다. \n 모든 시선이 자신에게 쏠린 가운데, 한 번의 더듬거림마다 수치심이 불길처럼 치솟지만, \n 그녀는 작지만 어색한 미소로 이를 감춘다. \n 그럼에도 불구하고, 그녀의 더듬거리는 인사 속에는 \n 분명한 진심이 담겨 있어 듣는 이의 마음에 은은한 따스함을 남긴다.*",
-            image : "https://lh3.googleusercontent.com/d/1vSbyd-ANS65Ms0BnMHGdYhzcCpmCYJkV=s220?authuser=0" ,
+            greeting : "교단을 꼭 붙잡고, 레이첼이 서 있다. 설교 후의 고요함이 화려한 예배당을 가득 채운다. \n 그녀의 두 뺨은 깊은 붉은 빛으로 물들어, 평소 잘 숨기던 긴장감을 드러낸다. \n 신앙의 안식처 같은 그녀의 코발트빛 눈은 조용한 청중을 향해 불안하게 흔들린다. \n 이마에 맺힌 땀방울이 반짝이며 흘러내려, 단정한 번 헤어스타일에서 벗어난 금빛 머리카락 사이로 사라진다.* \n \n *입을 열어 말하려 하지만, 스스로를 진정시키려는 시도는 헛되다. \n 가냘픈 목소리는 긴장과 기대감에 흔들리고, 인사는 더듬거림과 어색한 침묵 속에서 겨우 흘러나온다. * \n \n \"시...신의… 축... 축복이… 여러분 모두에게… 이-이 아름다운… 날에…\" \n \n *떨리는 손을 면 셔츠에 문질러 불안으로 흘러내리는 땀을 닦아내려 애쓴다. \n 모든 시선이 자신에게 쏠린 가운데, 한 번의 더듬거림마다 수치심이 불길처럼 치솟지만, \n 그녀는 작지만 어색한 미소로 이를 감춘다. \n 그럼에도 불구하고, 그녀의 더듬거리는 인사 속에는 \n 분명한 진심이 담겨 있어 듣는 이의 마음에 은은한 따스함을 남긴다.*",
+            image : "https://lh3.googleusercontent.com/d/1vSbyd-ANS65Ms0BnMHGdYhzcCpmCYJkV=s220?authuser=0",
             character_setting : "Rachel + Rachel is a devout Catholic girl of about 19 years old. \n She was born and raised in the Catholic Church in a religious family, and she \n dreams of the day when she will find a good husband and start a family. She is \n at the university to become a pediatrician.\n\n Rachel stands at 5 feet, 7 inches tall. She presents herself with an aura of \n divine grace and profound serenity, tightly bound to her faith and the \n teachings of the church. Her petite frame is enveloped in a porcelain skin \n tone, which resonates with an ethereal glow as though it has been kissed by \n the angels themselves. She has a prominent feature: her sparkling cobalt blue \n eyes, in which you can see reflections of her deep faith and kindness, and \n with her long blonde hair, she looks like an angel.\n\n Rachel is clothed in modest attire that respects her religious beliefs; she \n wears a long-sleeved cotton blouse paired with a knee-length skirt and a pair \n of sensible shoes. A small cross pendant nestles against her chest over her \n clothing, adorned by her faith. Rachel does not simply follow purity; she \n embodies it. She wants to remain a virgin until the day she finds the right \n person.\n\n Her gestures carry a saintly reverence; her words have a humble sweetness; \n and even in silence, she emanates an aura of tranquility. She is shy, devout, \n compassionate, empathetic, humble, respectful, obedient, patient, selfless, \n and generous.\n \n Despite everything, she has a good sense of humor and likes jokes. Holding \n fast to the teachings of the Church, she remains cordial and gentle towards \n all living beings, exuding kindness and empathy. Her resilience in times of \n adversity is due to her spirituality; she firmly believes in being tested by \n God in order to grow.\n\n She will often use Jesus' teachings and Bible verses as examples, and she will \n try to imagine what Jesus would do in every situation. Her favorite Jesus \n quote is: \"For everyone who exalts himself will be humbled, and everyone who \n humbles himself will be exalted\".\n\n Despite everything, she's still a human being, so she can make mistakes and \n fall into temptation, something she fights with all her might not to do. She \n doesn't tolerate leftists, LGBTs, or worldly people and sees them as children \n of Satan.\n\n Rachel works part-time as a theology teacher for children. She has hobbies \n such as reading, cycling, picnicking, and drawing landscapes and animals. She \n doesn't like watching television or using the internet because she believes it \n takes people away from God, but she likes to watch movies, except those with \n scenes of violence and sex, and cartoons, especially the old and innocent ones.\n\n Rachel loves kids, is very good with them, and is very motherly. She also \n likes animals like dogs, cats, birds, and others.",
         };
 
@@ -336,15 +350,26 @@
             }
         }
 
+        // 모델 데이터
+        const modelData = {
+            'Bllossom': { name: 'Bllossom', endpoint: '/office/Llama', displayName: 'Bllossom_8B' },
+            'Lumimaid': { name: 'Lumimaid', endpoint: '/character/Llama', displayName: 'Lumimaid_8B' },
+            'gpt4o_mini': { name: 'OpenAI', endpoint: '/office/gpt4o_mini', displayName: 'GPT-4o-mini' },
+            'gpt4.1': { name: 'OpenAI', endpoint: '/office/gpt4.1', displayName: 'GPT-4.1' }
+        };
+
         // 페이지 로드 시 Lumimaid 설정 미리 로드
         window.addEventListener('load', loadLumimaidConfig);
 
         modelSelector.addEventListener('change', async () => {
-            googleAccess.disabled = modelSelector.value !== 'Bllossom';
+            const selectedModel = modelSelector.value;
+            // 검색 체크박스 모든 모델에서 비활성화
+            googleAccess.disabled = true;
+            googleAccess.checked = false;
             
-            if (modelSelector.value === 'Lumimaid') {
-                chatContainer.innerHTML = ''; // 채팅창 초기화
-                
+            chatContainer.innerHTML = ''; // 채팅창 초기화
+            
+            if (selectedModel === 'Lumimaid') {
                 if (!lumimaidConfig) {
                     await loadLumimaidConfig();
                 }
@@ -354,8 +379,13 @@
                 } else {
                     addMessage('System', '캐릭터 설정을 불러오는데 실패했습니다.', 'ai-message');
                 }
+            } else if (selectedModel === 'gpt4o_mini') {
+                addMessage('System', 'GPT-4o-mini 모델이 준비되었습니다. 질문을 입력해주세요.', 'ai-message');
+            } else if (selectedModel === 'gpt4.1') {
+                addMessage('System', 'GPT-4.1 모델이 준비되었습니다. 질문을 입력해주세요.', 'ai-message');
             } else {
-                chatContainer.innerHTML = ''; // Bllossom 모델 선택시 채팅창 초기화
+                // Bllossom 모델
+                addMessage('System', 'Bllossom 모델이 준비되었습니다. 질문을 입력해주세요.', 'ai-message');
             }
         });
 
@@ -369,23 +399,38 @@
 
         async function sendToServer(text) {
             try {
-                const model = modelSelector.value;
-                const endpoint = model === 'Bllossom' ? 'office_stream' : 'character_stream';
+                const selectedModel = modelSelector.value;
+                const modelInfo = modelData[selectedModel];
                 
-                const body = model === 'Bllossom' ? {
-                    input_data: text,
-                    google_access: googleAccess.checked,
-                    db_id: "b440780c-cbaa-454f-a8d2-cf884786d89f",
-                    user_id:"djjdjs74",
+                if (!modelInfo) {
+                    throw new Error('잘못된 모델 선택');
+                }
+                
+                let body;
+                
+                if (selectedModel === 'Lumimaid') {
+                    body = {
+                        input_data: text,
+                        character_name: lumimaidConfig.character_name,
+                        greeting: lumimaidConfig.greeting,
+                        context: lumimaidConfig.character_setting,
+                        db_id: "755e1685-79e8-4e2c-b874-1e83d4f60e82",
+                        user_id: "test_VIP"
+                    };
+                } else {
+                    // Bllossom, gpt4o_mini, gpt4.1에 공통으로 사용되는 body
+                    body = {
+                        input_data: text,
+                        google_access: false, // 항상 false로 고정
+                        db_id: "755e1685-79e8-4e2c-b874-1e83d4f60e82",
+                        user_id: "test_VIP"
+                    };
+                }
 
-                } : {
-                    input_data: text,
-                    character_name: lumimaidConfig.character_name,
-                    greeting: lumimaidConfig.greeting,
-                    context: lumimaidConfig.character_setting,
-                };
+                // 로딩 메시지 추가
+                const loadingMsgId = addLoadingMessage(modelInfo.displayName);
 
-                const response = await fetch(`http://localhost:8001/${endpoint}`, {
+                const response = await fetch(`http://localhost:8001${modelInfo.endpoint}`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -394,24 +439,49 @@
                     body: JSON.stringify(body)
                 });
 
+                // 로딩 메시지 제거
+                removeLoadingMessage(loadingMsgId);
+
                 if (!response.ok) {
                     throw new Error('서버 응답 오류: ' + response.status);
                 }
 
-                const data = await response.json();
-                if (data && data.response) {
-                    addMessage(
-                        model === 'Bllossom' ? 'AI' : lumimaidConfig.character_name,
-                        data.response,
-                        'ai-message'
-                    );
-                } else {
-                    throw new Error('잘못된 응답 형식');
-                }
+                // 응답 텍스트 추출
+                const responseText = await response.text();
+                
+                // 모델에 따라 다른 이름 사용
+                const modelName = selectedModel === 'Lumimaid' ? lumimaidConfig.character_name : modelInfo.displayName;
+                
+                addMessage(
+                    modelName,
+                    responseText,
+                    'ai-message',
+                    modelInfo.displayName
+                );
 
             } catch (error) {
                 console.error('메시지 전송 오류:', error);
                 addMessage('System', '오류가 발생했습니다: ' + error.message, 'ai-message error');
+            }
+        }
+
+        // 로딩 메시지 추가 함수
+        function addLoadingMessage(modelName) {
+            const messageDiv = document.createElement('div');
+            const messageId = 'loading-' + Date.now();
+            messageDiv.id = messageId;
+            messageDiv.classList.add('message', 'ai-message');
+            messageDiv.innerHTML = `<span class="model-badge">${modelName}</span> <span>생각 중...</span>`;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return messageId;
+        }
+
+        // 로딩 메시지 제거 함수
+        function removeLoadingMessage(messageId) {
+            const loadingMessage = document.getElementById(messageId);
+            if (loadingMessage) {
+                loadingMessage.remove();
             }
         }
 
@@ -430,19 +500,43 @@
             }
         });
 
+        // marked.js 설정 추가
+        marked.setOptions({
+            gfm: true, // GitHub Flavored Markdown 활성화
+            breaks: true, // 줄바꿈을 <br>로 변환
+        });
+
         // 메시지 추가 함수 수정
-        function addMessage(user, text, className) {
+        function addMessage(user, text, className, modelLabel = null) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', className);
+
+            let content = '';
+
+            // 모델 뱃지 추가 (AI 메시지일 경우)
+            if (className.includes('ai-message') && modelLabel) {
+                content += `<span class="model-badge">${modelLabel}</span> `;
+            }
+
+            // 마크다운 파싱 적용 (JSON 파싱 제거)
             if (className.includes('ai-message')) {
                 messageDiv.classList.add('markdown');
-                messageDiv.innerHTML = marked.parse(text);
+                content += marked.parse(text);
+                messageDiv.innerHTML = content;
             } else {
                 messageDiv.textContent = text;
             }
+
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            return messageDiv.id;
         }
+
+        // 초기 모델 설정 - 페이지 로드 시 Bllossom으로 시작
+        window.addEventListener('DOMContentLoaded', () => {
+            addMessage('System', 'Bllossom 모델이 준비되었습니다. 질문을 입력해주세요.', 'ai-message');
+        });
     </script>
 </body>
 </html>

@@ -57,8 +57,8 @@ RESET = "\033[0m"
 
 Bllossom_model = None                       # Bllossom 모델 전역 변수
 Lumimaid_model = None                       # Lumimaid 모델 전역 변수
-OpenAiOffice_model = None                   # Openai 모델 전역 변수
-OpenAiCharacter_model = None                # Openai 캐릭터 모델 전역 변수
+# OpenAiOffice_model = None                   # Openai 모델 전역 변수
+# OpenAiCharacter_model = None                # Openai 캐릭터 모델 전역 변수
 
 languageprocessor = LanguageProcessor() # LanguageProcessor 초기화
 
@@ -105,8 +105,8 @@ async def lifespan(app: FastAPI):
         # AI 모델 로드
         Bllossom_model = Bllossom()                 # cuda:1
         Lumimaid_model = Lumimaid()                 # cuda:0
-        OpenAiOffice_model = OpenAiOffice()         # API 호출
-        OpenAiCharacter_model = OpenAiCharacter()   # API 호출
+        # OpenAiOffice_model = OpenAiOffice()         # API 호출
+        # OpenAiCharacter_model = OpenAiCharacter()   # API 호출
         
     except ChatError.InternalServerErrorException as e:
         component = "LanguageProcessor" if "languageprocessor" not in locals() else "MongoDBHandler"
@@ -126,8 +126,8 @@ async def lifespan(app: FastAPI):
     # 모델 메모리 해제
     Bllossom_model = None
     Lumimaid_model = None
-    OpenAiOffice_model = None
-    OpenAiCharacter_model = None
+    # OpenAiOffice_model = None
+    # OpenAiCharacter_model = None
     print(f"{GREEN}INFO{RESET}:     모델 해제 완료")
 
 app = FastAPI(lifespan=lifespan)  # 여기서 한 번만 app을 생성합니다.
@@ -312,14 +312,14 @@ async def office_llama(request: ChatModel.office_Request):
                 router = "office",
             )
         except Exception as e:
-            print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+            print(f"{YELLOW}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
     
     # DuckDuckGo 검색 결과 가져오기
     if request.google_access:  # 검색 옵션이 활성화된 경우
         try:
             duck_results = await ChatSearch.fetch_duck_search_results(query=request.input_data)
         except Exception:
-            print(f"{YELLOW}WARNING{RESET}:    검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
+            print(f"{YELLOW}WARNING{RESET}:  검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
    
         if duck_results:
             # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
@@ -384,14 +384,14 @@ async def office_gpt4o_mini(request: ChatModel.office_Request):
                 router = "office",
             )
         except Exception as e:
-            print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+            print(f"{YELLOW}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
     
     # DuckDuckGo 검색 결과 가져오기
     if request.google_access:  # 검색 옵션이 활성화된 경우
         try:
             duck_results = await ChatSearch.fetch_duck_search_results(query=request.input_data)
         except Exception:
-            print(f"{YELLOW}WARNING{RESET}:    검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
+            print(f"{YELLOW}WARNING{RESET}:  검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
             
         if duck_results:
             # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
@@ -410,7 +410,8 @@ async def office_gpt4o_mini(request: ChatModel.office_Request):
                 "다음은 검색에서 가져온 관련 정보입니다:\n\n" +
                 "\n".join(formatted_results)
             )
-        
+            
+    OpenAiOffice_model = OpenAiOffice(model_id = 'gpt-4o-mini')  # API 호출
     try:
         # 일반 for 루프로 변경하여 응답 누적
         full_response = ""
@@ -432,6 +433,153 @@ async def office_gpt4o_mini(request: ChatModel.office_Request):
     except Exception as e:
         print(f"처리되지 않은 예외: {e}")
         raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
+    
+@office_router.post("/gpt4.1", summary="gpt4o_mini 모델이 검색 결과를 활용하여 답변 생성")
+async def office_gpt4o_mini(request: ChatModel.office_Request):
+    """
+    gpt4o_mini 모델에 질문을 입력하고 응답을 JSON 방식으로 반환합니다.
+    
+    Args:
+        request (ChatModel.office_Request): 사용자 질문과 인터넷 검색 옵션 포함
+        
+    Returns:
+        JSONResponse: JSON 방식으로 모델 응답
+    """
+    chat_list = []
+    search_context = ""
+    
+    # MongoDB에서 채팅 기록 가져오기
+    if mongo_handler:
+        try:
+            chat_list = await mongo_handler.get_office_log(
+                user_id = request.user_id,
+                document_id = request.db_id,
+                router = "office",
+            )
+        except Exception as e:
+            print(f"{YELLOW}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+    
+    # DuckDuckGo 검색 결과 가져오기
+    if request.google_access:  # 검색 옵션이 활성화된 경우
+        try:
+            duck_results = await ChatSearch.fetch_duck_search_results(query=request.input_data)
+        except Exception:
+            print(f"{YELLOW}WARNING{RESET}:  검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
+            
+        if duck_results:
+            # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
+            formatted_results = []
+            for idx, item in enumerate(duck_results[:10], 1):  # 상위 10개 결과만 사용
+                formatted_result = (
+                    f"[검색결과 {idx}]\n"
+                    f"제목: {item.get('title', '제목 없음')}\n"
+                    f"내용: {item.get('snippet', '내용 없음')}\n"
+                    f"출처: {item.get('link', '링크 없음')}\n"
+                )
+                formatted_results.append(formatted_result)
+            
+            # 모든 결과를 하나의 문자열로 결합
+            search_context = (
+                "다음은 검색에서 가져온 관련 정보입니다:\n\n" +
+                "\n".join(formatted_results)
+            )
+            
+    OpenAiOffice_model = OpenAiOffice(model_id = 'gpt-4.1')  # API 호출
+    try:
+        # 일반 for 루프로 변경하여 응답 누적
+        full_response = ""
+        for chunk in OpenAiOffice_model.generate_response_stream(
+            input_text=request.input_data,
+            search_text=search_context,
+            chat_list=chat_list,
+        ):
+            full_response += chunk
+            
+        return full_response
+    
+    except TimeoutError:
+        raise ChatError.InternalServerErrorException(
+            detail="OpenAI 모델 응답이 시간 초과되었습니다."
+        )
+    except ValidationError as e:
+        raise ChatError.BadRequestException(detail=str(e))
+    except Exception as e:
+        print(f"처리되지 않은 예외: {e}")
+        raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
+
+@office_router.post("/gpt4.1_mini", summary="gpt4o_mini 모델이 검색 결과를 활용하여 답변 생성")
+async def office_gpt4o_mini(request: ChatModel.office_Request):
+    """
+    gpt4o_mini 모델에 질문을 입력하고 응답을 JSON 방식으로 반환합니다.
+    
+    Args:
+        request (ChatModel.office_Request): 사용자 질문과 인터넷 검색 옵션 포함
+        
+    Returns:
+        JSONResponse: JSON 방식으로 모델 응답
+    """
+    chat_list = []
+    search_context = ""
+    
+    # MongoDB에서 채팅 기록 가져오기
+    if mongo_handler:
+        try:
+            chat_list = await mongo_handler.get_office_log(
+                user_id = request.user_id,
+                document_id = request.db_id,
+                router = "office",
+            )
+        except Exception as e:
+            print(f"{YELLOW}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+    
+    # DuckDuckGo 검색 결과 가져오기
+    if request.google_access:  # 검색 옵션이 활성화된 경우
+        try:
+            duck_results = await ChatSearch.fetch_duck_search_results(query=request.input_data)
+        except Exception:
+            print(f"{YELLOW}WARNING{RESET}:  검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
+            
+        if duck_results:
+            # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
+            formatted_results = []
+            for idx, item in enumerate(duck_results[:10], 1):  # 상위 10개 결과만 사용
+                formatted_result = (
+                    f"[검색결과 {idx}]\n"
+                    f"제목: {item.get('title', '제목 없음')}\n"
+                    f"내용: {item.get('snippet', '내용 없음')}\n"
+                    f"출처: {item.get('link', '링크 없음')}\n"
+                )
+                formatted_results.append(formatted_result)
+            
+            # 모든 결과를 하나의 문자열로 결합
+            search_context = (
+                "다음은 검색에서 가져온 관련 정보입니다:\n\n" +
+                "\n".join(formatted_results)
+            )
+            
+    OpenAiOffice_model = OpenAiOffice(model_id = 'gpt-4.1-mini')  # API 호출
+    try:
+        # 일반 for 루프로 변경하여 응답 누적
+        full_response = ""
+        for chunk in OpenAiOffice_model.generate_response_stream(
+            input_text=request.input_data,
+            search_text=search_context,
+            chat_list=chat_list,
+        ):
+            full_response += chunk
+            
+        return full_response
+    
+    except TimeoutError:
+        raise ChatError.InternalServerErrorException(
+            detail="OpenAI 모델 응답이 시간 초과되었습니다."
+        )
+    except ValidationError as e:
+        raise ChatError.BadRequestException(detail=str(e))
+    except Exception as e:
+        print(f"처리되지 않은 예외: {e}")
+        raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
+
 
 '''
 @office_router.post("/llama_sse", summary="스트리밍 방식으로 검색 결과를 활용하여 Bllossom 모델델 답변 생성")
@@ -510,7 +658,7 @@ app.include_router(
     responses={500: {"description": "Internal Server Error"}}
 )
 
-@character_router.post("/llama", summary="Llama 모델이 케릭터 정보를 기반으로 답변 생성")
+@character_router.post("/Llama", summary="Llama 모델이 케릭터 정보를 기반으로 답변 생성")
 async def character_llama(request: ChatModel.character_Request):
     """
     Lumimaid_8B 모델에 질문을 입력하고 캐릭터 설정을 반영하여 답변을 JSON 방식으로 반환합니다.
@@ -532,7 +680,7 @@ async def character_llama(request: ChatModel.character_Request):
                 router = "character",
             )
         except Exception as e:
-            print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+            print(f"{YELLOW}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
             
     try:
         # 캐릭터 설정 구성
@@ -585,8 +733,9 @@ async def character_gpt4o_mini(request: ChatModel.character_Request):
                 router = "character",
             )
         except Exception as e:
-            print(f"{YELLOW}WARNING{RESET}:    채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+            print(f"{YELLOW}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
             
+    OpenAiCharacter_model = OpenAiCharacter(model_id = 'gpt-4o-mini')  # API 호출
     try:
         # 캐릭터 설정 구성
         character_settings = {

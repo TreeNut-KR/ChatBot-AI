@@ -104,17 +104,17 @@ class LumimaidChatModel:
         """
         self.model_id = "v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat"
         self.model_path = "fastapi/ai_model/v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat.gguf"
-        self.loading_text = f"{BLUE}LOADING:{RESET}  ✨ {self.model_id} 로드 중..."
+        self.loading_text = f"{BLUE}LOADING{RESET}:  ✨ {self.model_id} 로드 중..."
         self.gpu_layers: int = 70
         
-        print("\n"+ f"{BLUE}LOADING:{RESET}  " + "="*len(self.loading_text))
-        print(f"{BLUE}LOADING:{RESET}  📦 {__class__.__name__} 모델 초기화 시작...")
+        print("\n"+ f"{BLUE}LOADING{RESET}:  " + "="*len(self.loading_text))
+        print(f"{BLUE}LOADING{RESET}:  📦 {__class__.__name__} 모델 초기화 시작...")
         
         # 진행 상태 표시
-        print(f"{BLUE}LOADING:{RESET}  🚀 {__class__.__name__} 모델 초기화 중...")
+        print(f"{BLUE}LOADING{RESET}:  🚀 {__class__.__name__} 모델 초기화 중...")
         self.model: Llama = self._load_model()
-        print(f"{BLUE}LOADING:{RESET}  ✨ 모델 로드 완료!")
-        print(f"{BLUE}LOADING:{RESET}  " + "="*len(self.loading_text) + "\n")
+        print(f"{BLUE}LOADING{RESET}:  ✨ 모델 로드 완료!")
+        print(f"{BLUE}LOADING{RESET}:  " + "="*len(self.loading_text) + "\n")
         
         self.response_queue: Queue = Queue()
 
