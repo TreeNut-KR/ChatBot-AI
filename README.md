@@ -125,16 +125,16 @@ ChatBot-AI/
 
 2. 가상환경 생성
 
-   - [venv_setup.bat](./fastapi/batchfile/venv_setup.bat)
+   - [venv_setup.bat](./fastapi/batch/venv_setup.bat)
    ```bash
-   ./fastapi/batchfile/venv_setup.bat
+   ./fastapi/batch/venv_setup.bat
    ```
 
 3. 필요 패키지 설치
 
-   - [venv_setup.bat](./fastapi/batchfile/venv_install.bat)
+   - [venv_setup.bat](./fastapi/batch/venv_install.bat)
     ```bash
-    ./fastapi/batchfile/venv_install.bat
+    ./fastapi/batch/venv_install.bat
     ```
 
 4. 서버 실행
