@@ -1,6 +1,6 @@
 """
-파일은 GPT4oCharacterModel, CharacterPrompt 클래스를 정의하고 GPT-4o-mini 모델을 사용하여
-'캐릭터 기반 대화' 용도의 기능을 제공합니다.
+파일은 GPT4oCharacterModel, CharacterPrompt 클래스를 정의하고  OpenAI API를 사용하여,
+'AI 페르소나 서비스' 용도의 기능을 제공합니다.
 """
 import os
 import json
@@ -75,14 +75,14 @@ def build_openai_messages(character: CharacterPrompt, user_input: str, chat_list
 
 class OpenAICharacterModel:
     """
-    [<img src="https://cdn.openai.com/API/docs/images/model-page/model-icons/gpt-4o-mini.png" width="100" height="auto">](https://platform.openai.com/docs/models/gpt-4o-mini)
+    [<img src="https://brandingstyleguides.com/wp-content/guidelines/2025/02/openAi-web.jpg" width="100" height="auto">](https://platform.openai.com/docs/models)
     
     OpenAI API를 사용하여 대화를 생성하는 클래스입니다.
     
     모델 정보:
     - 모델명: gpt-4o-mini, gpt-4.1, gpt-4.1-mini
     - 제작자: OpenAI
-    - 소스: [OpenAI API](https://platform.openai.com/docs/models/gpt-4o-mini)
+    - 소스: [OpenAI API](https://platform.openai.com/docs/models)
     """
     def __init__(self, model_id = 'gpt-4o-mini') -> None:
         self.model_id = model_id
