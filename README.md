@@ -13,7 +13,6 @@
 [➡️ TreeNut-KR/ChatBot](https://github.com/TreeNut-KR/ChatBot)
 
 ## 📋 프로젝트 구조
-
 ```
 ChatBot-AI/
 ├── fastapi/
@@ -25,6 +24,8 @@ ChatBot-AI/
 │       ├── prototypes/   # 실험/프로토타입 코드 파일
 │       ├── utils/        # 유틸리티, 핸들러, 서비스, 스키마 등 서버 기능 코드 파일
 │       │   ├── ai_models/
+|       |   |   ├── shared/
+|       |   |   |   └──shared_configs.py
 │       │   │   ├── bllossom_model.py
 │       │   │   ├── llama_model.py    # ⚠️사용 안함(llama-cpp-cuda 도입 전 코드)
 │       │   │   ├── lumimaid_model.py
@@ -41,9 +42,18 @@ ChatBot-AI/
 │       │   └── __init__.py
 │       ├── .env
 │       ├── bot.yaml
-│       ├── index.html
 │       └── server.py     # 서버 구동 코드 파일
 ```
+
+## 📋 UML 클래스 다이어그램 
+### 📑 ChatBot-AI/fastapi/src/utils/ai_models 클래스 다이어그램 
+![image](https://lh3.googleusercontent.com/d/11BO1kgmcn_I0N-gAegB8p36-PrAm4IHn)
+
+### 📑 ChatBot-AI/fastapi/src/utils/handlers 클래스 다이어그램 
+![image](https://lh3.googleusercontent.com/d/10s3xwUFxnmfKb8WBEvU3jqQhJgExNa28)
+
+### 📑 ChatBot-AI/fastapi/src/utils/schemas 클래스 다이어그램
+![image](https://lh3.googleusercontent.com/d/1Az97lKerSOJltMPWEMeAW6G72axCdIii)
 
 ## 🚀 주요 기능
 

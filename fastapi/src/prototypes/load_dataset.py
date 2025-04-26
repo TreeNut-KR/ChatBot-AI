@@ -2,8 +2,8 @@ import os
 from datasets import load_dataset
 
 def download_and_save_dataset():
-    dataset_name = "maywell/ko_wikidata_QA"
-    save_path = f"./fastapi/datasets/{dataset_name}"
+    dataset_name="maywell/ko_wikidata_QA"
+    save_path=f"./fastapi/datasets/{dataset_name}"
 
     # 폴더가 없는 경우 생성
     if not os.path.exists(save_path):
@@ -11,7 +11,7 @@ def download_and_save_dataset():
         print(f"폴더 생성 완료: {save_path}")
     
     # 데이터셋 불러오기
-    dataset = load_dataset(dataset_name)
+    dataset=load_dataset(dataset_name)
     
     # 데이터셋 구조 확인
     print(dataset)
