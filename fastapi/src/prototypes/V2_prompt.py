@@ -12,10 +12,10 @@ def extract_prompt_from_png(file_path: str):
     """
     try:
         # 이미지 열기
-        img = Image.open(file_path)
+        img=Image.open(file_path)
 
         # PNG의 메타데이터 확인
-        metadata = img.info  # tEXt, iTXt 등 포함 가능
+        metadata=img.info  # tEXt, iTXt 등 포함 가능
         if not metadata:
             print("❌ PNG 메타데이터가 존재하지 않습니다.")
             return None
@@ -24,8 +24,8 @@ def extract_prompt_from_png(file_path: str):
         for key in metadata:
             if "chara" in key.lower():
                 # base64 디코드 후 json 파싱
-                decoded_data = base64.b64decode(metadata[key])
-                json_data = json.loads(decoded_data)
+                decoded_data=base64.b64decode(metadata[key])
+                json_data=json.loads(decoded_data)
                 print("\n=== 추출된 프롬프트 ===")
                 
                 # JSON 데이터 출력
@@ -47,7 +47,7 @@ def extract_prompt_from_png(file_path: str):
 
 if __name__ == "__main__":
     # 업로드된 PNG 파일 경로
-    file_path = "C:/Users/treen/Downloads/main_rachel-29118321_spec_v2.png"
+    file_path="C:/Users/treen/Downloads/main_rachel-29118321_spec_v2.png"
 
     # 프롬프트 추출
     extract_prompt_from_png(file_path)

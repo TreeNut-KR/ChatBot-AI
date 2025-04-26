@@ -32,15 +32,15 @@ class LlamaChatModel:
         
         LlamaChatModel 클래스 초기화 메소드
         '''
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        parent_dir = os.path.dirname(current_dir)
-        dotenv_path = os.path.join(parent_dir, '.env')
+        current_dir=os.path.dirname(os.path.abspath(__file__))
+        parent_dir=os.path.dirname(current_dir)
+        dotenv_path=os.path.join(parent_dir, '.env')
         load_dotenv(dotenv_path)
-        self.cache_dir = "./fastapi/ai_model"
-        self.model_id = "meta-llama/Llama-3.1-8B-Instruct"
-        self.device = torch.device("cuda:0")  # 명확히 cuda:0로 지정
+        self.cache_dir="./fastapi/ai_model"
+        self.model_id="meta-llama/Llama-3.1-8B-Instruct"
+        self.device=torch.device("cuda:0")  # 명확히 cuda:0로 지정
 
-        self.model_kwargs = {
+        self.model_kwargs={
             "torch_dtype": torch.float16,
             "trust_remote_code": True,
             "device_map": {"": self.device},
@@ -51,18 +51,18 @@ class LlamaChatModel:
             )
         }
 
-        self.hf_token = os.getenv("HUGGING_FACE_TOKEN")
-        self.accelerator = Accelerator(mixed_precision="fp16", device_placement=False)
-        self.scaler = GradScaler()
+        self.hf_token=os.getenv("HUGGING_FACE_TOKEN")
+        self.accelerator=Accelerator(mixed_precision="fp16", device_placement=False)
+        self.scaler=GradScaler()
 
         print("토크나이저 로드 중...")
-        self.tokenizer = self.load_tokenizer()
+        self.tokenizer=self.load_tokenizer()
         print("모델 로드 중...")
-        self.model = self.load_model()
+        self.model=self.load_model()
         print("모델과 토크나이저 로드 완료!")
         
         self.model.gradient_checkpointing_enable()
-        self.conversation_history = []
+        self.conversation_history=[]
 
     def load_tokenizer(self) -> transformers.PreTrainedTokenizerBase:
         """
@@ -75,13 +75,13 @@ class LlamaChatModel:
             OSError: 토크나이저 로드 실패 시
             ValueError: 토큰 설정 실패 시
         """
-        tokenizer = transformers.AutoTokenizer.from_pretrained(
+        tokenizer=transformers.AutoTokenizer.from_pretrained(
             self.model_id,
             token=self.hf_token
         )
         if tokenizer.eos_token_id is None:
             tokenizer.add_special_tokens({'eos_token': '<|endoftext|>'})
-        tokenizer.pad_token_id = tokenizer.eos_token_id
+        tokenizer.pad_token_id=tokenizer.eos_token_id
         return tokenizer
 
     def load_model(self) -> transformers.PreTrainedModel:
@@ -95,7 +95,7 @@ class LlamaChatModel:
             OSError: 모델 로드 실패 시
             RuntimeError: CUDA 메모리 부족 시
         """
-        model = transformers.AutoModelForCausalLM.from_pretrained(
+        model=transformers.AutoModelForCausalLM.from_pretrained(
             self.model_id,
             cache_dir=self.cache_dir,
             token=self.hf_token,
@@ -113,16 +113,16 @@ class LlamaChatModel:
         Returns:
             Generator[str, None, None]: 생성된 텍스트 조각들을 반환하는 제너레이터
         """
-        input_ids = self.tokenizer.encode(
+        input_ids=self.tokenizer.encode(
             text=input_text,
             return_tensors="pt",
             padding=True,
             truncation=True
         ).to(self.device)
-        attention_mask = (input_ids != self.tokenizer.pad_token_id).long().to(self.device)
-        streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True)
+        attention_mask=(input_ids != self.tokenizer.pad_token_id).long().to(self.device)
+        streamer=TextIteratorStreamer(self.tokenizer, skip_prompt=True)
 
-        generation_kwargs = {
+        generation_kwargs={
             "input_ids": input_ids.to(self.device),
             "attention_mask": attention_mask.to(self.device),
             "min_new_tokens": 1,
@@ -143,7 +143,7 @@ class LlamaChatModel:
         }
 
         # Thread를 사용하여 생성 작업 비동기화
-        thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
+        thread=Thread(target=self.model.generate, kwargs=generation_kwargs)
         thread.start()
 
         # Streamer를 통해 생성된 텍스트 반환
