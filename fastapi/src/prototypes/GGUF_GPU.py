@@ -14,9 +14,9 @@ from queue import Queue
 
 class CharacterPrompt:
     def __init__(self, name: str, greeting: str, context: str):
-        self.name = name
-        self.greeting = greeting
-        self.context = context
+        self.name=name
+        self.greeting=greeting
+        self.context=context
 
     def __str__(self) -> str:
         return (
@@ -36,7 +36,7 @@ class PNGPromptExtractor:
         Args:
             file_path (str): PNG 이미지 파일 경로
         """
-        self.file_path: str = file_path
+        self.file_path: str=file_path
 
     def extract(self) -> Optional[CharacterPrompt]:
         """
@@ -46,8 +46,8 @@ class PNGPromptExtractor:
             Optional[CharacterPrompt]: 추출된 캐릭터 정보, 실패 시 None 반환
         """
         try:
-            img = Image.open(self.file_path)
-            metadata = img.info
+            img=Image.open(self.file_path)
+            metadata=img.info
             
             if not metadata:
                 print("❌ PNG 메타데이터가 존재하지 않습니다.")
@@ -55,17 +55,17 @@ class PNGPromptExtractor:
 
             for key in metadata:
                 if "chara" in key.lower():
-                    decoded_data = base64.b64decode(metadata[key])
-                    json_data = json.loads(decoded_data)
+                    decoded_data=base64.b64decode(metadata[key])
+                    json_data=json.loads(decoded_data)
 
                     print("\n=== 추출된 JSON 데이터 ===")
                     print(json.dumps(json_data, indent=4, ensure_ascii=False), "\n")
 
                     # data 섹션에서 필요한 정보 추출
-                    data = json_data.get("data", {})
-                    name = data.get("name", "")
-                    first_mes = data.get("first_mes", "")  # greeting으로 사용
-                    description = data.get("description", "")  # context로 사용
+                    data=json_data.get("data", {})
+                    name=data.get("name", "")
+                    first_mes=data.get("first_mes", "")  # greeting으로 사용
+                    description=data.get("description", "")  # context로 사용
 
                     if name and (first_mes or description):
                         return CharacterPrompt(
@@ -95,7 +95,7 @@ def build_llama3_prompt(character: CharacterPrompt, user_input: str) -> str:
     Returns:
         str: Llama3 형식의 프롬프트 문자열
     """
-    system_prompt = (
+    system_prompt=(
         f"Character Name: {character.name}\n"
         f"Character Context: {character.context}\n"
         f"Initial Greeting: {character.greeting}"
@@ -113,7 +113,7 @@ class LlamaModelHandler:
     """
     GGUF 모델(Llama)을 로드하고 입력 프롬프트로부터 응답 텍스트를 생성하는 클래스
     """
-    def __init__(self, model_path: str, verbose: bool = False, gpu_layers: int = 35) -> None:
+    def __init__(self, model_path: str, verbose: bool=False, gpu_layers: int=35) -> None:
         """
         초기화 메소드
 
@@ -122,11 +122,11 @@ class LlamaModelHandler:
             verbose (bool, optional): 로드 시 로그 출력 여부 (기본값 False)
             gpu_layers (int, optional): GPU에 로드할 레이어 수 (기본값 35)
         """
-        self.model_path: str = model_path
-        self.verbose: bool = verbose
-        self.gpu_layers: int = gpu_layers
-        self.model: Llama = self._load_model()
-        self.response_queue: Queue = Queue()
+        self.model_path: str=model_path
+        self.verbose: bool=verbose
+        self.gpu_layers: int=gpu_layers
+        self.model: Llama=self._load_model()
+        self.response_queue: Queue=Queue()
 
     def _load_model(self) -> Llama:
         """
@@ -137,7 +137,7 @@ class LlamaModelHandler:
         """
         print("모델 로드 중...")
         try:
-            model = Llama(
+            model=Llama(
                 model_path=self.model_path,  # 초기화 시 전달받은 실제 모델 경로 사용
                 n_gpu_layers=self.gpu_layers,
                 main_gpu=0,
@@ -151,14 +151,14 @@ class LlamaModelHandler:
             print(f"❌ 모델 로드 중 오류 발생: {e}")
             raise
 
-    def _stream_completion(self, prompt: str, max_tokens: int = 256,
-                         temperature: float = 0.7, top_p: float = 0.95,
-                         stop: Optional[list] = None) -> None:
+    def _stream_completion(self, prompt: str, max_tokens: int=256,
+                         temperature: float=0.7, top_p: float=0.95,
+                         stop: Optional[list]=None) -> None:
         """
         별도 스레드에서 실행되어 응답을 큐에 넣는 메서드
         """
         try:
-            stream = self.model.create_completion(
+            stream=self.model.create_completion(
                 prompt=prompt,
                 max_tokens=max_tokens,
                 temperature=temperature,
@@ -169,7 +169,7 @@ class LlamaModelHandler:
             
             for output in stream:
                 if 'choices' in output and len(output['choices']) > 0:
-                    text = output['choices'][0].get('text', '')
+                    text=output['choices'][0].get('text', '')
                     if text:
                         self.response_queue.put(text)
             
@@ -180,9 +180,9 @@ class LlamaModelHandler:
             print(f"스트리밍 중 오류 발생: {e}")
             self.response_queue.put(None)
 
-    def create_streaming_completion(self, prompt: str, max_tokens: int = 256,
-                                 temperature: float = 0.7, top_p: float = 0.95,
-                                 stop: Optional[list] = None) -> Generator[str, None, None]:
+    def create_streaming_completion(self, prompt: str, max_tokens: int=256,
+                                 temperature: float=0.7, top_p: float=0.95,
+                                 stop: Optional[list]=None) -> Generator[str, None, None]:
         """
         스트리밍 방식으로 텍스트 응답 생성
 
@@ -197,7 +197,7 @@ class LlamaModelHandler:
             str: 생성된 텍스트 조각들
         """
         # 스트리밍 스레드 시작
-        thread = Thread(
+        thread=Thread(
             target=self._stream_completion,
             args=(prompt, max_tokens, temperature, top_p, stop)
         )
@@ -205,14 +205,14 @@ class LlamaModelHandler:
 
         # 응답 스트리밍
         while True:
-            text = self.response_queue.get()
+            text=self.response_queue.get()
             if text is None:  # 스트림 종료
                 break
             yield text
 
-    def create_completion(self, prompt: str, max_tokens: int = 256,
-                          temperature: float = 0.7, top_p: float = 0.95,
-                          stop: Optional[list] = None) -> str:
+    def create_completion(self, prompt: str, max_tokens: int=256,
+                          temperature: float=0.7, top_p: float=0.95,
+                          stop: Optional[list]=None) -> str:
         """
         주어진 프롬프트로부터 텍스트 응답 생성
 
@@ -227,7 +227,7 @@ class LlamaModelHandler:
             str: 생성된 텍스트 응답
         """
         try:
-            output = self.model.create_completion(
+            output=self.model.create_completion(
                 prompt=prompt,
                 max_tokens=max_tokens,
                 temperature=temperature,
@@ -241,11 +241,11 @@ class LlamaModelHandler:
 
 if __name__ == "__main__":
     # PNG 파일 경로 (실제 파일 경로로 수정)
-    png_file_path: str = "C:/Users/treen/Downloads/main_rachel-29118321_spec_v2.png"
+    png_file_path: str="C:/Users/treen/Downloads/main_rachel-29118321_spec_v2.png"
     
     # PNG 파일에서 캐릭터 정보 추출
-    extractor = PNGPromptExtractor(png_file_path)
-    character_info: Optional[CharacterPrompt] = extractor.extract()
+    extractor=PNGPromptExtractor(png_file_path)
+    character_info: Optional[CharacterPrompt]=extractor.extract()
     
     if not character_info:
         print("PNG 파일에서 캐릭터 정보를 추출하지 못했습니다.")
@@ -255,14 +255,14 @@ if __name__ == "__main__":
     print(character_info)
     
     # Llama3 프롬프트 형식 적용
-    user_input: str = "what your name?"  # 필요에 따라 시스템 프롬프트 수정
-    llama3_prompt: str = build_llama3_prompt(character_info, user_input)
+    user_input: str="what your name?"  # 필요에 따라 시스템 프롬프트 수정
+    llama3_prompt: str=build_llama3_prompt(character_info, user_input)
     
     # GGUF 모델 파일 경로 (실제 모델 파일 경로 또는 모델 ID로 수정)
-    gguf_model_path: str = "fastapi/ai_model/v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat.gguf"
+    gguf_model_path: str="fastapi/ai_model/v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat.gguf"
     
     # 모델 로드 및 텍스트 생성
-    model_handler = LlamaModelHandler(gguf_model_path, verbose=False)
+    model_handler=LlamaModelHandler(gguf_model_path, verbose=False)
     
     print("\n=== 모델 응답 ===")
     for response_chunk in model_handler.create_streaming_completion(

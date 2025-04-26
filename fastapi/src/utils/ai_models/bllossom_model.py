@@ -1,8 +1,9 @@
 '''
-파일은 BllossomChatModel, CharacterPrompt 클래스를 정의하고 llama_cpp_cuda를 사용하여,
+파일은 BllossomChatModel, OfficePrompt 클래스를 정의하고 llama_cpp_cuda를 사용하여,
 Llama-3-Bllossom-8B.gguf 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
 '''
-from typing import Optional, Generator, List, Dict
+from dataclasses import dataclass
+from typing import TypedDict, Optional, Generator, List, Dict
 from llama_cpp_cuda import (
     Llama,           # 기본 LLM 모델
     LlamaCache,      # 캐시 관리
@@ -12,7 +13,6 @@ from llama_cpp_cuda import (
 import os
 import sys
 import json
-import uuid
 import warnings
 from queue import Queue
 from threading import Thread
@@ -20,56 +20,31 @@ from contextlib import contextmanager
 from transformers import AutoTokenizer
 from datetime import datetime
 
-BLUE = "\033[34m"
-RESET = "\033[0m"
+from .shared.shared_configs import OfficePrompt, GenerationConfig, BaseConfig
 
-class CharacterPrompt:
-    def __init__(self, name: str, context: str, search_text: str) -> tuple:
-        """
-        초기화 메소드
+BLUE="\033[34m"
+RESET="\033[0m"
 
-        Args:
-            name (str): 캐릭터 이름
-            context (str): 캐릭터 설정
-            search_text (str): 검색 텍스트
-        """
-        self.name = name
-        self.context = context
-        self.search_text = search_text
-
-    def __str__(self) -> str:
-        """
-        문자열 출력 메소드
-        
-        Returns:
-            str: 캐릭터 정보 문자열
-        """
-        return (
-            f"Name: {self.name}\n"
-            f"Context: {self.context}\n"
-            f"Search Text: {self.search_text}"
-        )
-        
-def build_llama3_messages(character: CharacterPrompt, user_input: str, chat_list: List[Dict] = None) -> list:
+def build_llama3_messages(character: OfficePrompt, user_input: str, chat_list: List[Dict]=None) -> list:
     """
     캐릭터 정보와 대화 기록을 포함한 Llama3 messages 형식 생성
 
     Args:
-        character (CharacterPrompt): 캐릭터 정보
+        character (OfficePrompt): 캐릭터 정보
         user_input (str): 사용자 입력
         chat_list (List[Dict], optional): 이전 대화 기록
 
     Returns:
         list: Bllossom GGUF 형식의 messages 리스트
     """
-    system_prompt = (
+    system_prompt=(
         f"system Name: {character.name}\n"
         f"system Context: {character.context}\n"
         f"User Search Text: {character.search_text}"
     )
     
     # 메시지 구성
-    messages = [
+    messages=[
         {"role": "system", "content": system_prompt}
     ]
     
@@ -77,8 +52,8 @@ def build_llama3_messages(character: CharacterPrompt, user_input: str, chat_list
     if chat_list and len(chat_list) > 0:
         for chat in chat_list:
             # input_data와 output_data 직접 사용
-            user_message = chat.get("input_data", "")
-            assistant_message = chat.get("output_data", "")
+            user_message=chat.get("input_data", "")
+            assistant_message=chat.get("output_data", "")
             
             if user_message:
                 messages.append({"role": "user", "content": user_message})
@@ -87,7 +62,6 @@ def build_llama3_messages(character: CharacterPrompt, user_input: str, chat_list
     
     # 현재 사용자 입력 추가
     messages.append({"role": "user", "content": user_input})
-    
     return messages
 
 class BllossomChatModel:
@@ -108,28 +82,29 @@ class BllossomChatModel:
     
         BllossomChatModel 클레스 초기화 메소드
         """
-        self.model_id = 'MLP-KTLim/llama-3-Korean-Bllossom-8B-gguf-Q4_K_M'
-        self.model_path = "fastapi/ai_model/llama-3-Korean-Bllossom-8B-Q4_K_M.gguf"
-        self.file_path = './models/config-Bllossom.json'
-        self.loading_text = f"{BLUE}LOADING{RESET}:  ✨ {self.model_id} 로드 중..."
-        self.gpu_layers: int = 70
+        self.model_id='MLP-KTLim/llama-3-Korean-Bllossom-8B-gguf-Q4_K_M'
+        self.model_path="fastapi/ai_model/llama-3-Korean-Bllossom-8B-Q4_K_M.gguf"
+        self.file_path='./models/config-Llama.json'
+        self.loading_text=f"{BLUE}LOADING{RESET}:  ✨ {self.model_id} 로드 중..."
+        self.gpu_layers: int=70
+        self.character_info: Optional[OfficePrompt]=None
         
         print("\n"+ f"{BLUE}LOADING{RESET}:  " + "="*len(self.loading_text))
         print(f"{BLUE}LOADING{RESET}:  📦 {__class__.__name__} 모델 초기화 시작...")
         
         # JSON 파일 읽기
         with open(self.file_path, 'r', encoding='utf-8') as file:
-            self.data = json.load(file)
+            self.data: BaseConfig=json.load(file)
 
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
+        self.tokenizer=AutoTokenizer.from_pretrained(self.model_id)
         
         # 진행 상태 표시
         print(f"{BLUE}LOADING{RESET}:  🚀 {__class__.__name__} 모델 초기화 중...")
-        self.model: Llama = self._load_model()
+        self.model: Llama=self._load_model()
         print(f"{BLUE}LOADING{RESET}:  ✨ 모델 로드 완료!")
         print(f"{BLUE}LOADING{RESET}:  " + "="*len(self.loading_text) + "\n")
         
-        self.response_queue: Queue = Queue()
+        self.response_queue: Queue=Queue()
 
     def _load_model(self) -> Llama:
         """
@@ -154,16 +129,16 @@ class BllossomChatModel:
             def suppress_stdout():
                 # 표준 출력 리다이렉션
                 with open(os.devnull, "w") as devnull:
-                    old_stdout = sys.stdout
-                    sys.stdout = devnull
+                    old_stdout=sys.stdout
+                    sys.stdout=devnull
                     try:
                         yield
                     finally:
-                        sys.stdout = old_stdout
+                        sys.stdout=old_stdout
 
             # 모델 로드 시 로그 출력 억제
             with suppress_stdout():
-                model = Llama(
+                model=Llama(
                     model_path=self.model_path,
                     n_gpu_layers=self.gpu_layers,
                     main_gpu=1,
@@ -179,89 +154,54 @@ class BllossomChatModel:
         except Exception as e:
             print(f"❌ 모델 로드 중 오류 발생")
             
-    def _stream_completion(self, prompt: str, **kwargs) -> None:
+    def _stream_completion(self, config: GenerationConfig) -> None:
         """
         텍스트 생성을 위한 내부 스트리밍 메서드입니다.
-        
+
         Args:
-            prompt (str): 모델에 입력할 프롬프트 텍스트
-            **kwargs: 생성 매개변수 (temperature, top_p 등)
-            
-        Effects:
-            - response_queue에 생성된 텍스트 조각들을 순차적으로 추가
-            - 스트림 종료 시 None을 큐에 추가
-            
-        Error Handling:
-            - 예외 발생 시 오류 메시지 출력 후 None을 큐에 추가
-            - 경고 메시지는 warnings.catch_warnings로 필터링
-            
-        Threading:
-            - 별도의 스레드에서 실행되어 비동기 처리 지원
+            config (GenerationConfig): 생성 파라미터 객체
         """
         try:
-            # 경고 메시지 필터링
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                
-                # verbose 파라미터 제거
-                stream = self.model(
-                    prompt,
+                stream=self.model(
+                    config.prompt,
                     stream=True,
                     echo=False,
-                    **kwargs
+                    max_tokens=config.max_tokens,
+                    temperature=config.temperature,
+                    top_p=config.top_p,
+                    stop=config.stop,
                 )
-                
                 for output in stream:
                     if 'choices' in output and len(output['choices']) > 0:
-                        text = output['choices'][0].get('text', '')
+                        text=output['choices'][0].get('text', '')
                         if text:
                             self.response_queue.put(text)
-                
                 self.response_queue.put(None)
-                
         except Exception as e:
             print(f"스트리밍 중 오류 발생: {e}")
             self.response_queue.put(None)
 
-    def create_streaming_completion(self,
-                                    prompt: str,
-                                    max_tokens: int = 256,
-                                    temperature: float = 0.5,
-                                    top_p: float = 0.80,
-                                    stop: Optional[list] = None) -> Generator[str, None, None]:
+    def create_streaming_completion(self, config: GenerationConfig) -> Generator[str, None, None]:
         """
         스트리밍 방식으로 텍스트 응답을 생성하는 메서드입니다.
-        
+
         Args:
-            prompt (str): 모델에 입력할 프롬프트 텍스트
-            max_tokens (int, optional): 생성할 최대 토큰 수. 기본값: 256
-            temperature (float, optional): 샘플링 온도 (0~1). 기본값: 0.5
-            top_p (float, optional): 누적 확률 임계값 (0~1). 기본값: 0.80
-            stop (list, optional): 생성 중단 토큰 리스트. 기본값: None
-            
+            config (GenerationConfig): 생성 파라미터 객체
+
         Returns:
             Generator[str, None, None]: 생성된 텍스트 조각들의 제너레이터
         """
-        # kwargs 딕셔너리로 파라미터 전달
-        kwargs = {
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "top_p": top_p,
-            "stop": stop
-        }
-        
-        # 스트리밍 스레드 시작 - 수정된 부분
-        thread = Thread(
+        thread=Thread(
             target=self._stream_completion,
-            args=(prompt,),
-            kwargs=kwargs
+            args=(config,)
         )
         thread.start()
 
-        # 응답 스트리밍
         while True:
-            text = self.response_queue.get()
-            if text is None:  # 스트림 종료
+            text=self.response_queue.get()
+            if text is None:
                 break
             yield text
 
@@ -271,62 +211,56 @@ class BllossomChatModel:
 
         Args:
             input_text (str): 사용자 입력 텍스트
-            character_settings (dict, optional): 캐릭터 설정 딕셔너리
+            search_text (str): 검색 텍스트
+            chat_list (List[Dict]): 대화 기록
 
         Returns:
             Generator[str, None, None]: 생성된 텍스트 조각들을 반환하는 제너레이터
         """
         try:
-            # 현재 시간 정보 추가
-            current_time = datetime.now().strftime("%Y년 %m월 %d일 %H시 %M분")
-            time_info = f"현재 시간은 {current_time}입니다.\n\n"
-            
-            # search_text가 비어있으면 시간 정보만 추가, 그렇지 않으면 시간 정보와 검색 결과 결합
-            enhanced_search_text = time_info + (search_text if search_text else "")
-            
-            # MongoDB에서 가져온 채팅 목록 처리 - 이스케이프 문자 정규화
-            normalized_chat_list = []
+            current_time=datetime.now().strftime("%Y년 %m월 %d일 %H시 %M분")
+            time_info=f"현재 시간은 {current_time}입니다.\n\n"
+            enhanced_search_text=time_info + (search_text if search_text else "")
+
+            normalized_chat_list=[]
             if chat_list and len(chat_list) > 0:
                 for chat in chat_list:
-                    normalized_chat = {
+                    normalized_chat={
                         "index": chat.get("index"),
                         "input_data": chat.get("input_data"),
-                        # 출력 데이터의 이스케이프 문자 정규화
                         "output_data": self._normalize_escape_chars(chat.get("output_data", ""))
                     }
                     normalized_chat_list.append(normalized_chat)
             else:
-                normalized_chat_list = chat_list
-            
-            character_info = CharacterPrompt(
+                normalized_chat_list=chat_list
+
+            self.character_info: OfficePrompt=OfficePrompt(
                 name=self.data.get("character_name"),
                 context=self.data.get("character_setting"),
                 search_text=enhanced_search_text,
             )
 
-            # Llama3 프롬프트 형식으로 변환
-            messages = build_llama3_messages(
-                character_info,
+            messages=build_llama3_messages(
+                self.character_info,
                 input_text,
                 normalized_chat_list,
-                
             )
-        
-            # 토크나이저로 프롬프트 생성
-            prompt = self.tokenizer.apply_chat_template(
+
+            prompt=self.tokenizer.apply_chat_template(
                 messages,
                 tokenize=False,
                 add_generation_prompt=True
             )
-            
-            # 스트리밍 응답 생성
-            for text_chunk in self.create_streaming_completion(
+
+            config=GenerationConfig(
                 prompt=prompt,
                 max_tokens=2048,
                 temperature=0.5,
                 top_p=0.80,
                 stop=["<|eot_id|>"]
-            ):
+            )
+
+            for text_chunk in self.create_streaming_completion(config):
                 yield text_chunk
 
         except Exception as e:
@@ -341,15 +275,15 @@ class BllossomChatModel:
             return ""
             
         # 이스케이프된 개행문자 등을 정규화
-        result = text.replace("\\n", "\n")
-        result = result.replace("\\\\n", "\n")
-        result = result.replace('\\"', '"')
-        result = result.replace("\\\\", "\\")
+        result=text.replace("\\n", "\n")
+        result=result.replace("\\\\n", "\n")
+        result=result.replace('\\"', '"')
+        result=result.replace("\\\\", "\\")
         
         return result
             
 # if __name__ == "__main__":
-#     model = BllossomChatModel()
+#     model=BllossomChatModel()
     
 #     try:
 #         def get_display_width(text: str) -> int:
@@ -358,26 +292,26 @@ class BllossomChatModel:
 #             return sum(wcwidth.wcwidth(char) for char in text)
 
 #         # 박스 크기 설정
-#         box_width = 50
+#         box_width=50
 
 #         # 박스 생성
 #         print(f"╭{'─' * box_width}╮")
 
 #         # 환영 메시지 정렬
-#         title = "👋 환영합니다!"
-#         title_width = get_display_width(title)
-#         title_padding = (box_width - title_width) // 2
+#         title="👋 환영합니다!"
+#         title_width=get_display_width(title)
+#         title_padding=(box_width - title_width) // 2
 #         print(f"│{' ' * title_padding}{title}{' ' * (box_width - title_width - title_padding)}│")
 
 #         # 인사말 가져오기 및 정렬
-#         greeting = f"🤖 : {model.data.get('greeting')}"
-#         greeting_width = get_display_width(greeting)
-#         greeting_padding = (box_width - greeting_width) // 2
+#         greeting=f"🤖 : {model.data.get('greeting')}"
+#         greeting_width=get_display_width(greeting)
+#         greeting_padding=(box_width - greeting_width) // 2
 #         print(f"│{' ' * greeting_padding}{greeting}{' ' * (box_width - greeting_width - greeting_padding)}│")
 
 #         print(f"╰{'─' * box_width}╯\n")
 #         while True:
-#             user_input = input("🗨️  user : ")
+#             user_input=input("🗨️  user : ")
 #             if user_input.lower() in ['quit', 'exit', '종료']:
 #                 print("\n👋 대화를 종료합니다. 좋은 하루 되세요!")
 #                 break
