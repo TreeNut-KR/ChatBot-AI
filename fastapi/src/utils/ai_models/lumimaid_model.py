@@ -2,8 +2,7 @@
 파일은 LumimaidChatModel, CharacterPrompt 클래스를 정의하고 llama_cpp_cuda를 사용하여,
 Llama-3-Lumimaid-8B.gguf 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
 '''
-from dataclasses import dataclass
-from typing import TypedDict, Optional, Generator, List, Dict
+from typing import Optional, Generator, List, Dict
 from llama_cpp_cuda import (
     Llama,           # 기본 LLM 모델
     LlamaCache,      # 캐시 관리
@@ -81,22 +80,22 @@ class LumimaidChatModel:
         """
         self.model_id="v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat"
         self.model_path="fastapi/ai_model/v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat.gguf"
-        self.file_path='./models/config-Llama.json'
-        self.loading_text=f"{BLUE}LOADING{RESET}:  ✨ {self.model_id} 로드 중..."
+        self.file_path='./prompt/config-Llama.json'
+        self.loading_text=f"{BLUE}LOADING{RESET}:    {self.model_id} 로드 중..."
         self.gpu_layers: int=70
         self.character_info: Optional[CharacterPrompt]=None
         
         print("\n"+ f"{BLUE}LOADING{RESET}:  " + "="*len(self.loading_text))
-        print(f"{BLUE}LOADING{RESET}:  📦 {__class__.__name__} 모델 초기화 시작...")
+        print(f"{BLUE}LOADING{RESET}:    {__class__.__name__} 모델 초기화 시작...")
         
         # JSON 파일 읽기
         with open(self.file_path, 'r', encoding='utf-8') as file:
             self.data: BaseConfig=json.load(file)
         
         # 진행 상태 표시
-        print(f"{BLUE}LOADING{RESET}:  🚀 {__class__.__name__} 모델 초기화 중...")
+        print(f"{BLUE}LOADING{RESET}:    {__class__.__name__} 모델 초기화 중...")
         self.model: Llama=self._load_model()
-        print(f"{BLUE}LOADING{RESET}:  ✨ 모델 로드 완료!")
+        print(f"{BLUE}LOADING{RESET}:    모델 로드 완료!")
         print(f"{BLUE}LOADING{RESET}:  " + "="*len(self.loading_text) + "\n")
         
         self.response_queue: Queue=Queue()

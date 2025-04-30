@@ -5,8 +5,7 @@
 import os
 import json
 import warnings
-from dataclasses import dataclass
-from typing import TypedDict, Optional, Generator, List, Dict
+from typing import Optional, Generator, List, Dict
 from queue import Queue
 from threading import Thread
 from dotenv import load_dotenv
@@ -62,13 +61,13 @@ class OpenAICharacterModel:
     """
     def __init__(self, model_id='gpt-4o-mini') -> None:
         self.model_id=model_id
-        self.file_path='./models/config-OpenAI.json'
+        self.file_path='./prompt/config-OpenAI.json'
         
         # 환경파일 로드
         current_directory=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         env_file_path=os.path.join(current_directory, '.env')
         self.character_info: Optional[CharacterPrompt]=None
-      
+        
         if not os.path.exists(env_file_path):
             raise FileNotFoundError(f".env 파일을 찾을 수 없습니다: {env_file_path}")
         

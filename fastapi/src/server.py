@@ -1,17 +1,12 @@
 '''
 파일은 FastAPI 서버를 구동하는 엔트리 포인트입니다.
 '''
-
 import os
 import yaml
 import torch
 import uvicorn
-import asyncio
-import logging
-import hypercorn.asyncio
-from hypercorn.config import Config
-
 import ipaddress
+
 from dotenv import load_dotenv
 from asyncio import TimeoutError
 from pydantic import ValidationError
@@ -25,13 +20,8 @@ from fastapi import (
     FastAPI,
     HTTPException,
     Request,
-    Query,
 )
 
-from starlette.responses import (
-    StreamingResponse,
-    JSONResponse,
-)
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -41,7 +31,6 @@ from utils  import (
     ChatSearch,
     LanguageProcessor,
     MongoDBHandler,
-    Llama,
     Lumimaid,
     Bllossom,
     OpenAiOffice,
@@ -191,7 +180,6 @@ def custom_openapi():
     openapi_schema=get_openapi(
         title="ChatBot-AI FastAPI",
         version="v1.5.0",
-        summary="AI 모델 관리 API",
         routes=app.routes,
         description=(
             "이 API는 다음과 같은 기능을 제공합니다:\n\n"
@@ -218,8 +206,7 @@ def is_internal_ip(ip):
     """
     try:
         ip_obj=ipaddress.ip_address(ip)
-        # IP가 내부 네트워크 범위(192.168.3.0/24)에 있는지 확인합니다
-        return ip_obj in ipaddress.ip_network("192.168.3.0/24")
+        return ip_obj in ipaddress.ip_network(os.getenv("LOCAL_HOST"))
     except ValueError:
         return False
 
@@ -249,9 +236,9 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
     try:
         # IP 및 내부 네트워크 범위에 따라 액세스 제한
         if (request.url.path in ["/office_stream", "/character_stream", "/docs", "/redoc", "/openapi.json"]
-               and client_ip not in allowed_ips
-               and not is_internal_ip(client_ip)):
-           raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
+                and client_ip not in allowed_ips
+                and not is_internal_ip(client_ip)):
+            raise ChatError.IPRestrictedException(detail=f"Unauthorized IP address: {client_ip}")
 
         # 사용자 에이전트 기반 봇 차단
         if any(bot in user_agent for bot in bot_user_agents):
@@ -304,7 +291,7 @@ async def office_llama(request: ChatModel.office_Request):
     search_context=""
     
     # MongoDB에서 채팅 기록 가져오기
-    if mongo_handler:
+    if mongo_handler or request.db_id:
         try:
             chat_list=await mongo_handler.get_office_log(
                 user_id=request.user_id,
@@ -313,14 +300,14 @@ async def office_llama(request: ChatModel.office_Request):
             )
         except Exception as e:
             print(f"{YELLOW}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
-    
+
     # DuckDuckGo 검색 결과 가져오기
-    if request.google_access:  # 검색 옵션이 활성화된 경우
+    if request.google_access: # 검색 옵션이 활성화된 경우
         try:
             duck_results=await ChatSearch.fetch_duck_search_results(query=request.input_data)
         except Exception:
             print(f"{YELLOW}WARNING{RESET}:  검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
-   
+
         if duck_results:
             # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
             formatted_results=[]
@@ -349,7 +336,7 @@ async def office_llama(request: ChatModel.office_Request):
             full_response += chunk
             
         return full_response
-    
+
     except TimeoutError:
         raise ChatError.InternalServerErrorException(
             detail="Bllossom 모델 응답이 시간 초과되었습니다."
@@ -359,7 +346,6 @@ async def office_llama(request: ChatModel.office_Request):
     except Exception as e:
         print(f"처리되지 않은 예외: {e}")
         raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
-
 
 @office_router.post("/gpt4o_mini", summary="gpt4o_mini 모델이 검색 결과를 활용하여 답변 생성")
 async def office_gpt4o_mini(request: ChatModel.office_Request):
@@ -376,7 +362,7 @@ async def office_gpt4o_mini(request: ChatModel.office_Request):
     search_context=""
     
     # MongoDB에서 채팅 기록 가져오기
-    if mongo_handler:
+    if mongo_handler or request.db_id:
         try:
             chat_list=await mongo_handler.get_office_log(
                 user_id=request.user_id,
@@ -392,7 +378,7 @@ async def office_gpt4o_mini(request: ChatModel.office_Request):
             duck_results=await ChatSearch.fetch_duck_search_results(query=request.input_data)
         except Exception:
             print(f"{YELLOW}WARNING{RESET}:  검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
-            
+
         if duck_results:
             # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
             formatted_results=[]
@@ -410,7 +396,7 @@ async def office_gpt4o_mini(request: ChatModel.office_Request):
                 "다음은 검색에서 가져온 관련 정보입니다:\n\n" +
                 "\n".join(formatted_results)
             )
-            
+
     OpenAiOffice_model=OpenAiOffice(model_id='gpt-4o-mini')  # API 호출
     try:
         # 일반 for 루프로 변경하여 응답 누적
@@ -423,7 +409,7 @@ async def office_gpt4o_mini(request: ChatModel.office_Request):
             full_response += chunk
             
         return full_response
-    
+
     except TimeoutError:
         raise ChatError.InternalServerErrorException(
             detail="OpenAI 모델 응답이 시간 초과되었습니다."
@@ -433,7 +419,7 @@ async def office_gpt4o_mini(request: ChatModel.office_Request):
     except Exception as e:
         print(f"처리되지 않은 예외: {e}")
         raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
-    
+
 @office_router.post("/gpt4.1", summary="gpt4o_mini 모델이 검색 결과를 활용하여 답변 생성")
 async def office_gpt4o_mini(request: ChatModel.office_Request):
     """
@@ -449,7 +435,7 @@ async def office_gpt4o_mini(request: ChatModel.office_Request):
     search_context=""
     
     # MongoDB에서 채팅 기록 가져오기
-    if mongo_handler:
+    if mongo_handler or request.db_id:
         try:
             chat_list=await mongo_handler.get_office_log(
                 user_id=request.user_id,
@@ -522,7 +508,7 @@ async def office_gpt4o_mini(request: ChatModel.office_Request):
     search_context=""
     
     # MongoDB에서 채팅 기록 가져오기
-    if mongo_handler:
+    if mongo_handler or request.db_id:
         try:
             chat_list=await mongo_handler.get_office_log(
                 user_id=request.user_id,
@@ -580,77 +566,6 @@ async def office_gpt4o_mini(request: ChatModel.office_Request):
         print(f"처리되지 않은 예외: {e}")
         raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
 
-
-'''
-@office_router.post("/llama_sse", summary="스트리밍 방식으로 검색 결과를 활용하여 Bllossom 모델델 답변 생성")
-async def office_llama_sse(request: ChatModel.office_Request):
-    """
-    Bllossom_8B 모델에 질문을 위키백과, 나무위키, 뉴스 등의 결과를 결합하여 AI 답변을 생성합니다.
-    
-    Args:
-        request (ChatModel.office_Request): 사용자 질문과 인터넷 검색 옵션 포함
-        
-    Returns:
-        StreamingResponse: 스트리밍 방식의 모델 응답
-    """
-    try:
-        chat_list=await mongo_handler.get_office_log(
-            user_id=request.user_id,
-            document_id=request.db_id,
-            router="office",
-        )
-        search_context=""  # search_context를 초기화
-        
-        # DuckDuckGo 검색 결과 가져오기
-        if request.google_access:  # 검색 옵션이 활성화된 경우
-            duck_results=await ChatSearch.fetch_duck_search_results(query=request.input_data)
-            
-            if duck_results:
-                # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
-                formatted_results=[]
-                for idx, item in enumerate(duck_results[:10], 1):  # 상위 10개 결과만 사용
-                    formatted_result=(
-                        f"[검색결과 {idx}]\n"
-                        f"제목: {item.get('title', '제목 없음')}\n"
-                        f"내용: {item.get('snippet', '내용 없음')}\n"
-                        f"출처: {item.get('link', '링크 없음')}\n"
-                    )
-                    formatted_results.append(formatted_result)
-                
-                # 모든 결과를 하나의 문자열로 결합
-                search_context=(
-                    "다음은 검색에서 가져온 관련 정보입니다:\n\n" +
-                    "\n".join(formatted_results)
-                )
-
-        # 응답 스트림 생성
-        response_stream=Bllossom_model.generate_response_stream(
-            input_text=request.input_data,
-            search_text=search_context,
-            chat_list=chat_list,
-        )
-        
-        return StreamingResponse(
-            response_stream,
-            media_type="text/plain",
-            headers={
-                "Content-Type": "text/event-stream",
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-            }
-        )
-
-    except TimeoutError:
-        raise ChatError.InternalServerErrorException(
-            detail="Bllossom 모델 응답이 시간 초과되었습니다."
-        )
-    except ValidationError as e:
-        raise ChatError.BadRequestException(detail=str(e))
-    except Exception as e:
-        print(f"처리되지 않은 예외: {e}")
-        raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
-'''
-
 app.include_router(
     office_router,
     prefix="/office",
@@ -672,7 +587,7 @@ async def character_llama(request: ChatModel.character_Request):
     chat_list=[]
     
     # MongoDB에서 채팅 기록 가져오기
-    if mongo_handler:
+    if mongo_handler or request.db_id:
         try:
             chat_list=await mongo_handler.get_character_log(
                 user_id=request.user_id,
@@ -709,7 +624,6 @@ async def character_llama(request: ChatModel.character_Request):
     except Exception as e:
         print(f"처리되지 않은 예외: {e}")
         raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
-    
 
 @character_router.post("/gpt4o_mini", summary="gpt4o_mini 모델이 케릭터 정보를 기반으로 답변 생성")
 async def character_gpt4o_mini(request: ChatModel.character_Request):
@@ -725,7 +639,7 @@ async def character_gpt4o_mini(request: ChatModel.character_Request):
     chat_list=[]
     
     # MongoDB에서 채팅 기록 가져오기
-    if mongo_handler:
+    if mongo_handler or request.db_id:
         try:
             chat_list=await mongo_handler.get_character_log(
                 user_id=request.user_id,
@@ -763,60 +677,6 @@ async def character_gpt4o_mini(request: ChatModel.character_Request):
     except Exception as e:
         print(f"처리되지 않은 예외: {e}")
         raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
-    
-'''
-@character_router.post("/llama_sse", summary="스트리밍 방식으로 Lumimaid_8B 모델 답변 생성")
-async def character_llama_sse(request: ChatModel.character_Request):
-    """
-    Lumimaid_8B 모델에 질문을 입력하고 캐릭터 설정을 반영하여 답변을 스트리밍 방식으로 반환합니다.
-
-    Args:
-        request (ChatModel.character_Request): 사용자 요청 데이터 포함
-
-    Returns:
-        StreamingResponse: 스트리밍 방식의 모델 응답
-    """
-    try:
-        chat_list=await mongo_handler.get_character_log(
-            user_id=request.user_id,
-            document_id=request.db_id,
-            router="chatbot",
-        )
-        # 캐릭터 설정 구성
-        character_settings={
-            "character_name": request.character_name,
-            "greeting": request.greeting,
-            "context": request.context,
-            "chat_list": chat_list,
-        }
-
-        # 응답 스트림 생성
-        response_stream=Lumimaid_model.generate_response_stream(
-            input_text=request.input_data,
-            character_settings=character_settings,
-            chat_list=chat_list,
-        )
- 
-        return StreamingResponse(
-            response_stream,
-            media_type="text/plain",
-            headers={
-                "Content-Type": "text/event-stream",
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-            }
-        )
-        
-    except TimeoutError:
-        raise ChatError.InternalServerErrorException(
-            detail="Lumimaid 모델 응답이 시간 초과되었습니다."
-        )
-    except ValidationError as e:
-        raise ChatError.BadRequestException(detail=str(e))
-    except Exception as e:
-        print(f"처리되지 않은 예외: {e}")
-        raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
-'''
 
 app.include_router(
     character_router,
@@ -828,7 +688,7 @@ app.include_router(
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8001)
-    
+
     # logging.basicConfig(level=logging.INFO, format=f"{GREEN}INFO{RESET}:     %(asctime)s - %(levelname)s - %(message)s")
     # logger=logging.getLogger("hypercorn")
 

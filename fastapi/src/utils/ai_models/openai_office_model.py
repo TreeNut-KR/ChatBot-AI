@@ -30,7 +30,7 @@ def build_openai_messages(character: OfficePrompt, user_input: str, chat_list: L
     system_prompt=(
         f"당신은 {character.name}입니다.\n"
         f"설정: {character.context}\n"
-        f"다음 검색 정보를 참조하세요: {character.search_text}"
+        f"참고 정보(아래 정보는 참고만 하세요. 사용자의 질문과 직접 관련이 없으면 답변에 포함하지 마세요):{character.search_text}"
     )
 
     messages=[
@@ -66,7 +66,7 @@ class OpenAIChatModel:
         OpenAIChatModel 클래스 초기화 메소드
         """
         self.model_id=model_id
-        self.file_path='./models/config-OpenAI.json'
+        self.file_path='./prompt/config-OpenAI.json'
         
         # 환경 변수 파일 경로 설정 수정
         current_directory=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
