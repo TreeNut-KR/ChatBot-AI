@@ -131,10 +131,10 @@ ChatBot-AI/
 
     | Set | | Path |
     | --- | --- | --- |
-    |SET PATH |=|C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8/bin|
-    |SET PATH |=|C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8/extras/CUPTI/lib64|
-    |SET PATH |=|C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8/include|
-    |SET PATH |=|C:/tools/cuda/bin|
+    |SET PATH | = |C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8/bin|
+    |SET PATH | = |C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8/extras/CUPTI/lib64|
+    |SET PATH | = |C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8/include|
+    |SET PATH | = |C:/tools/cuda/bin|
 
 2. 가상환경 생성
 

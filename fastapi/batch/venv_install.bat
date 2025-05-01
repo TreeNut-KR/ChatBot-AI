@@ -6,21 +6,21 @@ SETLOCAL
 python.exe -m pip install --upgrade pip
 
 :: numpy 먼저 설치 (버전 제한)
-pip install "numpy>=1.22.4,<2.0.0"
+pip install "numpy>= 1.22.4,<2.0.0"
 
 :: CUDA 관련 패키지 설치
-pip install torch==2.3.1+cu118 torchvision==0.18.1+cu118 torchaudio==2.3.1+cu118 -f https://download.pytorch.org/whl/torch_stable.html
+pip install torch == 2.3.1+cu118 torchvision == 0.18.1+cu118 torchaudio == 2.3.1+cu118 -f https://download.pytorch.org/whl/torch_stable.html
 
 :: CUDA llama-cpp 설치
-set CMAKE_ARGS="-DLLAMA_CUBLAS=on"
-set FORCE_CMAKE=1
+set CMAKE_ARGS = "-DLLAMA_CUBLAS = on"
+set FORCE_CMAKE = 1
 pip install --no-cache-dir "https://github.com/oobabooga/llama-cpp-python-cuBLAS-wheels/releases/download/textgen-webui/llama_cpp_python_cuda-0.3.6+cu121-cp311-cp311-win_amd64.whl"
 
 :: ExLlamaV2 설치 (최신 버전)
-pip install exllamav2==0.2.8
+pip install exllamav2 == 0.2.8
 
 :: Flash Attention 설치 (pre-built wheel 사용)
-pip install --no-cache-dir --find-links https://github.com/Dao-AILab/flash-attention/releases/download/v2.3.3/ flash-attn==2.3.3
+pip install --no-cache-dir --find-links https://github.com/Dao-AILab/flash-attention/releases/download/v2.3.3/ flash-attn == 2.3.3
 
 :: CUDA 빌드 도구 설치
 pip install ninja
