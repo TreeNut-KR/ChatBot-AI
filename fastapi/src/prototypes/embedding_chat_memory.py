@@ -10,10 +10,10 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 class ChatMemory:
     def __init__(self):
-        self.chat_logs=[]  # 대화 저장소
-        self.embeddings=[]  # 임베딩 저장소
-        self.ai_model=OpenAIHandler()  # OpenAI 모델 통합
-        self.embedding_cache={}  # 임베딩 캐싱 추가
+        self.chat_logs = []  # 대화 저장소
+        self.embeddings = []  # 임베딩 저장소
+        self.ai_model = OpenAIHandler()  # OpenAI 모델 통합
+        self.embedding_cache = {}  # 임베딩 캐싱 추가
         
     def _get_embedding(self, text):
         """OpenAI 임베딩 API를 사용하여 텍스트를 벡터화 (캐싱 적용)"""
@@ -22,51 +22,51 @@ class ChatMemory:
             return self.embedding_cache[text]
             
         try:
-            response=self.ai_model.client.embeddings.create(
-                input=text,
-                model="text-embedding-3-small"
+            response = self.ai_model.client.embeddings.create(
+                input = text,
+                model = "text-embedding-3-small"
             )
-            embedding=np.array(response.data[0].embedding)
+            embedding = np.array(response.data[0].embedding)
             
             # 결과 캐싱
-            self.embedding_cache[text]=embedding
+            self.embedding_cache[text] = embedding
             return embedding
         except Exception as e:
             print(f"임베딩 중 오류 발생: {e}")
             return np.zeros(1536)
     
-    def add_chat(self, text, response=None):
+    def add_chat(self, text, response = None):
         """대화를 저장하고 벡터화하여 저장"""
         if response:
             # 사용자 메시지와 AI 응답을 함께 저장
-            full_text=f"{text}, {response}"
+            full_text = f"{text}, {response}"
         else:
             # 하나의 텍스트만 저장 (기존 방식)
-            full_text=text
+            full_text = text
             
         # OpenAI 임베딩 모델을 사용하여 벡터화
-        embedding=self._get_embedding(full_text)
+        embedding = self._get_embedding(full_text)
         self.chat_logs.append(full_text)
         self.embeddings.append(embedding)
 
-    def search_similar_chat(self, query, top_k=3):
+    def search_similar_chat(self, query, top_k = 3):
         """OpenAI 임베딩 기반 코사인 유사도 검색"""
         if not self.chat_logs:
             return []
 
         # 쿼리 임베딩 생성
-        query_embedding=self._get_embedding(query)
+        query_embedding = self._get_embedding(query)
         
         # 코사인 유사도 계산
         if len(self.embeddings) > 0:
-            similarities=cosine_similarity([query_embedding], self.embeddings)[0]
+            similarities = cosine_similarity([query_embedding], self.embeddings)[0]
             
             # 유사도에 따라 인덱스 정렬
-            sorted_indices=np.argsort(similarities)[::-1]  # 내림차순 정렬
+            sorted_indices = np.argsort(similarities)[::-1]  # 내림차순 정렬
             
             # 상위 결과 반환
-            top_indices=sorted_indices[:top_k]
-            candidates=[self.chat_logs[i] for i in top_indices]
+            top_indices = sorted_indices[:top_k]
+            candidates = [self.chat_logs[i] for i in top_indices]
             
             # 유사도 점수가 매우 비슷한 경우 재순위화 필요 여부 확인
             if len(top_indices) > 1 and self._needs_reranking(similarities[top_indices]):
@@ -77,51 +77,51 @@ class ChatMemory:
 
     def _needs_reranking(self, similarities):
         """재순위화가 필요한지 결정 (유사도가 비슷하면 재순위화 필요)"""
-        if len(similarities) <= 1:
+        if len(similarities) <=  1:
             return False
         
         # 상위 결과들의 유사도 차이가 작으면 재순위화 필요
-        similarity_diff=similarities[0] - similarities[1]
+        similarity_diff = similarities[0] - similarities[1]
         return similarity_diff < 0.05  # 임계값 조정 가능
 
-    def _gpt_rerank_candidates(self, query, candidates, top_k=3):
+    def _gpt_rerank_candidates(self, query, candidates, top_k = 3):
         """OpenAI API를 사용하여 후보 결과를 재순위화"""
         if not candidates:
             return []
         
         try:
             # 재순위화를 위한 프롬프트 구성
-            system_prompt="당신은 검색 결과 랭킹 전문가입니다. 주어진 쿼리에 가장 관련성이 높은 결과를 선택해주세요."
+            system_prompt = "당신은 검색 결과 랭킹 전문가입니다. 주어진 쿼리에 가장 관련성이 높은 결과를 선택해주세요."
             
             # 후보들을 하나의 문자열로 결합
-            candidates_text="\n".join([f"{i+1}. {c}" for i, c in enumerate(candidates)])
+            candidates_text = "\n".join([f"{i+1}. {c}" for i, c in enumerate(candidates)])
             
             # 사용자 프롬프트 구성
-            user_prompt=f"다음 쿼리에 가장 관련성이 높은 결과를 순위대로 나열해주세요:\n\n쿼리: {query}\n\n후보 결과:\n{candidates_text}\n\n결과 순위(숫자만 쉼표로 구분하여 나열):"
+            user_prompt = f"다음 쿼리에 가장 관련성이 높은 결과를 순위대로 나열해주세요:\n\n쿼리: {query}\n\n후보 결과:\n{candidates_text}\n\n결과 순위(숫자만 쉼표로 구분하여 나열):"
             
             # OpenAI API 호출
-            response=self.ai_model.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
+            response = self.ai_model.client.chat.completions.create(
+                model = "gpt-4o-mini",
+                messages = [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                max_tokens=50,
-                temperature=0.2
+                max_tokens = 50,
+                temperature = 0.2
             )
             
             # 응답 파싱
-            content=response.choices[0].message.content.strip()
+            content = response.choices[0].message.content.strip()
             
             # 숫자만 추출하기 위한 처리
             import re
-            ranking=re.findall(r'\d+', content)
+            ranking = re.findall(r'\d+', content)
             
             # 숫자를 인덱스로 변환 (1-indexed -> 0-indexed)
-            ranking=[int(r) - 1 for r in ranking if 0 < int(r) <= len(candidates)]
+            ranking = [int(r) - 1 for r in ranking if 0 < int(r) <=  len(candidates)]
             
             # 순위에 따라 결과 재정렬
-            reranked_candidates=[]
+            reranked_candidates = []
             for idx in ranking:
                 if idx < len(candidates):
                     reranked_candidates.append(candidates[idx])
@@ -142,13 +142,13 @@ class ChatMemory:
     def generate_response(self, user_query):
         """유사한 대화를 찾아 컨텍스트로 활용하여 응답 생성"""
         # 유사한 대화 검색
-        similar_chats=self.search_similar_chat(user_query, top_k=3)
+        similar_chats = self.search_similar_chat(user_query, top_k = 3)
         
         # 컨텍스트 구성
-        context="\n".join(similar_chats) if similar_chats else "관련 대화 기록이 없습니다."
+        context = "\n".join(similar_chats) if similar_chats else "관련 대화 기록이 없습니다."
         
         # OpenAI 모델을 통해 응답 생성
-        response=self.ai_model.generate_response(user_query, context)
+        response = self.ai_model.generate_response(user_query, context)
         
         return response
 
@@ -157,20 +157,20 @@ class OpenAIHandler:
     def __init__(self):
         """OpenAI API 핸들러 초기화"""
         # 환경 변수 파일 경로 설정
-        current_directory=os.path.dirname(os.path.abspath(__file__))
-        env_path=os.path.join(os.path.dirname(current_directory), '.env')
+        current_directory = os.path.dirname(os.path.abspath(__file__))
+        env_path = os.path.join(os.path.dirname(current_directory), '.env')
         
         load_dotenv(env_path)
         
         # API 키 설정
-        self.api_key=os.getenv("OPENAI_API_KEY")
+        self.api_key = os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY 환경 변수가 설정되지 않았습니다.")
             
         # OpenAI 클라이언트 초기화
-        self.client=OpenAI(api_key=self.api_key)
-        self.model_id='gpt-4o-mini'
-        self.response_queue=Queue()
+        self.client = OpenAI(api_key = self.api_key)
+        self.model_id = 'gpt-4o-mini'
+        self.response_queue = Queue()
         
     def _stream_completion(self, messages: list, **kwargs) -> None:
         """텍스트 생성을 위한 내부 스트리밍 메서드"""
@@ -178,19 +178,19 @@ class OpenAIHandler:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 
-                stream=self.client.chat.completions.create(
-                    model=self.model_id,
-                    messages=messages,
-                    stream=True,
+                stream = self.client.chat.completions.create(
+                    model = self.model_id,
+                    messages = messages,
+                    stream = True,
                     **kwargs
                 )
                 
-                full_response=""
+                full_response = ""
                 for chunk in stream:
                     if chunk.choices and len(chunk.choices) > 0:
-                        content=chunk.choices[0].delta.content
+                        content = chunk.choices[0].delta.content
                         if content is not None:
-                            full_response += content
+                            full_response +=  content
                 
                 self.response_queue.put(full_response)
                 
@@ -200,22 +200,22 @@ class OpenAIHandler:
 
     def generate_response(self, user_query, context):
         """컨텍스트 정보를 기반으로 응답 생성"""
-        system_prompt=(
+        system_prompt = (
             "당신은 전문적이고 신뢰할 수 있는 비즈니스 파트너입니다. "
             "아래 제공된 기억 정보를 참고하여 자연스럽게 대화를 이어나가세요. "
             "비즈니스 맥락에 맞게 전문적이면서도 친절하게 응답하되, 제공된 기억을 적절히 언급하세요."
         )
         
-        messages=[
+        messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"다음은 우리의 이전 대화 기억입니다:\n{context}\n\n사용자 질문: {user_query}"}
         ]
         
         # 응답 생성 스레드 시작
-        thread=Thread(
-            target=self._stream_completion,
-            args=(messages,),
-            kwargs={
+        thread = Thread(
+            target = self._stream_completion,
+            args = (messages,),
+            kwargs = {
                 "max_tokens": 300,
                 "temperature": 0.7
             }
@@ -224,10 +224,10 @@ class OpenAIHandler:
         thread.join()  # 스레드 완료 대기
         
         # 응답 반환
-        response=self.response_queue.get()
+        response = self.response_queue.get()
         return response
     
-chat_memory=ChatMemory()
+chat_memory = ChatMemory()
 
 # 협상 대화
 chat_memory.add_chat("*나는 회의실에서 거래처 담당자를 맞이하며 미소지으며 말한다* \"오늘 협상을 위해 시간 내주셔서 감사합니다.\", *상대방은 정중하게 고개를 끄덕이며 말한다* \"네, 좋은 결과가 있었으면 합니다.\"")
@@ -257,17 +257,17 @@ chat_memory.add_chat("*전략 회의에서 질문한다* \"경쟁사 신제품 �
 chat_memory.add_chat("*사내 교육 일정을 확인하며 묻는다* \"다음 리더십 교육은 언제인가요?\", *교육 담당자가 일정표를 확인하며 대답한다* \"다음 달 첫째 주 수요일에 예정되어 있습니다.\"")
 
 # 협상에 대한 질문
-user_query="우리가 진행했던 협상에서 어떤 안건들이 논의되었지?"
+user_query = "우리가 진행했던 협상에서 어떤 안건들이 논의되었지?"
 
 # 유사한 대화 찾기
-similar_chats=chat_memory.search_similar_chat(user_query, top_k=3)
+similar_chats = chat_memory.search_similar_chat(user_query, top_k = 3)
 
 print("\n[유사도 기반 검색 결과]")
 for i, chat in enumerate(similar_chats):
     print(f"{i+1}. {chat}")
 
 # AI가 자동으로 응답 생성 (OpenAI 모델 사용)
-ai_response=chat_memory.generate_response(user_query)
+ai_response = chat_memory.generate_response(user_query)
 print("\n[협상 안건들 질문 테스트]")
 print(f"사용자: {user_query}")
 print(f"AI: {ai_response}")
@@ -277,7 +277,7 @@ chat_memory.add_chat(user_query, ai_response)
 
 # 다른 질문 테스트
 print("\n[협상 장소 질문 테스트]")
-test_query="협상이 진행된 장소는 어디였지?"
-test_response=chat_memory.generate_response(test_query)
+test_query = "협상이 진행된 장소는 어디였지?"
+test_response = chat_memory.generate_response(test_query)
 print(f"사용자: {test_query}")
 print(f"AI: {test_response}")
