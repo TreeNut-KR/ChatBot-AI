@@ -18,8 +18,15 @@ Handlers:
 Schemas:
     - chat_schema (ChatModel): FastAPI Pydantic 모델 정의
 
+Routers:
+    - office_controller (office_router): 대화형 AI 에이전트 관련 API 라우터
+    - character_controller (chearacter_router): 대화형 AI 캐릭터 관련 API 라우터
+
 Services:
     - search_service(ChatSearch): 구글 검색 서비스
+
+App State:
+    - app_state (AppState): FastAPI 애플리케이션 GPU 할당 클래스 전역 객체 상태 관리
 """
 
 # AI Models
@@ -39,6 +46,11 @@ from .schemas import chat_schema as ChatModel
 # Services
 from .services import search_service as ChatSearch
 
+# Routers
+from .routers import office_controller as OfficeController
+from .routers import character_controller as ChearacterController
+
+
 __all__ = [
     # AI Models
     'Lumimaid',
@@ -56,4 +68,8 @@ __all__ = [
     
     # Services
     'ChatSearch',
+
+    # Routers
+    'OfficeController',
+    'ChearacterController',
 ]

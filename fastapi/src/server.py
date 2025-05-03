@@ -8,33 +8,28 @@ import uvicorn
 import ipaddress
 
 from dotenv import load_dotenv
-from asyncio import TimeoutError
 from pydantic import ValidationError
 from contextlib import asynccontextmanager
+
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import (
-    Path,
-    APIRouter,
     FastAPI,
     HTTPException,
     Request,
 )
 
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-
+import utils.app_state as AppState
 from utils  import (
     ChatError,
-    ChatModel,
-    ChatSearch,
-    MongoDBHandler,
     Lumimaid,
     Bllossom,
-    OpenAiOffice,
-    OpenAiCharacter,
+    OfficeController,
+    ChearacterController,
 )
 
 load_dotenv()
@@ -43,34 +38,6 @@ GREEN = "\033[32m"
 RED = "\033[31m"
 YELLOW = "\033[33m"
 RESET = "\033[0m"
-OPENAI_MODEL_MAP = {
-    "gpt4o_mini": "gpt-4o-mini",
-    "gpt4.1": "gpt-4.1",
-    "gpt4.1_mini": "gpt-4.1-mini",
-}
-
-Bllossom_model = None                       # Bllossom 모델 전역 변수
-Lumimaid_model = None                       # Lumimaid 모델 전역 변수
-
-try:
-    mongo_handler = MongoDBHandler()        # MongoDB 핸들러 초기화
-except ChatError.InternalServerErrorException as e:
-    mongo_handler = None
-    print(f"{RED}ERROR{RESET}:    MongoDB 초기화 오류 발생: {str(e)}")
-    
-def load_bot_list(file_path: str) -> list:
-    """
-    YAML 파일에서 봇 리스트를 불러오는 함수입니다.
-    
-    Args:
-        file_path (str): 봇 목록이 저장된 YAML 파일의 경로
-        
-    Returns:
-        list: 소문자로 변환된 봇 이름 리스트
-    """
-    with open(file_path, 'r', encoding = 'utf-8') as file:
-        data = yaml.safe_load(file)
-        return [bot['name'].lower() for bot in data.get('bot_user_agents', [])]
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -83,40 +50,39 @@ async def lifespan(app: FastAPI):
     Yields:
         None: 애플리케이션 컨텍스트를 생성하고 종료할 때까지 대기
     """
-    global Bllossom_model, Lumimaid_model, GREEN, RESET
-    # CUDA 디바이스 정보 가져오기 함수
     def get_cuda_device_info(device_id: int) -> str:
+        """
+        주어진 CUDA 장치 ID에 대한 정보를 반환합니다.
+        """
         device_name = torch.cuda.get_device_name(device_id)
         device_properties = torch.cuda.get_device_properties(device_id)
         total_memory = device_properties.total_memory / (1024 ** 3)  # GB 단위로 변환
         return f"Device {device_id}: {device_name} (Total Memory: {total_memory:.2f} GB)"
+    
     try:
-        # AI 모델 로드
-        Bllossom_model = Bllossom()                 # cuda:1
-        Lumimaid_model = Lumimaid()                 # cuda:0
+        AppState.Bllossom_model = Bllossom()                 # cuda:1
+        AppState.Lumimaid_model = Lumimaid()                 # cuda:0
     except ChatError.InternalServerErrorException as e:
         component = "MongoDBHandler"
         print(f"{RED}ERROR{RESET}:    {component} 초기화 중 {e.__class__.__name__} 오류 발생: {str(e)}")
         exit(1)
 
     # 디버깅용 출력
-    Bllossom_device_info = get_cuda_device_info(1)  # Bllossom 모델은 cuda:1
-    Lumimaid_device_info = get_cuda_device_info(0)  # Lumimaid 모델은 cuda:0
+    Bllossom_device_info = get_cuda_device_info(1)          # Bllossom 모델은 cuda:1
+    Lumimaid_device_info = get_cuda_device_info(0)          # Lumimaid 모델은 cuda:0
     print(f"{GREEN}INFO{RESET}:     Bllossom 모델 로드 완료 ({Bllossom_device_info})")
     print(f"{GREEN}INFO{RESET}:     Lumimaid 모델 로드 완료 ({Lumimaid_device_info})")
-    print(f"{GREEN}INFO{RESET}:     OpenAiOffice 모델 로드 완료 (API 호출)")
-    print(f"{GREEN}INFO{RESET}:     OpenAiCharacter 모델 로드 완료 (API 호출)")
 
     yield
 
     # 모델 메모리 해제
-    Bllossom_model = None
-    Lumimaid_model = None
+    AppState.Bllossom_model = None
+    AppState.Lumimaid_model = None
     print(f"{GREEN}INFO{RESET}:     모델 해제 완료")
 
-app = FastAPI(lifespan = lifespan) # 여기서 한 번만 app을 생성합니다.
-ChatError.add_exception_handlers(app) # 예외 핸들러 추가
+app = FastAPI(lifespan = lifespan)
 
+ChatError.add_exception_handlers(app) # 예외 핸들러 추가
 class ExceptionMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         """
@@ -134,6 +100,31 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
             return response
         except Exception as e:
             return await ChatError.generic_exception_handler(request, e)
+
+def custom_openapi():
+    """
+    커스텀 OpenAPI 스키마를 생성하는 함수입니다.
+    
+    Returns:
+        dict: OpenAPI 스키마 정의
+    """
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    openapi_schema = get_openapi(
+        title = "ChatBot-AI FastAPI",
+        version = "v1.5.0",
+        routes = app.routes,
+        description = (
+            "이 API는 다음과 같은 기능을 제공합니다:\n\n"
+            f"각 엔드포인트의 자세한 정보는 [📌 ChatBot-AI FastAPI 명세서](https://github.com/TreeNut-KR/ChatBot-AI/issues/4) 에서 확인할 수 있습니다."
+        ),
+    )
+    openapi_schema["info"]["x-logo"] = {
+        "url": "https://drive.google.com/thumbnail?id=12PqUS6bj4eAO_fLDaWQmoq94-771xfim"
+    }
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
 
 app.mount(
     "/.well-known/acme-challenge",
@@ -159,49 +150,7 @@ app.add_middleware(
     allow_methods = ["*"],
     allow_headers = ["*"],
 )
-
-def custom_openapi():
-    """
-    커스텀 OpenAPI 스키마를 생성하는 함수입니다.
-    
-    Returns:
-        dict: OpenAPI 스키마 정의
-    """
-    if app.openapi_schema:
-        return app.openapi_schema
-
-    openapi_schema = get_openapi(
-        title = "ChatBot-AI FastAPI",
-        version = "v1.5.0",
-        routes = app.routes,
-        description = (
-            "이 API는 다음과 같은 기능을 제공합니다:\n\n"
-            f"각 엔드포인트의 자세한 정보는 [📌 ChatBot-AI FastAPI 명세서](https://github.com/TreeNut-KR/ChatBot-AI/issues/4) 에서 확인할 수 있습니다."
-        ),
-    )
-    openapi_schema["info"]["x-logo"] = {
-        "url": "https://drive.google.com/thumbnail?id = 12PqUS6bj4eAO_fLDaWQmoq94-771xfim"
-    }
-    app.openapi_schema = openapi_schema
-    return app.openapi_schema
-
 app.openapi = custom_openapi
-
-def is_internal_ip(ip):
-    """
-    주어진 IP 주소가 내부 네트워크에 속하는지 확인합니다.
-    
-    Args:
-        ip (str): 확인할 IP 주소 문자열
-        
-    Returns:
-        bool: 내부 IP인 경우 True, 아닌 경우 False
-    """
-    try:
-        ip_obj = ipaddress.ip_address(ip)
-        return ip_obj in ipaddress.ip_network(os.getenv("LOCAL_HOST"))
-    except ValueError:
-        return False
 
 @app.middleware("http")
 async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
@@ -219,6 +168,36 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
         ChatError.IPRestrictedException: 허용되지 않은 IP 주소
         ChatError.BadRequestException: 봇 접근 시도
     """
+    def load_bot_list(file_path: str) -> list:
+        """
+        YAML 파일에서 봇 리스트를 불러오는 함수입니다.
+        
+        Args:
+            file_path (str): 봇 목록이 저장된 YAML 파일의 경로
+            
+        Returns:
+            list: 소문자로 변환된 봇 이름 리스트
+        """
+        with open(file_path, 'r', encoding = 'utf-8') as file:
+            data = yaml.safe_load(file)
+            return [bot['name'].lower() for bot in data.get('bot_user_agents', [])]
+
+    def is_internal_ip(ip):
+        """
+        주어진 IP 주소가 내부 네트워크에 속하는지 확인합니다.
+        
+        Args:
+            ip (str): 확인할 IP 주소 문자열
+            
+        Returns:
+            bool: 내부 IP인 경우 True, 아닌 경우 False
+        """
+        try:
+            ip_obj = ipaddress.ip_address(ip)
+            return ip_obj in ipaddress.ip_network(os.getenv("LOCAL_HOST"))
+        except ValueError:
+            return False
+
     ip_string = os.getenv("IP")
     allowed_ips = ip_string.split(", ") if ip_string else []
     client_ip = request.client.host
@@ -228,9 +207,18 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
 
     try:
         # IP 및 내부 네트워크 범위에 따라 액세스 제한
-        if (request.url.path in ["/office_stream", "/character_stream", "/docs", "/redoc", "/openapi.json"]
-                and client_ip not in allowed_ips
-                and not is_internal_ip(client_ip)):
+        restricted_paths = [
+            "/docs", "/redoc", "/openapi.json"
+        ]
+        # /office, /character 하위 모든 경로도 포함
+        if (
+            request.url.path in restricted_paths
+            or request.url.path.startswith("/office")
+            or request.url.path.startswith("/character")
+        ) and (
+            client_ip not in allowed_ips
+            and not is_internal_ip(client_ip)
+        ):
             raise ChatError.IPRestrictedException(detail = f"Unauthorized IP address: {client_ip}")
 
         # 사용자 에이전트 기반 봇 차단
@@ -265,270 +253,16 @@ async def root(request: Request):
         "message": "Welcome to ChatBot-AI API. Access from IP: " + request.client.host
     }
 
-office_router = APIRouter()
-character_router = APIRouter()
-
-@office_router.post("/Llama", summary = "Llama 모델이 검색 결과를 활용하여 답변 생성")
-async def office_llama(request: ChatModel.office_Request):
-    """
-    Bllossom_8B 모델에 질문을 위키백과, 나무위키, 뉴스 등의 결과를 결합하여 AI 답변을 JSON 방식으로 반환합니다.
-    
-    Args:
-        request (ChatModel.office_Request): 사용자 질문과 인터넷 검색 옵션 포함
-        
-    Returns:
-        JSONResponse: JSON 방식으로 모델 응답
-    """
-    chat_list = []
-    search_context = ""
-    
-    # MongoDB에서 채팅 기록 가져오기
-    if mongo_handler or request.db_id:
-        try:
-            chat_list = await mongo_handler.get_office_log(
-                user_id = request.user_id,
-                document_id = request.db_id,
-                router = "office",
-            )
-        except Exception as e:
-            print(f"{YELLOW}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
-
-    # DuckDuckGo 검색 결과 가져오기
-    if request.google_access: # 검색 옵션이 활성화된 경우
-        try:
-            duck_results = await ChatSearch.fetch_duck_search_results(query = request.input_data)
-        except Exception:
-            print(f"{YELLOW}WARNING{RESET}:  검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
-
-        if duck_results:
-            # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
-            formatted_results = []
-            for idx, item in enumerate(duck_results[:10], 1): # 상위 10개 결과만 사용
-                formatted_result = (
-                    f"[검색결과 {idx}]\n"
-                    f"제목: {item.get('title', '제목 없음')}\n"
-                    f"내용: {item.get('snippet', '내용 없음')}\n"
-                    f"출처: {item.get('link', '링크 없음')}\n"
-                )
-                formatted_results.append(formatted_result)
-            # 모든 결과를 하나의 문자열로 결합
-            search_context = (
-                "다음은 검색에서 가져온 관련 정보입니다:\n\n" +
-                "\n".join(formatted_results)
-            )
-    try:        
-        full_response = Bllossom_model.generate_response(
-            input_text = request.input_data,
-            search_text = search_context,
-            chat_list = chat_list,
-        )
-        return full_response
-
-    except TimeoutError:
-        raise ChatError.InternalServerErrorException(
-            detail = "Bllossom 모델 응답이 시간 초과되었습니다."
-        )
-    except ValidationError as e:
-        raise ChatError.BadRequestException(detail = str(e))
-    except Exception as e:
-        print(f"처리되지 않은 예외: {e}")
-        raise ChatError.InternalServerErrorException(detail = "내부 서버 오류가 발생했습니다.")
-
-
-@office_router.post("/{gpt_set}", summary = "gpt 모델이 검색 결과를 활용하여 답변 생성")
-async def office_gpt(
-        request: ChatModel.office_Request,
-        gpt_set: str = Path(
-            ...,
-            title="GPT 모델명",
-            description="사용할 OpenAI GPT 모델의 별칭 (예: gpt4o_mini, gpt4.1, gpt4.1_mini)",
-            examples=list(OPENAI_MODEL_MAP.keys()),
-        )
-    ):
-    """
-    gpt 모델에 질문을 입력하고 응답을 JSON 방식으로 반환합니다.
-    
-    Args:
-        request (ChatModel.office_Request): 사용자 질문과 인터넷 검색 옵션 포함
-        
-    Returns:
-        JSONResponse: JSON 방식으로 모델 응답
-    """
-    if gpt_set not in OPENAI_MODEL_MAP:
-        raise HTTPException(status_code = 400, detail = "Invalid model name.")
-
-    model_id = OPENAI_MODEL_MAP[gpt_set]
-    chat_list = []
-    search_context = ""
-
-    # MongoDB에서 채팅 기록 가져오기
-    if mongo_handler or request.db_id:
-        try:
-            chat_list = await mongo_handler.get_office_log(
-                user_id = request.user_id,
-                document_id = request.db_id,
-                router = "office",
-            )
-        except Exception as e:
-            print(f"{YELLOW}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
-
-    # DuckDuckGo 검색 결과 가져오기
-    if request.google_access: # 검색 옵션이 활성화된 경우
-        try:
-            duck_results = await ChatSearch.fetch_duck_search_results(query = request.input_data)
-        except Exception:
-            print(f"{YELLOW}WARNING{RESET}:  검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
-
-        if duck_results:
-            # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
-            formatted_results = []
-            for idx, item in enumerate(duck_results[:10], 1): # 상위 10개 결과만 사용
-                formatted_result = (
-                    f"[검색결과 {idx}]\n"
-                    f"제목: {item.get('title', '제목 없음')}\n"
-                    f"내용: {item.get('snippet', '내용 없음')}\n"
-                    f"출처: {item.get('link', '링크 없음')}\n"
-                )
-                formatted_results.append(formatted_result)
-            # 모든 결과를 하나의 문자열로 결합
-            search_context = (
-                "다음은 검색에서 가져온 관련 정보입니다:\n\n" +
-                "\n".join(formatted_results)
-            )
-
-    OpenAiOffice_model = OpenAiOffice(model_id = model_id)
-    try:
-        full_response = OpenAiOffice_model.generate_response(
-            input_text = request.input_data,
-            search_text = search_context,
-            chat_list = chat_list,
-        )
-        return full_response
-
-    except TimeoutError:
-        raise ChatError.InternalServerErrorException(detail = "OpenAI 모델 응답이 시간 초과되었습니다.")
-    except ValidationError as e:
-        raise ChatError.BadRequestException(detail = str(e))
-    except Exception as e:
-        print(f"처리되지 않은 예외: {e}")
-        raise ChatError.InternalServerErrorException(detail = "내부 서버 오류가 발생했습니다.")
 
 app.include_router(
-    office_router,
+    OfficeController.office_router,
     prefix = "/office",
     tags = ["office Router"],
     responses = {500: {"description": "Internal Server Error"}}
 )
 
-@character_router.post("/Llama", summary = "Llama 모델이 케릭터 정보를 기반으로 답변 생성")
-async def character_llama(request: ChatModel.character_Request):
-    """
-    Lumimaid_8B 모델에 질문을 입력하고 캐릭터 설정을 반영하여 답변을 JSON 방식으로 반환합니다.
-
-    Args:
-        request (ChatModel.character_Request): 사용자 요청 데이터 포함
-
-    Returns:
-        JSONResponse: JSON 방식으로 모델 응답
-    """
-    chat_list = []
-    
-    # MongoDB에서 채팅 기록 가져오기
-    if mongo_handler or request.db_id:
-        try:
-            chat_list = await mongo_handler.get_character_log(
-                user_id = request.user_id,
-                document_id = request.db_id,
-                router = "character",
-            )
-        except Exception as e:
-            print(f"{YELLOW}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
-            
-    try:
-        character_settings = {
-            "character_name": request.character_name,
-            "greeting": request.greeting,
-            "context": request.context,
-            "chat_list": chat_list,
-        }
-        full_response = Lumimaid_model.generate_response(
-            input_text =  request.input_data,
-            character_settings = character_settings,
-        )
-        return full_response
-
-    except TimeoutError:
-        raise ChatError.InternalServerErrorException(
-            detail = "Lumimaid 모델 응답이 시간 초과되었습니다."
-        )
-    except ValidationError as e:
-        raise ChatError.BadRequestException(detail = str(e))
-    except Exception as e:
-        print(f"처리되지 않은 예외: {e}")
-        raise ChatError.InternalServerErrorException(detail = "내부 서버 오류가 발생했습니다.")
-
-@character_router.post("/{gpt_set}", summary = "gpt 모델이 케릭터 정보를 기반으로 답변 생성")
-async def character_gpt4o_mini(
-        request: ChatModel.character_Request,
-        gpt_set: str = Path(
-            ...,
-            title="GPT 모델명",
-            description="사용할 OpenAI GPT 모델의 별칭 (예: gpt4o_mini, gpt4.1, gpt4.1_mini)",
-            examples=list(OPENAI_MODEL_MAP.keys()),
-        )
-    ):
-    """
-    gpt 모델에 질문을 입력하고 캐릭터 설정을 반영하여 답변을 JSON 방식으로 반환합니다.
-
-    Args:
-        request (ChatModel.character_Request): 사용자 요청 데이터 포함
-
-    Returns:
-        JSONResponse: JSON 방식으로 모델 응답
-    """
-    if gpt_set not in OPENAI_MODEL_MAP:
-        raise HTTPException(status_code = 400, detail = "Invalid model name.")
-
-    model_id = OPENAI_MODEL_MAP[gpt_set]
-    chat_list = []
-    
-    # MongoDB에서 채팅 기록 가져오기
-    if mongo_handler or request.db_id:
-        try:
-            chat_list = await mongo_handler.get_character_log(
-                user_id = request.user_id,
-                document_id = request.db_id,
-                router = "character",
-            )
-        except Exception as e:
-            print(f"{YELLOW}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
-
-    OpenAiCharacter_model = OpenAiCharacter(model_id = model_id)
-    try:
-        character_settings = {
-            "character_name": request.character_name,
-            "greeting": request.greeting,
-            "context": request.context,
-            "chat_list": chat_list,
-        }
-        full_response = OpenAiCharacter_model.generate_response(
-            input_text =  request.input_data,
-            character_settings = character_settings,
-        )
-        return full_response
-
-    except TimeoutError:
-        raise ChatError.InternalServerErrorException(
-            detail = "Lumimaid 모델 응답이 시간 초과되었습니다."
-        )
-    except ValidationError as e:
-        raise ChatError.BadRequestException(detail = str(e))
-    except Exception as e:
-        print(f"처리되지 않은 예외: {e}")
-        raise ChatError.InternalServerErrorException(detail = "내부 서버 오류가 발생했습니다.")
-
 app.include_router(
-    character_router,
+    ChearacterController.character_router,
     prefix = "/character",
     tags = ["character Router"],
     responses = {500: {"description": "Internal Server Error"}}
