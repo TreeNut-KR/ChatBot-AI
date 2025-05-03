@@ -160,7 +160,7 @@ models--beomi--KoAlpaca-Polyglot-5.8B/
 ai_model/*
 fastapi/ai_model/*
 fastapi/datasets/*
-models/*.yml
+prompt/*.yml
 
 # certificates
 *.pem
@@ -178,3 +178,6 @@ mongo/log
 .vscode
 *.gpg
 .hintrc
+
+# sonar qube
+.scannerwork

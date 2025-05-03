@@ -95,9 +95,9 @@
 2. `.env` 파일을 생성하여 환경 변수를 저장합니다:
    - ./fastapi/certificates 경로에 추가된 .pem 파일들의 이름을 fastapi/src/.env 에 추가가
    ```env
-   SSL_PW=
-   KEY_PEM=YOUR_DOMIN-key.pem
-   CRT_PEM=YOUR_DOMIN-crt.pem
+   SSL_PW = 
+   KEY_PEM = YOUR_DOMIN-key.pem
+   CRT_PEM = YOUR_DOMIN-crt.pem
    ```
 
    #### `.env` 파일 변수 설명

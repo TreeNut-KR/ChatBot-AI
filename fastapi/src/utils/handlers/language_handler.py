@@ -32,9 +32,9 @@ class LanguageProcessor:
             OSError: Spacy 모델 로드 실패 시
             ImportError: 필요한 라이브러리 import 실패 시
         """
-        self.translator=Translator()
-        self.nlp_en: spacy=spacy.load("en_core_web_sm")
-        self.nlp_ko: spacy=spacy.load("ko_core_news_sm")
+        self.translator = Translator()
+        self.nlp_en: spacy = spacy.load("en_core_web_sm")
+        self.nlp_ko: spacy = spacy.load("ko_core_news_sm")
 
     def detect_language(self, sentence: str) -> str:
         """
@@ -70,14 +70,14 @@ class LanguageProcessor:
         """
         # 지원되지 않는 언어일 경우 영어 모델 사용
         if lang == "en":
-            doc=self.nlp_en(sentence)
+            doc = self.nlp_en(sentence)
         elif lang == "ko":
-            doc=self.nlp_ko(sentence)
+            doc = self.nlp_ko(sentence)
         else:
             print(f"지원되지 않는 언어: {lang}, 기본값 영어로 분석.")
-            doc=self.nlp_en(sentence)
+            doc = self.nlp_en(sentence)
 
-        categories={
+        categories = {
             "명사": [],
             "동사": [],
             "형용사": [],
@@ -119,12 +119,12 @@ class LanguageProcessor:
         """
         try:
             # 언어 감지
-            lang=self.detect_language(sentence)
-            result={"입력 문장": sentence, "언어": lang}
+            lang = self.detect_language(sentence)
+            result = {"입력 문장": sentence, "언어": lang}
 
             # Spacy 분석
-            analysis_result=self.analyze_with_spacy(sentence, lang)
-            result["분석 결과"]=analysis_result
+            analysis_result = self.analyze_with_spacy(sentence, lang)
+            result["분석 결과"] = analysis_result
 
             return result
 
@@ -150,13 +150,13 @@ class LanguageProcessor:
             
         try:
             # GoogleTranslator를 사용하여 번역 (더 안정적)
-            translator=GoogleTranslator(target=target_lang)
-            translated=translator.translate(text)
+            translator = GoogleTranslator(target = target_lang)
+            translated = translator.translate(text)
             return translated
         except Exception as e:
             # 첫 번째 방법 실패시 googletrans 라이브러리 사용
             try:
-                translated=self.translator.translate(text, dest=target_lang)
+                translated = self.translator.translate(text, dest = target_lang)
                 return translated.text
             except Exception as inner_e:
                 print(f"번역 오류: {str(inner_e)}")
@@ -166,7 +166,7 @@ class LanguageProcessor:
         """
         텍스트를 패턴에 따라 분할하고 각각 번역합니다.
         """
-        patterns=[
+        patterns = [
             (r'\*\*(.*?)\*\*', '**', '**'),  # 볼드체
             (r'\*(.*?)\*', '*', '*'),         # 이탤릭체
             (r'```(.*?)```', '```', '```'),   # 코드 블록
@@ -179,39 +179,39 @@ class LanguageProcessor:
         ]
 
         # 현재 처리해야 할 텍스트와 결과를 저장할 리스트
-        current_text=text
-        result_parts=[]
-        last_end=0
+        current_text = text
+        result_parts = []
+        last_end = 0
 
         while current_text:
             # 모든 패턴에 대해 가장 먼저 나오는 매치 찾기
-            earliest_match=None
-            matched_pattern=None
+            earliest_match = None
+            matched_pattern = None
             
             for pattern, start_delim, end_delim in patterns:
-                match=re.search(pattern, current_text)
+                match = re.search(pattern, current_text)
                 if match and (earliest_match is None or match.start() < earliest_match.start()):
-                    earliest_match=match
-                    matched_pattern=(start_delim, end_delim)
+                    earliest_match = match
+                    matched_pattern = (start_delim, end_delim)
 
             if earliest_match:
                 # 특수 문자 이전의 일반 텍스트 처리
                 if earliest_match.start() > 0:
-                    normal_text=current_text[:earliest_match.start()]
-                    translated_normal=self._translate_text(normal_text, target_lang)
+                    normal_text = current_text[:earliest_match.start()]
+                    translated_normal = self._translate_text(normal_text, target_lang)
                     result_parts.append(translated_normal)
 
                 # 특수 문자로 감싸진 텍스트 처리
-                special_text=earliest_match.group(1)
-                translated_special=self._translate_text(special_text, target_lang)
-                start_delim, end_delim=matched_pattern
+                special_text = earliest_match.group(1)
+                translated_special = self._translate_text(special_text, target_lang)
+                start_delim, end_delim = matched_pattern
                 result_parts.append(f"{start_delim}{translated_special}{end_delim}")
 
                 # 다음 처리를 위해 남은 텍스트 업데이트
-                current_text=current_text[earliest_match.end():]
+                current_text = current_text[earliest_match.end():]
             else:
                 # 남은 텍스트 전체 번역
-                translated_remaining=self._translate_text(current_text, target_lang)
+                translated_remaining = self._translate_text(current_text, target_lang)
                 result_parts.append(translated_remaining)
                 break
 
@@ -242,28 +242,28 @@ class LanguageProcessor:
             return text
 
 # # 모듈 테스트
-# if __name__ == "__main__":
-#     processor=LanguageProcessor()
-#     test_sentence="Llama 모델이 어떤 특징을 가지고 있는지 알려주세요."
-#     output=processor.process_sentence(test_sentence)
+# if __name__  ==  "__main__":
+#     processor = LanguageProcessor()
+#     test_sentence = "Llama 모델이 어떤 특징을 가지고 있는지 알려주세요."
+#     output = processor.process_sentence(test_sentence)
 #     print(output)
 
 # 번역 모듈 테스트
-# if __name__ == "__main__":
-#     processor=LanguageProcessor()
+# if __name__  ==  "__main__":
+#     processor = LanguageProcessor()
     
-#     test_texts=[
+#     test_texts = [
 #         "*Rachel smiles warmly* Oh, hello! Who might you be? **Important** This is bold text *Rachel smiles warmly* Oh, hello! Who might you be? **Important** This is bold text *Rachel smiles warmly* Oh, hello! Who might you be? **Important** This is bold text ",
 #         "*이것은 이탤릭체입니다* 그리고 이것은 일반 텍스트입니다.",
 #         "```This is a code block```"
 #     ]
     
 #     print("번역 테스트 시작...\n")
-#     start_time=time.time()
+#     start_time = time.time()
     
 #     for text in test_texts:
 #         try:
-#             translated=processor.translate_to_korean(text)
+#             translated = processor.translate_to_korean(text)
 #             print(f"원문: {text}")
 #             print(f"번역: {translated}")
 #             print("-" * 50)
@@ -271,5 +271,5 @@ class LanguageProcessor:
 #             print(f"오류 발생: {e}")
 #             print("-" * 50)
             
-#     end_time=time.time()
+#     end_time = time.time()
 #     print(f"\n번역 소요 시간: {end_time - start_time:.2f}초")

@@ -55,6 +55,9 @@ ChatBot-AI/
 ### 📑 ChatBot-AI/fastapi/src/utils/schemas 클래스 다이어그램
 ![image](https://lh3.googleusercontent.com/d/1Az97lKerSOJltMPWEMeAW6G72axCdIii)
 
+## 📋 UML 패키지 다이어그램 
+![image](https://lh3.googleusercontent.com/d/1_fifSzf7YFoEMQd80hUQGgF0rI0vsYtm)
+
 ## 🚀 주요 기능
 
 - **AI 모델**:
@@ -128,10 +131,10 @@ ChatBot-AI/
 
     | Set | | Path |
     | --- | --- | --- |
-    |SET PATH |=|C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8/bin|
-    |SET PATH |=|C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8/extras/CUPTI/lib64|
-    |SET PATH |=|C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8/include|
-    |SET PATH |=|C:/tools/cuda/bin|
+    |SET PATH | = |C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8/bin|
+    |SET PATH | = |C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8/extras/CUPTI/lib64|
+    |SET PATH | = |C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8/include|
+    |SET PATH | = |C:/tools/cuda/bin|
 
 2. 가상환경 생성
 

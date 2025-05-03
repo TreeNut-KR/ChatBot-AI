@@ -6,7 +6,6 @@ utils 패키지 초기화 모듈
 
 AI Models:
     - lumimaid_model (Lumimaid): Lumimaid 모델을 사용하는 대화 생성 모델
-    - llama_model (Llama): Llama 모델을 사용하는 대화 생성 모델
     - bllossom_model (Bllossom): Bllossom 모델을 사용하는 대화 생성 모델
     - openai_office_model (OpenAiOffice): OpenAI GPT 모델을 사용하는 대화 생성 모델
     - openai_character_model (OpenAiCharacter): OpenAI GPT 모델을 사용하는 대화 생성 모델
@@ -25,7 +24,6 @@ Services:
 
 # AI Models
 from .ai_models.lumimaid_model import LumimaidChatModel as Lumimaid
-from .ai_models.llama_model import LlamaChatModel as Llama
 from .ai_models.bllossom_model import BllossomChatModel as Bllossom
 from .ai_models.openai_office_model import OpenAIChatModel as OpenAiOffice
 from .ai_models.openai_character_model import OpenAICharacterModel as OpenAiCharacter
@@ -41,10 +39,9 @@ from .schemas import chat_schema as ChatModel
 # Services
 from .services import search_service as ChatSearch
 
-__all__=[
+__all__ = [
     # AI Models
     'Lumimaid',
-    'Llama',
     'Bllossom',
     'OpenAiOffice',
     'OpenAiCharacter',
