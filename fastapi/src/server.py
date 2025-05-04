@@ -113,7 +113,7 @@ def custom_openapi():
 
     openapi_schema = get_openapi(
         title = "ChatBot-AI FastAPI",
-        version = "v1.5.0",
+        version = "v1.5.*",
         routes = app.routes,
         description = (
             "이 API는 다음과 같은 기능을 제공합니다:\n\n"
@@ -252,7 +252,6 @@ async def root(request: Request):
     return {
         "message": "Welcome to ChatBot-AI API. Access from IP: " + request.client.host
     }
-
 
 app.include_router(
     OfficeController.office_router,

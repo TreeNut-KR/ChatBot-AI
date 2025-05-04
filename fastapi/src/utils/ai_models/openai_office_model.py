@@ -5,8 +5,7 @@
 import os
 import json
 import warnings
-from dataclasses import dataclass
-from typing import TypedDict, Optional, Generator, List, Dict
+from typing import Optional, Generator, List, Dict
 from queue import Queue
 from threading import Thread
 from datetime import datetime

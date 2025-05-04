@@ -5,7 +5,7 @@
 import os
 import json
 import warnings
-from typing import Optional, Generator, List, Dict
+from typing import Optional, Generator, Dict
 from queue import Queue
 from threading import Thread
 from dotenv import load_dotenv

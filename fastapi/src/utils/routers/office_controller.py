@@ -1,8 +1,9 @@
-from fastapi import Path, APIRouter, HTTPException
+from fastapi import Path, APIRouter, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 import utils.app_state as AppState
-from .. import OpenAiOffice, ChatModel, ChatError, ChatSearch, MongoDBHandler
+from .. import OpenAiOffice, ChatModel, ChatError, ChatSearch
 
 GREEN = "\033[32m"
 RED = "\033[31m"
@@ -10,21 +11,37 @@ YELLOW = "\033[33m"
 RESET = "\033[0m"
 
 OPENAI_MODEL_MAP = {
-    "gpt4o_mini": "gpt-4o-mini",
-    "gpt4.1": "gpt-4.1",
-    "gpt4.1_mini": "gpt-4.1-mini",
+    "gpt4o_mini": {
+        "id": "gpt-4o-mini",
+        "type": "post"
+    },
+    "gpt4.1": {
+        "id": "gpt-4.1",
+        "type": "post"
+    },
+    "gpt4.1_mini": {
+        "id": "gpt-4.1-mini",
+        "type": "post"
+    },
 }
 
-try:
-    mongo_handler = MongoDBHandler()
-except ChatError.InternalServerErrorException as e:
-    mongo_handler = None
-    print(f"{RED}ERROR{RESET}:    MongoDB 초기화 오류 발생: {str(e)}")
+def get_openai_links(base_url: str, path: str) -> dict:
+    """
+    OPENAI_MODEL_MAP을 기준으로 _links용 링크 딕셔너리 생성
+    """
+    return [
+        {
+            "href": f"{base_url}office/{k}",
+            "rel": f"office_{k}",
+            "type": OPENAI_MODEL_MAP[k]["type"],
+        }
+        for k in OPENAI_MODEL_MAP.keys() if k != path
+    ]
 
 office_router = APIRouter()
 
 @office_router.post("/Llama", summary = "Llama 모델이 검색 결과를 활용하여 답변 생성")
-async def office_llama(request: ChatModel.office_Request):
+async def office_llama(request: ChatModel.office_Request, req: Request):
     """
     Bllossom_8B 모델에 질문을 위키백과, 나무위키, 뉴스 등의 결과를 결합하여 AI 답변을 JSON 방식으로 반환합니다.
     
@@ -38,9 +55,9 @@ async def office_llama(request: ChatModel.office_Request):
     search_context = ""
 
     # MongoDB에서 채팅 기록 가져오기
-    if mongo_handler or request.db_id:
+    if AppState.mongo_handler or request.db_id:
         try:
-            chat_list = await mongo_handler.get_office_log(
+            chat_list = await AppState.mongo_handler.get_office_log(
                 user_id = request.user_id,
                 document_id = request.db_id,
                 router = "office",
@@ -77,7 +94,21 @@ async def office_llama(request: ChatModel.office_Request):
             search_text = search_context,
             chat_list = chat_list,
         )
-        return full_response
+        response_data = {
+            "result": full_response,
+            "_links": [
+                {   
+                    "href": str(req.url),
+                    "rel": "_self",
+                    "type": str(req.method).lower(),
+                },
+                *get_openai_links(
+                    base_url = str(req.base_url),
+                    path = "Llama",
+                ),
+            ]
+        }
+        return JSONResponse(content=response_data)
 
     except TimeoutError:
         raise ChatError.InternalServerErrorException(
@@ -93,10 +124,11 @@ async def office_llama(request: ChatModel.office_Request):
 @office_router.post("/{gpt_set}", summary = "gpt 모델이 검색 결과를 활용하여 답변 생성")
 async def office_gpt(
         request: ChatModel.office_Request,
+        req: Request,
         gpt_set: str = Path(
             ...,
             title="GPT 모델명",
-            description="사용할 OpenAI GPT 모델의 별칭 (예: gpt4o_mini, gpt4.1, gpt4.1_mini)",
+            description=f"사용할 OpenAI GPT 모델의 별칭 (예: {list(OPENAI_MODEL_MAP.keys())})",
             examples=list(OPENAI_MODEL_MAP.keys()),
         )
     ):
@@ -112,14 +144,14 @@ async def office_gpt(
     if gpt_set not in OPENAI_MODEL_MAP:
         raise HTTPException(status_code = 400, detail = "Invalid model name.")
 
-    model_id = OPENAI_MODEL_MAP[gpt_set]
+    model_id = OPENAI_MODEL_MAP[gpt_set]["id"]
     chat_list = []
     search_context = ""
 
     # MongoDB에서 채팅 기록 가져오기
-    if mongo_handler or request.db_id:
+    if AppState.mongo_handler or request.db_id:
         try:
-            chat_list = await mongo_handler.get_office_log(
+            chat_list = await AppState.mongo_handler.get_office_log(
                 user_id = request.user_id,
                 document_id = request.db_id,
                 router = "office",
@@ -158,7 +190,26 @@ async def office_gpt(
             search_text = search_context,
             chat_list = chat_list,
         )
-        return full_response
+        response_data = {
+            "result": full_response,
+            "_links": [
+                {
+                    "href": str(req.url),
+                    "rel": "_self",
+                    "type": str(req.method).lower(),
+                },
+                {
+                    "href": str(req.base_url) + "office/Llama",
+                    "rel": "office_llama",
+                    "type": "post",
+                },
+                *get_openai_links(
+                    base_url = str(req.base_url),
+                    path = gpt_set,
+                ),
+            ]
+        }
+        return JSONResponse(content=response_data)
 
     except TimeoutError:
         raise ChatError.InternalServerErrorException(detail = "OpenAI 모델 응답이 시간 초과되었습니다.")
