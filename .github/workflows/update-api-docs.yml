@@ -47,10 +47,6 @@ jobs:
             
             API 문서가 업데이트되었습니다.
             
-            ## API 명세서
-            
-            ```markdown
             ${{ env.API_CONTENT }}
-            ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
