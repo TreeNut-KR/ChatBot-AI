@@ -39,7 +39,7 @@ character_router = APIRouter()
 @character_router.post("/Llama", summary = "Llama 모델이 케릭터 정보를 기반으로 답변 생성")
 async def character_llama(request: ChatModel.character_Request, req: Request):
     """
-    Lumimaid_8B 모델에 질문을 입력하고 캐릭터 설정을 반영하여 답변을 JSON 방식으로 반환합니다.
+    DarkIdol-Llama-3.1-8B 모델에 질문을 입력하고 캐릭터 설정을 반영하여 답변을 JSON 방식으로 반환합니다.
 
     Args:
         request (ChatModel.character_Request): 사용자 요청 데이터 포함
@@ -67,7 +67,7 @@ async def character_llama(request: ChatModel.character_Request, req: Request):
             "context": request.context,
             "chat_list": chat_list,
         }
-        full_response = AppState.Lumimaid_model.generate_response(
+        full_response = AppState.LlamaCharacter_model.generate_response(
             input_text =  request.input_data,
             character_settings = character_settings,
         )

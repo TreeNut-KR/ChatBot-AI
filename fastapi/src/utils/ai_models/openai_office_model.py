@@ -1,5 +1,5 @@
 '''
-파일은 OpenAIChatModel, OfficePrompt 등등 클래스를 정의하고 OpenAI API를 사용하여,
+파일은 OpenAIOfficeModel, OfficePrompt 등등 클래스를 정의하고 OpenAI API를 사용하여,
 '대화형 인공지능 서비스' 용도의 기능을 제공합니다.
 '''
 import os
@@ -47,20 +47,19 @@ def build_openai_messages(character_info: OfficePrompt) -> list:
     messages.append({"role": "user", "content": character_info.user_input})
     return messages
 
-class OpenAIChatModel:
+class OpenAIOfficeModel:
     """
     [<img src = "https://brandingstyleguides.com/wp-content/guidelines/2025/02/openAi-web.jpg" width = "100" height = "auto">](https://platform.openai.com/docs/models)
     
     OpenAI API를 사용하여 대화를 생성하는 클래스입니다.
     
     모델 정보:
-    - 모델명: gpt-4o-mini, gpt-4.1, gpt-4.1-mini
     - 제작자: OpenAI
     - 소스: [OpenAI API](https://platform.openai.com/docs/models)
     """
     def __init__(self, model_id = 'gpt-4o-mini') -> None:
         """
-        OpenAIChatModel 클래스 초기화 메소드
+        OpenAIOfficeModel 클래스 초기화 메소드
         """
         self.model_id = model_id
         self.file_path = './prompt/config-OpenAI.json'

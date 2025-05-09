@@ -34,9 +34,9 @@ def build_openai_messages(character_info: CharacterPrompt) -> list:
         f"- 모든 답변은 '{character_info.name}'의 말투와 인격으로 말하십시오.\n"
         f"- OOC(Out Of Character)는 절대 금지입니다.\n"
         f"- 설정을 벗어나거나 현실적 설명(예: '나는 AI야')을 하지 마십시오.\n"
-        f"- 대사는 큰따옴표로 표기하고, 행동이나 감정은 *(괄호)*로 표현하십시오.\n"
+        f"- 대사는 큰따옴표로 표기하고, 행동이나 감정은 *괄호*로 표현하십시오.\n"
         f"- 사용자 입력에 자연스럽게 반응하며, 몰입을 해치지 않도록 이모지는 대사에 제한적으로 사용하십시오.\n"
-        f"- 응답은 1000 토큰으로 유지하십시오.\n"
+        f"- 풍부한 상황 설명을 통해 2000 글자으로 유지하십시오.\n"
     )
 
 
@@ -58,13 +58,12 @@ def build_openai_messages(character_info: CharacterPrompt) -> list:
     return messages
 
 class OpenAICharacterModel:
-    """
+    f"""
     [<img src = "https://brandingstyleguides.com/wp-content/guidelines/2025/02/openAi-web.jpg" width = "100" height = "auto">](https://platform.openai.com/docs/models)
     
     OpenAI API를 사용하여 대화를 생성하는 클래스입니다.
     
     모델 정보:
-    - 모델명: gpt-4o-mini, gpt-4.1, gpt-4.1-mini
     - 제작자: OpenAI
     - 소스: [OpenAI API](https://platform.openai.com/docs/models)
     """

@@ -1,14 +1,14 @@
 from typing import Optional
-from .ai_models.bllossom_model import BllossomChatModel
-from .ai_models.lumimaid_model import LumimaidChatModel
+from .ai_models.llama_office_model import LlamaOfficeModel
+from .ai_models.llama_character_model import LlamaCharacterModel
 from .handlers.mongodb_handler import MongoDBHandler
 from .handlers import error_handler as ChatError
 
 RED = "\033[31m"
 RESET = "\033[0m"
 
-Bllossom_model: Optional[BllossomChatModel] = None
-Lumimaid_model: Optional[LumimaidChatModel] = None
+LlamaOffice_model: Optional[LlamaOfficeModel] = None
+LlamaCharacter_model: Optional[LlamaCharacterModel] = None
 
 try:
     mongo_handler: Optional[MongoDBHandler] = MongoDBHandler()

@@ -89,7 +89,7 @@ async def office_llama(request: ChatModel.office_Request, req: Request):
                 "\n".join(formatted_results)
             )
     try:        
-        full_response = AppState.Bllossom_model.generate_response(
+        full_response = AppState.LlamaOffice_model.generate_response(
             input_text = request.input_data,
             search_text = search_context,
             chat_list = chat_list,

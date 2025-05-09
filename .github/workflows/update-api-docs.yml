@@ -1,0 +1,56 @@
+name: Update API Documentation
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get tag name
+        id: get_tag
+        run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      - name: Update API specification version
+        run: |
+          # 태그에서 v 접두사 제거
+          VERSION=$(echo ${{ env.TAG_NAME }} | sed 's/^v//')
+          
+          # 버전 정보 업데이트
+          sed -i "s/- \*\*버전\*\*: .*/- \*\*버전\*\*: $VERSION/" fastapi/src/docs/api_specification.md
+
+      - name: Get API specification content
+        id: get_content
+        run: |
+          CONTENT=$(cat fastapi/src/docs/api_specification.md)
+          echo "API_CONTENT<<EOF" >> $GITHUB_ENV
+          echo "$CONTENT" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ env.TAG_NAME }}
+          draft: false
+          prerelease: false
+          files: fastapi/src/docs/api_specification.md
+          body: |
+            # ChatBot-AI API ${{ env.TAG_NAME }}
+            
+            API 문서가 업데이트되었습니다.
+            
+            ## API 명세서
+            
+            ```markdown
+            ${{ env.API_CONTENT }}
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

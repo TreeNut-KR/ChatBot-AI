@@ -30,7 +30,7 @@ accelerate>= 0.26.0
 # 기타 의존성 패키지
 annotated-types == 0.7.0
 anyio == 4.4.0
-click == 8.1.7
+click >= 8.1.7
 colorama == 0.4.6
 dnspython == 2.6.1
 h11 == 0.14.0

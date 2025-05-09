@@ -1,6 +1,6 @@
 '''
-파일은 LumimaidChatModel, CharacterPrompt 클래스를 정의하고 llama_cpp_cuda를 사용하여,
-Llama-3-Lumimaid-8B.gguf 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
+파일은 LlamaCharacterModel, CharacterPrompt 클래스를 정의하고 llama_cpp_cuda를 사용하여,
+DarkIdol-Llama-3.1-8B.gguf 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
 '''
 from typing import Optional, Generator
 from llama_cpp_cuda import (
@@ -39,9 +39,9 @@ def build_llama3_prompt(character_info: CharacterPrompt) -> str:
         f"- 모든 답변은 '{character_info.name}'의 말투와 인격으로 말하십시오.\n"
         f"- OOC(Out Of Character)는 절대 금지입니다.\n"
         f"- 설정을 벗어나거나 현실적 설명(예: '나는 AI야')을 하지 마십시오.\n"
-        f"- 대사는 큰따옴표로 표기하고, 행동이나 감정은 *(괄호)*로 표현하십시오.\n"
+        f"- 대사는 큰따옴표로 표기하고, 행동이나 감정은 *괄호*로 표현하십시오.\n"
         f"- 사용자 입력에 자연스럽게 반응하며, 몰입을 해치지 않도록 이모지는 대사에 제한적으로 사용하십시오.\n"
-        f"- max_tokens은 8000 토큰으로 유지하십시오.\n"
+        f"- 풍부한 상황 설명을 통해 2000 글자으로 유지하십시오.\n"
     )
     
     # 기본 프롬프트 시작
@@ -64,26 +64,26 @@ def build_llama3_prompt(character_info: CharacterPrompt) -> str:
     )
     return prompt
 
-class LumimaidChatModel:
+class LlamaCharacterModel:
     """
-    [<img src = "https://cdn-uploads.huggingface.co/production/uploads/630dfb008df86f1e5becadc3/d3QMaxy3peFTpSlWdWF-k.png" width = "290" height = "auto">](https://huggingface.co/Lewdiculous/Llama-3-Lumimaid-8B-v0.1-OAS-GGUF-IQ-Imatrix)
+    [<img src = "https://lh7-rt.googleusercontent.com/docsz/AD_4nXeiuCm7c8lEwEJuRey9kiVZsRn2W-b4pWlu3-X534V3YmVuVc2ZL-NXg2RkzSOOS2JXGHutDuyyNAUtdJI65jGTo8jT9Y99tMi4H4MqL44Uc5QKG77B0d6-JfIkZHFaUA71-RtjyYZWVIhqsNZcx8-OMaA?key=xt3VSDoCbmTY7o-cwwOFwQ" width = "290" height = "auto">](https://huggingface.co/Lewdiculous/DarkIdol-Llama-3.1-8B-v0.1-OAS-GGUF-IQ-Imatrix)
     
-    GGUF 포맷으로 경량화된 Llama-3-Lumimaid-8B 모델을 로드하고, 주어진 입력 프롬프트에 대한 응답을 생성하는 클래스입니다.
+    GGUF 포맷으로 경량화된 DarkIdol-Llama-3.1-8B 모델을 로드하고, 주어진 입력 프롬프트에 대한 응답을 생성하는 클래스입니다.
     
     모델 정보: 
-    - 모델명: Llama-3-Lumimaid-8B
+    - 모델명: DarkIdol-Llama-3.1-8B
     - 유형: GGUF 포맷 (압축, 경량화)
     - 제작자: Lewdiculous
-    - 소스: [Hugging Face 모델 허브](https://huggingface.co/Lewdiculous/Llama-3-Lumimaid-8B-v0.1-OAS-GGUF-IQ-Imatrix)
+    - 소스: [Hugging Face 모델 허브](https://huggingface.co/QuantFactory/DarkIdol-Llama-3.1-8B-Instruct-1.2-Uncensored-GGUF)
     """
     def __init__(self) -> None:
         """
-        [<img src = "https://cdn-uploads.huggingface.co/production/uploads/630dfb008df86f1e5becadc3/d3QMaxy3peFTpSlWdWF-k.png" width = "290" height = "auto">](https://huggingface.co/Lewdiculous/Llama-3-Lumimaid-8B-v0.1-OAS-GGUF-IQ-Imatrix)
+        [<img src = "https://lh7-rt.googleusercontent.com/docsz/AD_4nXeiuCm7c8lEwEJuRey9kiVZsRn2W-b4pWlu3-X534V3YmVuVc2ZL-NXg2RkzSOOS2JXGHutDuyyNAUtdJI65jGTo8jT9Y99tMi4H4MqL44Uc5QKG77B0d6-JfIkZHFaUA71-RtjyYZWVIhqsNZcx8-OMaA?key=xt3VSDoCbmTY7o-cwwOFwQ" width = "290" height = "auto">](https://huggingface.co/Lewdiculous/DarkIdol-Llama-3.1-8B-v0.1-OAS-GGUF-IQ-Imatrix)
     
-        LumimaidChatModel 클레스 초기화 메소드
+        LlamaCharacterModel 클레스 초기화 메소드
         """
-        self.model_id = "v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat"
-        self.model_path = "fastapi/ai_model/v2-Llama-3-Lumimaid-8B-v0.1-OAS-Q5_K_S-imat.gguf"
+        self.model_id = "QuantFactory/DarkIdol-Llama-3.1-8B-Instruct-1.2-Uncensored.Q8_0"
+        self.model_path = "fastapi/ai_model/DarkIdol-Llama-3.1-8B-Instruct-1.2-Uncensored.Q8_0.gguf"
         self.file_path = './prompt/config-Llama.json'
         self.loading_text = f"{BLUE}LOADING{RESET}:    {self.model_id} 로드 중..."
         self.gpu_layers: int = 70
@@ -125,13 +125,13 @@ class LumimaidChatModel:
                 model_path = self.model_path,
                 n_gpu_layers = self.gpu_layers,
                 main_gpu = 0,
-                n_ctx = 8191,
+                n_ctx = 8224,
                 n_batch = 512,
                 verbose = False,
                 offload_kqv = True,          # KQV 캐시를 GPU에 오프로드
-                use_mmap = False,            # 메모리 매핑 비활성화
+                use_mmap = True,            # 메모리 매핑 비활성화
                 use_mlock = True,            # 메모리 잠금 활성화
-                n_threads = 8,               # 스레드 수 제한
+                n_threads = 6,               # 스레드 수 제한
             )
             return model
         except Exception as e:
@@ -251,8 +251,8 @@ class LumimaidChatModel:
 
             self.config = LlamaGenerationConfig(
                 prompt = prompt,
-                max_tokens = 8191,
-                temperature = 0.8,
+                max_tokens = 8224,
+                temperature = 1.2,
                 top_p = 0.95,
                 stop = ["<|eot_id|>"]
             )
@@ -271,11 +271,10 @@ class LumimaidChatModel:
         """
         if not text:
             return ""
-            
+        
         # 이스케이프된 개행문자 등을 정규화
         result = text.replace("\\n", "\n")
         result = result.replace("\\\\n", "\n")
         result = result.replace('\\"', '"')
         result = result.replace("\\\\", "\\")
-        
         return result

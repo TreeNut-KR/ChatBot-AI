@@ -14,7 +14,6 @@ from contextlib import asynccontextmanager
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import (
@@ -26,8 +25,8 @@ from fastapi import (
 import utils.app_state as AppState
 from utils  import (
     ChatError,
-    Lumimaid,
-    Bllossom,
+    LlamaOffice,
+    LlamaCharacter,
     OfficeController,
     ChearacterController,
 )
@@ -60,24 +59,24 @@ async def lifespan(app: FastAPI):
         return f"Device {device_id}: {device_name} (Total Memory: {total_memory:.2f} GB)"
     
     try:
-        AppState.Bllossom_model = Bllossom()                 # cuda:1
-        AppState.Lumimaid_model = Lumimaid()                 # cuda:0
+        AppState.LlamaOffice_model = LlamaOffice()                 # cuda:1
+        AppState.LlamaCharacter_model = LlamaCharacter()              # cuda:0
     except ChatError.InternalServerErrorException as e:
         component = "MongoDBHandler"
         print(f"{RED}ERROR{RESET}:    {component} 초기화 중 {e.__class__.__name__} 오류 발생: {str(e)}")
         exit(1)
 
     # 디버깅용 출력
-    Bllossom_device_info = get_cuda_device_info(1)          # Bllossom 모델은 cuda:1
-    Lumimaid_device_info = get_cuda_device_info(0)          # Lumimaid 모델은 cuda:0
-    print(f"{GREEN}INFO{RESET}:     Bllossom 모델 로드 완료 ({Bllossom_device_info})")
-    print(f"{GREEN}INFO{RESET}:     Lumimaid 모델 로드 완료 ({Lumimaid_device_info})")
+    LlamaOffice_device_info = get_cuda_device_info(1)          # LlamaOffice 모델은 cuda:1
+    LlamaCharacter_device_info = get_cuda_device_info(0)          # LlamaCharacter 모델은 cuda:0
+    print(f"{GREEN}INFO{RESET}:     LlamaOffice 모델 로드 완료 ({LlamaOffice_device_info})")
+    print(f"{GREEN}INFO{RESET}:     LlamaCharacter 모델 로드 완료 ({LlamaCharacter_device_info})")
 
     yield
 
     # 모델 메모리 해제
-    AppState.Bllossom_model = None
-    AppState.Lumimaid_model = None
+    AppState.LlamaOffice_model = None
+    AppState.LlamaCharacter_model = None
     print(f"{GREEN}INFO{RESET}:     모델 해제 완료")
 
 app = FastAPI(lifespan = lifespan)
@@ -113,7 +112,7 @@ def custom_openapi():
 
     openapi_schema = get_openapi(
         title = "ChatBot-AI FastAPI",
-        version = "v1.5.*",
+        version = "v1.6.*",
         routes = app.routes,
         description = (
             "이 API는 다음과 같은 기능을 제공합니다:\n\n"
@@ -126,18 +125,7 @@ def custom_openapi():
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
-app.mount(
-    "/.well-known/acme-challenge",
-    StaticFiles(
-        directory = os.path.join(
-            os.getcwd(),
-            os.getcwd(),
-            ".well-known",
-            "acme-challenge",
-            ),
-        ),
-    name = "acme-challenge",
-    )
+
 app.add_middleware(ExceptionMiddleware)
 app.add_middleware(
     SessionMiddleware,
