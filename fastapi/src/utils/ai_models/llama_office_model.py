@@ -1,9 +1,8 @@
 '''
-파일은 BllossomChatModel, OfficePrompt 클래스를 정의하고 llama_cpp_cuda를 사용하여,
+파일은 LlamaOfficeModel, OfficePrompt 클래스를 정의하고 llama_cpp_cuda를 사용하여,
 Llama-3-Bllossom-8B.gguf 모델을 사용하여 대화를 생성하는 데 필요한 모든 기능을 제공합니다.
 '''
-from dataclasses import dataclass
-from typing import TypedDict, Optional, Generator, List, Dict
+from typing import Optional, Generator, List, Dict
 from llama_cpp_cuda import (
     Llama,           # 기본 LLM 모델
     LlamaCache,      # 캐시 관리
@@ -62,7 +61,7 @@ def build_llama3_messages(character_info: OfficePrompt) -> list:
     messages.append({"role": "user", "content": character_info.user_input})
     return messages
 
-class BllossomChatModel:
+class LlamaOfficeModel:
     """
     [<img src = "https://cdn-avatars.huggingface.co/v1/production/uploads/63be962d4a2beec6555f46a3/CuJyXw6wwRj7oz2HxKoVq.png" width = "100" height = "auto">](https://huggingface.co/MLP-KTLim/llama-3-Korean-Bllossom-8B-gguf-Q4_K_M)
     
@@ -78,7 +77,7 @@ class BllossomChatModel:
         """
         [<img src = "https://cdn-avatars.huggingface.co/v1/production/uploads/63be962d4a2beec6555f46a3/CuJyXw6wwRj7oz2HxKoVq.png" width = "100" height = "auto">](https://huggingface.co/MLP-KTLim/llama-3-Korean-Bllossom-8B-gguf-Q4_K_M)
     
-        BllossomChatModel 클레스 초기화 메소드
+        LlamaOfficeModel 클레스 초기화 메소드
         """
         self.model_id = 'MLP-KTLim/llama-3-Korean-Bllossom-8B-gguf-Q4_K_M'
         self.model_path = "fastapi/ai_model/llama-3-Korean-Bllossom-8B-Q4_K_M.gguf"
@@ -190,7 +189,7 @@ class BllossomChatModel:
             config (LlamaGenerationConfig): 생성 파라미터 객체
 
         Returns:
-            Generator[str, None, None]: 생성된 텍스트 조각들의 제너레이터
+            (Generator[str, None, None]): 생성된 텍스트 조각들의 제너레이터
         """
         thread = Thread(
             target = self._stream_completion,
