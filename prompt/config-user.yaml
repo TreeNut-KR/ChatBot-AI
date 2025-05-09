@@ -1,8 +1,0 @@
-Llama-3-Lumimaid-8B:
-  cache_type: q4_0
-  gpu_split: '8.0'
-  loader: ExLlamav2_HF
-  max_seq_len: 2047
-  n_gpu_layers: -1
-  no_flash_attn: false
-  threads: 8

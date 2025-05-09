@@ -7,7 +7,7 @@
 
 ### 🟢 **모델 설명**
 
-| 항목 | **LlamaChatModel** | **LumimaidChatModel** | **BllossomChatModel** |
+| 항목 | **LlamaChatModel** | **LlamaCharacterModel** | **LlamaOfficeModel** | 
 |------|--------------------|----------------------|-----------------------|
 | **기반 모델** | ~~Llama-3.1-8B-Instruct~~(사용 안함) | Llama-3-Lumimaid-8B | Llama-3-Korean-Bllossom-8B |
 | **제작자** | Meta | Lewdiculous | MLP-KTLim |
