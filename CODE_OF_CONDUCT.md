@@ -55,7 +55,7 @@
 ## 집행
 
 모욕적이거나 괴롭힘 또는 그 외 하지말아야 할 행동을 발견하면
-sjmbee04@gmail.com을 통해 집행 책임이 있는 커뮤니티 리더에게 보고한다.
+**sjmbee04@gmail.com**을 통해 집행 책임이 있는 커뮤니티 리더에게 보고한다.
 모든 불만사항은 신속하고 공정하게 검토되고 조사될 것이다.
 
 커뮤니티 리더는 사건의 보고자의 사생활과 안전을 존중할 의무가 있다.
@@ -188,7 +188,7 @@ representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement at
-sjmbee04@gmail.com.
+**sjmbee04@gmail.com**.
 All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the

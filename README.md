@@ -4,13 +4,16 @@
 > FastAPI를 활용한 백엔드 서버와 Llama 기반 AI 모델을 통합하여 구현되었습니다.
 
 작업자 
-| 구성원 | 업무 | 사용 기술 |  
-|--------|--------|------------|  
-| [서정훈 (CutTheWire)](https://github.com/CutTheWire) | AI API 구축 | FastAPI, llama_cpp_cuda, OpenAI, transformers |  
+| 구성원 | 업무 | 사용 기술 |
+|--------|--------|------------|
+| [서정훈 (CutTheWire)](https://github.com/CutTheWire) | AI API 구축 | FastAPI, llama_cpp_cuda, OpenAI, transformers |
 
 
 # 웹서버 리포지토리
 [➡️ TreeNut-KR/ChatBot](https://github.com/TreeNut-KR/ChatBot)
+
+[➡️ Treenut 웹사이트](https://treenut.ddns.net)
+![](https://github.com/user-attachments/assets/7b0f84a8-1ed9-4339-92f2-f3c3aeb10bc1)
 
 ## 📋 프로젝트 구조
 ```
@@ -21,14 +24,14 @@ ChatBot-AI/
 │   ├── certificates/     # http .pem 파일
 │   ├── datasets/         # 학습 데이터셋
 │   └── src/              # API 서버 코드 파일
-│       ├── prototypes/   # 실험/프로토타입 코드 파일
+│       ├── docs/         # API 명세서
+|       ├── logs/         # 에러 및 경고 log 파일일
 │       ├── utils/        # 유틸리티, 핸들러, 서비스, 스키마 등 서버 기능 코드 파일
 │       │   ├── ai_models/
 |       |   |   ├── shared/
 |       |   |   |   └──shared_configs.py
-│       │   │   ├── bllossom_model.py
-│       │   │   ├── llama_model.py    # ⚠️사용 안함(llama-cpp-cuda 도입 전 코드)
-│       │   │   ├── lumimaid_model.py
+│       │   │   ├── llama_character_model.py
+│       │   │   ├── llama_office_model.py
 │       │   │   ├── openai_character_model.py
 │       │   │   └── openai_office_model.py
 │       │   ├── handlers/
@@ -39,6 +42,7 @@ ChatBot-AI/
 │       │   │   └── chat_schema.py
 │       │   ├── services/
 │       │   │   └── search_service.py
+│       │   ├── app_state.py
 │       │   └── __init__.py
 │       ├── .env
 │       ├── bot.yaml
@@ -61,14 +65,13 @@ ChatBot-AI/
 ## 🚀 주요 기능
 
 - **AI 모델**:
-  - Llama-3-Lumimaid-8B (GGUF 최적화)
-  - Llama-3-Korean-Bllossom-8B (GGUF 최적화)
+  - Llama
+    - Bllossom-8B
+    - DarkIdol-Llama-3.1-8B
   - OpenAI 
     - GPT4o-mini
     - GPT4.1
     - GPT4.1-mini
-- **데이터셋**:
-  - ~~ko_wikidata_QA (137,505개 한국어 QA 쌍)~~ ⚠️ **사용 안함**
 
 ## ⚙️ 환경 설정
 
@@ -164,12 +167,11 @@ ChatBot-AI/
 ## 🔑 라이선스
 
 - **AI 모델**: Meta AI 라이선스
-- **데이터셋**: 비상업적 사용 (학습된 모델은 상업적 사용 가능, 현재는 사용하지 않음)
 
 ## 📌 참고사항
 
 자세한 모델 및 데이터셋 정보는 각 폴더의 README.md를 참고해주세요:
-- ⚠️ 중요 [AI 모델 정보](./fastapi/ai_model/README.md)
+-  **⚠️중요** → [AI 모델 정보](./fastapi/ai_model/README.md)
 - [데이터셋 정보](./fastapi/datasets/README.md)
 - [도메인 설정](./fastapi/certificates/DNS_README.md)
 - [.pem 파일 생성](./fastapi/certificates/PEM_README.md)
