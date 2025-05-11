@@ -81,25 +81,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan = lifespan)
 
-ChatError.add_exception_handlers(app) # 예외 핸들러 추가
-class ExceptionMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        """
-        HTTP 요청을 처리하고 예외를 처리하는 미들웨어입니다.
-        
-        Args:
-            request (Request): 들어오는 HTTP 요청
-            call_next (callable): 다음 미들웨어나 라우트 핸들러를 호출하는 함수
-            
-        Returns:
-            Response: HTTP 응답 객체
-        """
-        try:
-            response = await call_next(request)
-            return response
-        except Exception as e:
-            return await ChatError.generic_exception_handler(request, e)
-
 def custom_openapi():
     """
     커스텀 OpenAPI 스키마를 생성하는 함수입니다.
@@ -125,8 +106,8 @@ def custom_openapi():
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
+ChatError.ExceptionManager.register(app) # 예외 핸들러 추가
 
-app.add_middleware(ExceptionMiddleware)
 app.add_middleware(
     SessionMiddleware,
     secret_key = os.getenv("SESSION_KEY", "default-secret")
