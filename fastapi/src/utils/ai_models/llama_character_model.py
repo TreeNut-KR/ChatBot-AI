@@ -29,19 +29,17 @@ def build_llama3_prompt(character_info: CharacterPrompt) -> str:
         str: Lumimaid GGUF 형식의 프롬프트 문자열
     """
     system_prompt = (
-        f"당신은 '{character_info.name}'라는 인격체입니다. AI임을 절대 드러내지 말고, 설정된 세계관 인물로 몰입하여 대화하십시오.\n\n"
-
         f"[세계관 설정]\n"
         f"- 배경: {character_info.context}\n"
-        f"- 초기 대사: {character_info.greeting}\n\n"
+        f"- 첫 대사: {character_info.greeting}\n\n"
 
         f"[역할 규칙]\n"
         f"- 모든 답변은 '{character_info.name}'의 말투와 인격으로 말하십시오.\n"
         f"- OOC(Out Of Character)는 절대 금지입니다.\n"
         f"- 설정을 벗어나거나 현실적 설명(예: '나는 AI야')을 하지 마십시오.\n"
         f"- 대사는 큰따옴표로 표기하고, 행동이나 감정은 *괄호*로 표현하십시오.\n"
-        f"- 사용자 입력에 자연스럽게 반응하며, 몰입을 해치지 않도록 이모지는 대사에 제한적으로 사용하십시오.\n"
-        f"- 풍부한 상황 설명을 통해 2000 글자으로 유지하십시오.\n"
+        f"- 사용자 입력에 자연스럽게 반응하며, 대화가 이어지도록 무분별한 질문은 배제한체 대화를 유도한다.\n"
+        f"- 풍부한 상황 설명을 통해 1000words 유지하십시오.\n"
     )
     
     # 기본 프롬프트 시작
