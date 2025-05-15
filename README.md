@@ -13,7 +13,7 @@
 [➡️ TreeNut-KR/ChatBot](https://github.com/TreeNut-KR/ChatBot)
 
 [➡️ Treenut 웹사이트](https://treenut.ddns.net)
-![](https://github.com/user-attachments/assets/7b0f84a8-1ed9-4339-92f2-f3c3aeb10bc1)
+![alt text](https://lh3.googleusercontent.com/d/1H62LOQ8yeql3HQ5OZT4fIzdydTdMhbiw)
 
 ## 📋 프로젝트 구조
 ```
