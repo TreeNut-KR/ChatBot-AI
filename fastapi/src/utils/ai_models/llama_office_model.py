@@ -73,19 +73,20 @@ class LlamaOfficeModel:
     - 제작자: MLP-KTLim
     - 소스: [Hugging Face 모델 허브](https://huggingface.co/MLP-KTLim/llama-3-Korean-Bllossom-8B-gguf-Q4_K_M)
     """
-    def __init__(self) -> None:
+    def __init__(self, main_gpu=0) -> None:
         """
         [<img src = "https://cdn-avatars.huggingface.co/v1/production/uploads/63be962d4a2beec6555f46a3/CuJyXw6wwRj7oz2HxKoVq.png" width = "100" height = "auto">](https://huggingface.co/MLP-KTLim/llama-3-Korean-Bllossom-8B-gguf-Q4_K_M)
     
         LlamaOfficeModel 클레스 초기화 메소드
         """
         self.model_id = 'MLP-KTLim/llama-3-Korean-Bllossom-8B-gguf-Q4_K_M'
-        self.model_path = "fastapi/ai_model/llama-3-Korean-Bllossom-8B-Q4_K_M.gguf"
+        self.model_path = "fastapi/ai_model/MLP-KTLim/llama-3-Korean-Bllossom-8B-Q4_K_M.gguf"
         self.file_path = './prompt/config-Llama.json'
         self.loading_text = f"{BLUE}LOADING{RESET}:    {self.model_id} 로드 중..."
         self.gpu_layers: int = 70
         self.character_info: Optional[OfficePrompt] = None
         self.config: Optional[LlamaGenerationConfig] = None
+        self.main_gpu = main_gpu
 
         print("\n"+ f"{BLUE}LOADING{RESET}:  " + "="*len(self.loading_text))
         print(f"{BLUE}LOADING{RESET}:    {__class__.__name__} 모델 초기화 시작...")
@@ -139,7 +140,7 @@ class LlamaOfficeModel:
                 model = Llama(
                     model_path = self.model_path,
                     n_gpu_layers = self.gpu_layers,
-                    main_gpu = 1,
+                    main_gpu = self.main_gpu,  # <- 여기!
                     n_ctx = 8191,
                     n_batch = 512,
                     verbose = False,
@@ -252,8 +253,12 @@ class LlamaOfficeModel:
                 prompt = prompt,
                 max_tokens = 2048,
                 temperature = 0.5,
-                top_p = 0.80,
-                stop = ["<|eot_id|>"]
+                top_p = 0.8,
+                min_p = 0.05,
+                tfs_z = 1.0,
+                repeat_penalty = 1.1,
+                frequency_penalty = 0.2,
+                presence_penalty = 0.2,
             )
 
             chunks = []

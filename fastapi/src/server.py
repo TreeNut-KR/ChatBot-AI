@@ -59,15 +59,14 @@ async def lifespan(app: FastAPI):
         return f"Device {device_id}: {device_name} (Total Memory: {total_memory:.2f} GB)"
     
     try:
-        AppState.LlamaOffice_model = LlamaOffice()                 # cuda:1
-        AppState.LlamaCharacter_model = LlamaCharacter()              # cuda:0
-    except ChatError.InternalServerErrorException as e:
-        component = "MongoDBHandler"
-        print(f"{RED}ERROR{RESET}:    {component} 초기화 중 {e.__class__.__name__} 오류 발생: {str(e)}")
+        assert AppState.LlamaOffice_model is not None, "LlamaOffice_model is not initialized"
+        assert AppState.LlamaCharacter_model is not None, "LlamaCharacter_model is not initialized"
+    except AssertionError as e:
+        print(f"{RED}ERROR{RESET}:    {str(e)}")
         exit(1)
 
     # 디버깅용 출력
-    LlamaOffice_device_info = get_cuda_device_info(1)          # LlamaOffice 모델은 cuda:1
+    LlamaOffice_device_info = get_cuda_device_info(1)             # LlamaOffice 모델은 cuda:1
     LlamaCharacter_device_info = get_cuda_device_info(0)          # LlamaCharacter 모델은 cuda:0
     print(f"{GREEN}INFO{RESET}:     LlamaOffice 모델 로드 완료 ({LlamaOffice_device_info})")
     print(f"{GREEN}INFO{RESET}:     LlamaCharacter 모델 로드 완료 ({LlamaCharacter_device_info})")
