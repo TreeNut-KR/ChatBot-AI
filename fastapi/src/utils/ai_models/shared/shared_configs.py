@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, List, Dict, TypedDict
 
 @dataclass(kw_only = True)
@@ -44,16 +44,30 @@ class LlamaGenerationConfig:
     
     Args:
         prompt (str): 생성할 프롬프트
-        max_tokens (int, optional): 최대 토큰 수, 기본값은 256
-        temperature (float, optional): 온도 설정, 기본값은 0.8
-        top_p (float, optional): 상위 p 설정, 기본값은 0.95
+        max_tokens (int, optional): 최대 토큰 수, 기본값은 2048
+        temperature (float, optional): 온도 설정, 기본값은 1.3
+        top_p (float, optional): 상위 p 설정, 기본값은 0.9
+        min_p (float, optional): 최소 p 설정, 기본값은 0.1
+        typical_p (float, optional): 전형적인 p 설정, 기본값은 1.0
+        tfs_z (float, optional): TFS z 설정, 기본값은 1.1
+        repeat_penalty (float, optional): 반복 패널티 설정, 기본값은 1.08
+        frequency_penalty (float, optional): 빈도 패널티 설정, 기본값은 0.1
+        presence_penalty (float, optional): 존재 패널티 설정, 기본값은 0.1
         stop (List[str], optional): 중지 문자열 리스트, 기본값은 None
+        seed (int, optional): 랜덤 시드, 기본값은 None
     """
     prompt: str
-    max_tokens: int = 256
-    temperature: float = 0.8
-    top_p: float = 0.95
-    stop: Optional[List[str]] = None
+    max_tokens: int = 2048
+    temperature: float = 1.3
+    top_p: float = 0.9
+    min_p: float = 0.1
+    typical_p: float = 1.0
+    tfs_z: float = 1.1
+    repeat_penalty: float = 1.08
+    frequency_penalty: float = 0.1
+    presence_penalty: float = 0.1
+    stop: Optional[List[str]] = field(default_factory=lambda: ["<|eot_id|>"])
+    seed: Optional[int] = None
     
 @dataclass(kw_only = True)
 class OpenAIGenerationConfig:
