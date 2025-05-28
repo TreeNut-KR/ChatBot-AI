@@ -4,11 +4,10 @@ MongoDBHandler 클래스는 MongoDB에 연결하고 데이터베이스, 컬렉�
 
 import os
 import asyncio
-from datetime import datetime
+from pathlib import Path
 from typing import List, Dict
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
-from sentence_transformers import SentenceTransformer
 
 from pymongo.errors import PyMongoError
 from .error_handler import InternalServerErrorException
@@ -44,8 +43,7 @@ class MongoDBHandler:
         """
         try:
             # 환경 변수 파일 경로 설정 수정
-            current_directory = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            env_file_path = os.path.join(current_directory, '.env')
+            env_file_path = Path(__file__).resolve().parents[3] / ".env"
             
             if not os.path.exists(env_file_path):
                 raise FileNotFoundError(f".env 파일을 찾을 수 없습니다: {env_file_path}")
@@ -197,4 +195,3 @@ class MongoDBHandler:
             raise InternalServerErrorException(detail = f"Error retrieving chatlog value: {str(e)}")
         except Exception as e:
             raise InternalServerErrorException(detail = f"Unexpected error: {str(e)}")
-        
