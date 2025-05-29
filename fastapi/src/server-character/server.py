@@ -54,7 +54,6 @@ async def lifespan(app: FastAPI):
         assert AppState.LlamaCharacter_model is not None, "LlamaCharacter_model is not initialized"
     except AssertionError as e:
         print(f"{RED}ERROR{RESET}:    {str(e)}")
-        exit(1)
     print(f"{GREEN}INFO{RESET}:     LlamaCharacter 모델 로드 완료")
 
     yield

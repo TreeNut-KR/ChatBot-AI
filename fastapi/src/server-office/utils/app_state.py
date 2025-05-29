@@ -10,8 +10,14 @@ LlamaOffice_model: Optional[LlamaOfficeModel] = None
 
 try:
     # Office 서버는 GPU 0 사용
-    LlamaOffice_model = LlamaOfficeModel(main_gpu=0)
+    LlamaOffice_model = LlamaOfficeModel()
     mongo_handler: Optional[MongoDBHandler] = MongoDBHandler()
 except ChatError.InternalServerErrorException as e:
     mongo_handler = None
     print(f"{RED}ERROR{RESET}:    MongoDB 초기화 오류 발생: {str(e)}")
+except FileNotFoundError as e:
+    LlamaCharacter_model = None
+    print(f"{RED}ERROR{RESET}:    모델 파일 오류: {str(e)}")
+except Exception as e:
+    LlamaCharacter_model = None
+    print(f"{RED}ERROR{RESET}:    예상치 못한 오류: {str(e)}")

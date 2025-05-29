@@ -76,7 +76,7 @@ class LlamaOfficeModel:
     - 제작자: MLP-KTLim
     - 소스: [Hugging Face 모델 허브](https://huggingface.co/MLP-KTLim/llama-3-Korean-Bllossom-8B-gguf-Q4_K_M)
     """
-    def __init__(self, main_gpu=0) -> None:
+    def __init__(self) -> None:
         """
         [<img src = "https://cdn-avatars.huggingface.co/v1/production/uploads/63be962d4a2beec6555f46a3/CuJyXw6wwRj7oz2HxKoVq.png" width = "100" height = "auto">](https://huggingface.co/MLP-KTLim/llama-3-Korean-Bllossom-8B-gguf-Q4_K_M)
     
@@ -89,14 +89,9 @@ class LlamaOfficeModel:
         self.gpu_layers: int = 70
         self.character_info: Optional[OfficePrompt] = None
         self.config: Optional[LlamaGenerationConfig] = None
-        self.main_gpu = main_gpu
-
-        # GPU 가시성 강제 설정
-        os.environ['CUDA_VISIBLE_DEVICES'] = str(main_gpu)
         
         print("\n"+ f"{BLUE}LOADING{RESET}:  " + "="*len(self.loading_text))
         print(f"{BLUE}LOADING{RESET}:    {__class__.__name__} 모델 초기화 시작...")
-        print(f"{BLUE}LOADING{RESET}:    GPU {main_gpu} 전용으로 설정됨")
 
         # JSON 파일 읽기
         with open(self.file_path, 'r', encoding = 'utf-8') as file:
@@ -121,9 +116,6 @@ class LlamaOfficeModel:
             # 경고 메시지 필터링
             warnings.filterwarnings("ignore")
             
-            # GPU 제한 설정 강화
-            os.environ['CUDA_VISIBLE_DEVICES'] = str(self.main_gpu)
-            
             @contextmanager
             def suppress_stdout():
                 # 표준 출력 리다이렉션
@@ -140,7 +132,7 @@ class LlamaOfficeModel:
                 model = Llama(
                     model_path = self.model_path,
                     n_gpu_layers = self.gpu_layers,
-                    main_gpu = 0,  # 항상 0 (CUDA_VISIBLE_DEVICES로 제한됨)
+                    main_gpu = -1,
                     n_ctx = 8191,
                     n_batch = 512,
                     verbose = False,
@@ -149,7 +141,7 @@ class LlamaOfficeModel:
                     use_mlock = True,
                     n_threads = 8,
                     # GPU 사용 제한 추가
-                    tensor_split = None,  # 단일 GPU 사용
+                    tensor_split = [1.0],  # 단일 GPU 사용
                 )
             return model
         except Exception as e:

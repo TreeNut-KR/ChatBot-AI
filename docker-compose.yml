@@ -23,12 +23,6 @@ services:
         echo 'Libraries already installed, skipping...'
       fi
       "
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              capabilities: [gpu]
 
   office:
     build:
@@ -37,14 +31,6 @@ services:
     container_name: office
     ports:
       - "8002:8002"
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=GPU-4c150f7a-f33e-829b-fed0-21c080a21e96
-      - CUDA_VISIBLE_DEVICES=0
-      - PYTHONPATH=/opt/python-libs/lib/python3.11/site-packages:/app:/app/src
-      - PYTHONUNBUFFERED=1
-      - PYTHONDONTWRITEBYTECODE=1
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - MONGO_URL=${MONGO_URL:-mongodb://root:1234@192.168.3.145:27017/chatbot?authSource=admin}
     volumes:
       - python-libs:/opt/python-libs:ro
       - ${PWD}/fastapi/ai_model/MLP-KTLim:/app/fastapi/ai_model/MLP-KTLim:ro
@@ -61,6 +47,14 @@ services:
             - driver: nvidia
               device_ids: [GPU-4c150f7a-f33e-829b-fed0-21c080a21e96]
               capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=1
+      - CUDA_VISIBLE_DEVICES=1
+      - PYTHONPATH=/opt/python-libs/lib/python3.11/site-packages:/app:/app/src
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MONGO_URL=${MONGO_URL:-mongodb://root:1234@192.168.3.145:27017/chatbot?authSource=admin}
 
   character:
     build:
@@ -69,14 +63,6 @@ services:
     container_name: character
     ports:
       - "8003:8003"
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=GPU-eeda57d0-cf83-ba04-0355-41d7d20ffd54
-      - CUDA_VISIBLE_DEVICES=0
-      - PYTHONPATH=/opt/python-libs/lib/python3.11/site-packages:/app:/app/src
-      - PYTHONUNBUFFERED=1
-      - PYTHONDONTWRITEBYTECODE=1
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - MONGO_URL=${MONGO_URL:-mongodb://root:1234@192.168.3.145:27017/chatbot?authSource=admin}
     volumes:
       - python-libs:/opt/python-libs:ro
       - ${PWD}/fastapi/ai_model/QuantFactory:/app/fastapi/ai_model/QuantFactory:ro
@@ -93,6 +79,14 @@ services:
             - driver: nvidia
               device_ids: [GPU-eeda57d0-cf83-ba04-0355-41d7d20ffd54]
               capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTHONPATH=/opt/python-libs/lib/python3.11/site-packages:/app:/app/src
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MONGO_URL=${MONGO_URL:-mongodb://root:1234@192.168.3.145:27017/chatbot?authSource=admin}
 
   nginx:
     image: nginx:latest

@@ -6,8 +6,9 @@ WORKDIR /app
 COPY src/server-character /app/src/server-character
 COPY prompt/ /app/prompt/
 
-# Python 경로 설정 - RTX 3060 강제 할당
 ENV PYTHONPATH="/opt/python-libs/lib/python3.11/site-packages:${PYTHONPATH}:/app:/app/src"
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
 # server-character 디렉토리로 이동
 WORKDIR /app/src/server-character

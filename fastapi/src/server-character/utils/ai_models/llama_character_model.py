@@ -81,32 +81,20 @@ class LlamaCharacterModel:
     - 제작자: Lewdiculous
     - 소스: [Hugging Face 모델 허브](https://huggingface.co/QuantFactory/DarkIdol-Llama-3.1-8B-Instruct-1.2-Uncensored-GGUF)
     """
-    def __init__(self, main_gpu=1) -> None:  # 기본값을 1로 수정
+    def __init__(self) -> None:  # 기본값을 1로 수정
         """
         LlamaCharacterModel 클레스 초기화 메소드
         """
-        self.model_id = "QuantFactory/DarkIdol-Llama-3.1-8B-Instruct-1.2-Uncensored.Q6_K"
-        self.model_path = "/app/fastapi/ai_model/QuantFactory/DarkIdol-Llama-3.1-8B-Instruct-1.2-Uncensored.Q6_K.gguf"
+        self.model_id = "DarkIdol-Llama-3.1-8B-Instruct-1.2-Uncensored.Q5_0"
+        self.model_path = "/app/fastapi/ai_model/QuantFactory/DarkIdol-Llama-3.1-8B-Instruct-1.2-Uncensored.Q5_0.gguf"
         self.file_path = '/app/prompt/config-Llama.json'
         self.loading_text = f"{BLUE}LOADING{RESET}:    {self.model_id} 로드 중..."
         self.gpu_layers: int = 40
         self.character_info: Optional[CharacterPrompt] = None
         self.config: Optional[LlamaGenerationConfig] = None
-        self.main_gpu = main_gpu
-
-        # 모델 파일 존재 확인 추가
-        if not os.path.exists(self.model_path):
-            print(f"{RED}ERROR{RESET}:    모델 파일을 찾을 수 없습니다: {self.model_path}")
-            print(f"{RED}ERROR{RESET}:    현재 디렉토리: {os.getcwd()}")
-            print(f"{RED}ERROR{RESET}:    볼륨 마운트를 확인해주세요.")
-            raise FileNotFoundError(f"모델 파일을 찾을 수 없습니다: {self.model_path}")
-
-        # GPU 가시성 강제 설정
-        os.environ['CUDA_VISIBLE_DEVICES'] = str(main_gpu)
         
         print("\n"+ f"{BLUE}LOADING{RESET}:  " + "="*len(self.loading_text))
         print(f"{BLUE}LOADING{RESET}:    {__class__.__name__} 모델 초기화 시작...")
-        print(f"{BLUE}LOADING{RESET}:    GPU {main_gpu} 전용으로 설정됨")
 
         # JSON 파일 읽기
         with open(self.file_path, 'r', encoding = 'utf-8') as file:
@@ -133,9 +121,6 @@ class LlamaCharacterModel:
             
             warnings.filterwarnings("ignore")
             
-            # GPU 제한 설정 강화
-            os.environ['CUDA_VISIBLE_DEVICES'] = str(self.main_gpu)
-            
             @contextmanager
             def suppress_stdout():
                 # 표준 출력 리다이렉션
@@ -151,19 +136,18 @@ class LlamaCharacterModel:
             with suppress_stdout():
                 model = Llama(
                     model_path = self.model_path,
-                    n_gpu_layers = self.gpu_layers,
-                    main_gpu = 0,  # 항상 0 (CUDA_VISIBLE_DEVICES로 제한됨)
-                    rope_scaling_type = 2,
+                    n_gpu_layers = self.gpu_layers,      # 40개 레이어를 GPU에 로드
+                    main_gpu = -1,                       # 기본 GPU 사용
+                    rope_scaling_type = 2,               # RoPE 스케일링
                     rope_freq_scale = 2.0,
-                    n_ctx = 16384,
+                    n_ctx = 8191,                        # 컨텍스트 크기 (모델 최대보다 작게 설정)
                     n_batch = 512,
                     verbose = False,
-                    offload_kqv = True,          # KQV 캐시를 GPU에 오프로드
-                    use_mmap = False,            # 메모리 매핑 비활성화 (Office와 동일)
-                    use_mlock = True,            # 메모리 잠금 활성화
-                    n_threads = 6,               # 스레드 수 제한
-                    # GPU 사용 제한 추가
-                    tensor_split = None,         # 단일 GPU 사용
+                    offload_kqv = True,                  # KQV 캐시를 GPU에 오프로드
+                    use_mmap = False,                    # 메모리 매핑 비활성화
+                    use_mlock = True,                    # 메모리 잠금 활성화
+                    n_threads = 6,                       # 스레드 수 제한
+                    tensor_split = [1.0],                # 단일 GPU 사용
                 )
             return model
         except Exception as e:

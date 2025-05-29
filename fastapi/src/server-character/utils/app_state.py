@@ -10,7 +10,7 @@ LlamaCharacter_model: Optional[LlamaCharacterModel] = None
 
 try:
     # Character 서버는 GPU 1 사용
-    LlamaCharacter_model = LlamaCharacterModel(main_gpu=0)  # 컨테이너 내에서는 0이 RTX 3060
+    LlamaCharacter_model = LlamaCharacterModel()  # 컨테이너 내에서는 0이 RTX 3060
     mongo_handler: Optional[MongoDBHandler] = MongoDBHandler()
 except ChatError.InternalServerErrorException as e:
     mongo_handler = None
