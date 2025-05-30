@@ -36,6 +36,21 @@ ChatBot-AI/
 
 ---
 
+## 📋 UML 클래스 다이어그램 
+### 📑 ChatBot-AI/fastapi/src/utils/ai_models 클래스 다이어그램 
+![image](https://lh3.googleusercontent.com/d/11BO1kgmcn_I0N-gAegB8p36-PrAm4IHn)
+
+### 📑 ChatBot-AI/fastapi/src/utils/handlers 클래스 다이어그램 
+![image](https://lh3.googleusercontent.com/d/10s3xwUFxnmfKb8WBEvU3jqQhJgExNa28)
+
+### 📑 ChatBot-AI/fastapi/src/utils/schemas 클래스 다이어그램
+![image](https://lh3.googleusercontent.com/d/1Az97lKerSOJltMPWEMeAW6G72axCdIii)
+
+## 📋 UML 패키지 다이어그램 
+![image](https://lh3.googleusercontent.com/d/1_fifSzf7YFoEMQd80hUQGgF0rI0vsYtm)
+
+---
+
 ## 🚀 빠른 시작 (Docker 기반)
 
 ### 1. **필수 요구사항**
