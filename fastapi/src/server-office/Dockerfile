@@ -2,6 +2,13 @@ FROM chatbotai-base:latest
 
 WORKDIR /app
 
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+    apt-get install -y tzdata && \
+    ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime && \
+    echo "Asia/Seoul" > /etc/timezone
+ENV TZ=Asia/Seoul
+
 # 애플리케이션 코드만 복사
 COPY src/server-office /app/src/server-office
 COPY prompt/ /app/prompt/

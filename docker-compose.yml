@@ -48,6 +48,7 @@ services:
               device_ids: [GPU-4c150f7a-f33e-829b-fed0-21c080a21e96]
               capabilities: [gpu]
     environment:
+      - TZ=Asia/Seoul
       - NVIDIA_VISIBLE_DEVICES=1
       - CUDA_VISIBLE_DEVICES=1
       - PYTHONPATH=/opt/python-libs/lib/python3.11/site-packages:/app:/app/src
@@ -80,6 +81,7 @@ services:
               device_ids: [GPU-eeda57d0-cf83-ba04-0355-41d7d20ffd54]
               capabilities: [gpu]
     environment:
+      - TZ=Asia/Seoul
       - NVIDIA_VISIBLE_DEVICES=0
       - CUDA_VISIBLE_DEVICES=0
       - PYTHONPATH=/opt/python-libs/lib/python3.11/site-packages:/app:/app/src
@@ -95,7 +97,7 @@ services:
       - "8001:8001"
     volumes:
       - ${PWD}/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - /etc/localtime:/etc/localtime:ro
+      
       - ${PWD}/nginx/404.html:/etc/nginx/html/404.html:ro
     depends_on:
       - office
