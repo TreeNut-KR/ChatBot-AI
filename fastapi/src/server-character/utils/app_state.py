@@ -7,11 +7,11 @@ RED = "\033[31m"
 RESET = "\033[0m"
 
 LlamaCharacter_model: Optional[LlamaCharacterModel] = None
+mongo_handler: Optional[MongoDBHandler] = None
 
 try:
-    # Character 서버는 GPU 1 사용
-    LlamaCharacter_model = LlamaCharacterModel()  # 컨테이너 내에서는 0이 RTX 3060
-    mongo_handler: Optional[MongoDBHandler] = MongoDBHandler()
+    LlamaCharacter_model = LlamaCharacterModel()
+    mongo_handler = MongoDBHandler()  # 비동기 초기화는 lifespan에서!
 except ChatError.InternalServerErrorException as e:
     mongo_handler = None
     print(f"{RED}ERROR{RESET}:    MongoDB 초기화 오류 발생: {str(e)}")

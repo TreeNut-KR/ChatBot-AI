@@ -52,6 +52,8 @@ async def lifespan(app: FastAPI):
     """    
     try:
         assert AppState.LlamaCharacter_model is not None, "LlamaCharacter_model is not initialized"
+        if AppState.mongo_handler is not None:
+            await AppState.mongo_handler.init()
     except AssertionError as e:
         print(f"{RED}ERROR{RESET}:    {str(e)}")
     print(f"{GREEN}INFO{RESET}:     LlamaCharacter 모델 로드 완료")
