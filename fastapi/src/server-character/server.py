@@ -1,12 +1,13 @@
 '''
-파일은 FastAPI 서버를 구동하는 엔트리 포인트입니다.
+파일은 Character FastAPI 서버를 구동하는 엔트리 포인트입니다.
 '''
 import os
 import yaml
-import torch
+import sys
 import uvicorn
 import ipaddress
 
+from pathlib import Path
 from dotenv import load_dotenv
 from pydantic import ValidationError
 from contextlib import asynccontextmanager
@@ -22,16 +23,16 @@ from fastapi import (
     Request,
 )
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import utils.app_state as AppState
 from utils  import (
     ChatError,
-    LlamaOffice,
-    LlamaCharacter,
-    OfficeController,
-    ChearacterController,
+    CharacterController,
 )
 
-load_dotenv()
+env_file_path = Path(__file__).resolve().parents[1] / ".env"
+load_dotenv(env_file_path)
 
 GREEN = "\033[32m"
 RED = "\033[31m"
@@ -48,38 +49,22 @@ async def lifespan(app: FastAPI):
         
     Yields:
         None: 애플리케이션 컨텍스트를 생성하고 종료할 때까지 대기
-    """
-    def get_cuda_device_info(device_id: int) -> str:
-        """
-        주어진 CUDA 장치 ID에 대한 정보를 반환합니다.
-        """
-        device_name = torch.cuda.get_device_name(device_id)
-        device_properties = torch.cuda.get_device_properties(device_id)
-        total_memory = device_properties.total_memory / (1024 ** 3)  # GB 단위로 변환
-        return f"Device {device_id}: {device_name} (Total Memory: {total_memory:.2f} GB)"
-    
+    """    
     try:
-        AppState.LlamaOffice_model = LlamaOffice()                 # cuda:1
-        AppState.LlamaCharacter_model = LlamaCharacter()              # cuda:0
-    except ChatError.InternalServerErrorException as e:
-        component = "MongoDBHandler"
-        print(f"{RED}ERROR{RESET}:    {component} 초기화 중 {e.__class__.__name__} 오류 발생: {str(e)}")
-        exit(1)
-
-    # 디버깅용 출력
-    LlamaOffice_device_info = get_cuda_device_info(1)          # LlamaOffice 모델은 cuda:1
-    LlamaCharacter_device_info = get_cuda_device_info(0)          # LlamaCharacter 모델은 cuda:0
-    print(f"{GREEN}INFO{RESET}:     LlamaOffice 모델 로드 완료 ({LlamaOffice_device_info})")
-    print(f"{GREEN}INFO{RESET}:     LlamaCharacter 모델 로드 완료 ({LlamaCharacter_device_info})")
+        assert AppState.LlamaCharacter_model is not None, "LlamaCharacter_model is not initialized"
+    except AssertionError as e:
+        print(f"{RED}ERROR{RESET}:    {str(e)}")
+    print(f"{GREEN}INFO{RESET}:     LlamaCharacter 모델 로드 완료")
 
     yield
 
     # 모델 메모리 해제
-    AppState.LlamaOffice_model = None
     AppState.LlamaCharacter_model = None
     print(f"{GREEN}INFO{RESET}:     모델 해제 완료")
 
-app = FastAPI(lifespan = lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+)
 
 def custom_openapi():
     """
@@ -92,7 +77,7 @@ def custom_openapi():
         return app.openapi_schema
 
     openapi_schema = get_openapi(
-        title = "ChatBot-AI FastAPI",
+        title = "ChatBot-AI FastAPI Character",
         version = "v1.6.*",
         routes = app.routes,
         description = (
@@ -151,45 +136,10 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
             data = yaml.safe_load(file)
             return [bot['name'].lower() for bot in data.get('bot_user_agents', [])]
 
-    def is_internal_ip(ip):
-        """
-        주어진 IP 주소가 내부 네트워크에 속하는지 확인합니다.
-        
-        Args:
-            ip (str): 확인할 IP 주소 문자열
-            
-        Returns:
-            bool: 내부 IP인 경우 True, 아닌 경우 False
-        """
-        try:
-            ip_obj = ipaddress.ip_address(ip)
-            return ip_obj in ipaddress.ip_network(os.getenv("LOCAL_HOST"))
-        except ValueError:
-            return False
-
-    ip_string = os.getenv("IP")
-    allowed_ips = ip_string.split(", ") if ip_string else []
-    client_ip = request.client.host
-
-    bot_user_agents = load_bot_list("./fastapi/src/bot.yaml") # 경로 수정
+    bot_user_agents = load_bot_list("/bot.yaml") # Docker 컨테이너 내 절대 경로로 수정
     user_agent = request.headers.get("User-Agent", "").lower()
 
     try:
-        # IP 및 내부 네트워크 범위에 따라 액세스 제한
-        restricted_paths = [
-            "/docs", "/redoc", "/openapi.json"
-        ]
-        # /office, /character 하위 모든 경로도 포함
-        if (
-            request.url.path in restricted_paths
-            or request.url.path.startswith("/office")
-            or request.url.path.startswith("/character")
-        ) and (
-            client_ip not in allowed_ips
-            and not is_internal_ip(client_ip)
-        ):
-            raise ChatError.IPRestrictedException(detail = f"Unauthorized IP address: {client_ip}")
-
         # 사용자 에이전트 기반 봇 차단
         if any(bot in user_agent for bot in bot_user_agents):
             raise ChatError.BadRequestException(detail = f"{user_agent} Bot access is not allowed.")
@@ -200,9 +150,10 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
     except ValidationError as e:
         raise ChatError.BadRequestException(detail = str(e))
     except ChatError.IPRestrictedException as e:
-        return await ChatError.generic_exception_handler(request, e)
+        return await ChatError.ExceptionHandlerFactory.generic_handler(request, e)
     except ChatError.BadRequestException as e:
-        return await ChatError.generic_exception_handler(request, e)
+        # 올바른 함수명 사용
+        return await ChatError.ExceptionHandlerFactory.generic_handler(request, e)
     except HTTPException as e:
         if (e.status_code  ==  405):
             raise ChatError.MethodNotAllowedException(detail = "The method used is not allowed.")
@@ -210,31 +161,12 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
     except Exception as e:
         raise ChatError.InternalServerErrorException(detail = "Internal server error occurred.")
 
-@app.get("/")
-async def root(request: Request):
-    """
-    API 루트 엔드포인트입니다.
-    
-    Returns:
-        dict: 환영 메시지를 포함한 응답
-    """
-    return {
-        "message": "Welcome to ChatBot-AI API. Access from IP: " + request.client.host
-    }
-
 app.include_router(
-    OfficeController.office_router,
-    prefix = "/office",
-    tags = ["office Router"],
-    responses = {500: {"description": "Internal Server Error"}}
-)
-
-app.include_router(
-    ChearacterController.character_router,
-    prefix = "/character",
+    CharacterController.character_router,
+    prefix = "",
     tags = ["character Router"],
     responses = {500: {"description": "Internal Server Error"}}
 )
 
 if __name__  ==  "__main__":
-    uvicorn.run(app, host = "0.0.0.0", port = 8001)
+    uvicorn.run(app, host = "0.0.0.0", port = 8003)

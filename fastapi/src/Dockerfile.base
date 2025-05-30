@@ -1,0 +1,25 @@
+# ====================
+# Base System for Volume-based Architecture
+# ====================
+FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04
+
+RUN rm -rf /var/lib/apt/lists/* \
+    && sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirror.kakao.com/ubuntu/|g' /etc/apt/sources.list \
+    && sed -i 's|http://security.ubuntu.com/ubuntu|http://mirror.kakao.com/ubuntu|g' /etc/apt/sources.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        python3.11 python3.11-venv python3.11-distutils python3-pip \
+        build-essential git ninja-build \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 \
+    && update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 \
+    && python3 -m pip install --upgrade pip
+
+# Volume으로 공유할 Python 패키지 디렉토리 생성
+RUN mkdir -p /opt/python-libs/lib/python3.11/site-packages
+
+# PYTHONPATH 기본값 설정 (볼륨 경로 포함)
+ENV PYTHONPATH="/opt/python-libs/lib/python3.11/site-packages"
+
+WORKDIR /app

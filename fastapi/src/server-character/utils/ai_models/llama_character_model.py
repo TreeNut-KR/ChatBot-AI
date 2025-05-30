@@ -7,14 +7,18 @@ from llama_cpp_cuda import (
     Llama,           # 기본 LLM 모델
     LlamaCache,      # 캐시 관리
     LlamaGrammar,    # 문법 제어
-    LogitsProcessor  # 로짓 처리
+    LogitsProcessor,  # 로짓 처리
 )
 import json
 from queue import Queue
 from threading import Thread
+import os
 
 from .shared.shared_configs import CharacterPrompt, LlamaGenerationConfig, BaseConfig
 
+GREEN = "\033[32m"
+RED = "\033[31m"
+YELLOW = "\033[33m"
 BLUE = "\033[34m"
 RESET = "\033[0m"
 
@@ -52,7 +56,10 @@ def build_llama3_prompt(character_info: CharacterPrompt) -> str:
     if character_info.chat_list and len(character_info.chat_list) > 0:
         for chat in character_info.chat_list:
             if "dialogue" in chat:
-                prompt +=  chat["dialogue"]
+                dialogue = chat["dialogue"]
+                # 중복 방지: 대화 기록에서 <|begin_of_text|> 제거
+                dialogue = dialogue.replace("<|begin_of_text|>", "")
+                prompt += dialogue
     
     # 현재 사용자 입력 추가
     prompt +=  (
@@ -74,20 +81,18 @@ class LlamaCharacterModel:
     - 제작자: Lewdiculous
     - 소스: [Hugging Face 모델 허브](https://huggingface.co/QuantFactory/DarkIdol-Llama-3.1-8B-Instruct-1.2-Uncensored-GGUF)
     """
-    def __init__(self) -> None:
+    def __init__(self) -> None:  # 기본값을 1로 수정
         """
-        [<img src = "https://lh7-rt.googleusercontent.com/docsz/AD_4nXeiuCm7c8lEwEJuRey9kiVZsRn2W-b4pWlu3-X534V3YmVuVc2ZL-NXg2RkzSOOS2JXGHutDuyyNAUtdJI65jGTo8jT9Y99tMi4H4MqL44Uc5QKG77B0d6-JfIkZHFaUA71-RtjyYZWVIhqsNZcx8-OMaA?key=xt3VSDoCbmTY7o-cwwOFwQ" width = "290" height = "auto">](https://huggingface.co/Lewdiculous/DarkIdol-Llama-3.1-8B-v0.1-OAS-GGUF-IQ-Imatrix)
-    
         LlamaCharacterModel 클레스 초기화 메소드
         """
-        self.model_id = "QuantFactory/DarkIdol-Llama-3.1-8B-Instruct-1.2-Uncensored.Q8_0"
-        self.model_path = "fastapi/ai_model/DarkIdol-Llama-3.1-8B-Instruct-1.2-Uncensored.Q8_0.gguf"
-        self.file_path = './prompt/config-Llama.json'
+        self.model_id = "Meta-Llama-3.1-8B-Claude.Q5_0"
+        self.model_path = "/app/fastapi/ai_model/QuantFactory/Meta-Llama-3.1-8B-Claude.Q5_0.gguf"
+        self.file_path = '/app/prompt/config-Llama.json'
         self.loading_text = f"{BLUE}LOADING{RESET}:    {self.model_id} 로드 중..."
-        self.gpu_layers: int = 70
+        self.gpu_layers: int = 40
         self.character_info: Optional[CharacterPrompt] = None
         self.config: Optional[LlamaGenerationConfig] = None
-
+        
         print("\n"+ f"{BLUE}LOADING{RESET}:  " + "="*len(self.loading_text))
         print(f"{BLUE}LOADING{RESET}:    {__class__.__name__} 모델 초기화 시작...")
 
@@ -106,35 +111,48 @@ class LlamaCharacterModel:
     def _load_model(self) -> Llama:
         """
         GGUF 포맷의 Llama 모델을 로드하고 GPU 가속을 설정합니다.
-        
-        Args:
-            gpu_layers (int): GPU에 오프로드할 레이어 수 (기본값: 50)
-            
-        Returns:
-            Llama: 초기화된 Llama 모델 인스턴스
-            
-        Raises:
-            RuntimeError: GPU 메모리 부족 또는 CUDA 초기화 실패 시
-            OSError: 모델 파일을 찾을 수 없거나 손상된 경우
         """
         print(f"{self.loading_text}")
         try:
-            model = Llama(
-                model_path = self.model_path,
-                n_gpu_layers = self.gpu_layers,
-                main_gpu = 0,
-                n_ctx = 8224,
-                n_batch = 512,
-                verbose = False,
-                offload_kqv = True,          # KQV 캐시를 GPU에 오프로드
-                use_mmap = True,            # 메모리 매핑 비활성화
-                use_mlock = True,            # 메모리 잠금 활성화
-                n_threads = 6,               # 스레드 수 제한
-            )
+            # 경고 메시지 필터링
+            import warnings
+            import sys
+            from contextlib import contextmanager
+            
+            warnings.filterwarnings("ignore")
+            
+            @contextmanager
+            def suppress_stdout():
+                # 표준 출력 리다이렉션
+                with open(os.devnull, "w") as devnull:
+                    old_stdout = sys.stdout
+                    sys.stdout = devnull
+                    try:
+                        yield
+                    finally:
+                        sys.stdout = old_stdout
+
+            # 모델 로드 시 로그 출력 억제
+            with suppress_stdout():
+                model = Llama(
+                    model_path = self.model_path,
+                    n_gpu_layers = self.gpu_layers,      # 40개 레이어를 GPU에 로드
+                    main_gpu = -1,                       # 기본 GPU 사용
+                    rope_scaling_type = 2,               # RoPE 스케일링
+                    rope_freq_scale = 2.0,
+                    n_ctx = 8191,                        # 컨텍스트 크기 (모델 최대보다 작게 설정)
+                    n_batch = 512,
+                    verbose = False,
+                    offload_kqv = True,                  # KQV 캐시를 GPU에 오프로드
+                    use_mmap = False,                    # 메모리 매핑 비활성화
+                    use_mlock = True,                    # 메모리 잠금 활성화
+                    n_threads = 6,                       # 스레드 수 제한
+                    tensor_split = [1.0],                # 단일 GPU 사용
+                )
             return model
         except Exception as e:
             print(f"❌ 모델 로드 중 오류 발생: {e}")
-            raise
+            raise e
 
     def _stream_completion(self, config: LlamaGenerationConfig) -> None:
         """
@@ -250,9 +268,13 @@ class LlamaCharacterModel:
             self.config = LlamaGenerationConfig(
                 prompt = prompt,
                 max_tokens = 8224,
-                temperature = 1.2,
-                top_p = 0.95,
-                stop = ["<|eot_id|>"]
+                temperature = 1.3,
+                top_p = 0.9,
+                min_p = 0.1,
+                tfs_z = 1.1,
+                repeat_penalty = 1.08,
+                frequency_penalty = 0.1,
+                presence_penalty = 0.1,
             )
             chunks = []
             for text_chunk in self.create_streaming_completion(config = self.config):

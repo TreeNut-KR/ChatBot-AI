@@ -1,0 +1,24 @@
+# syntax=docker/dockerfile:1
+
+# AI 모델 파일들 제외
+ai_model/
+*.gguf
+*.bin
+*.safetensors
+
+# 캐시 최적화를 위한 제외
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.git
+**/.gitignore
+**/*.md
+**/.env
+**/logs/
+**/temp/
+**/node_modules/
+.DS_Store
+Thumbs.db
+*.tmp
+*.log

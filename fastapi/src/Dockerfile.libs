@@ -1,0 +1,27 @@
+FROM chatbotai-base:latest
+
+WORKDIR /app
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && \
+    apt-get install -y tzdata && \
+    ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime && \
+    echo "Asia/Seoul" > /etc/timezone
+ENV TZ=Asia/Seoul
+
+# 의존성 파일 및 스크립트 복사
+COPY requirements.txt /app/requirements.txt
+COPY requirements_llama.txt /app/requirements_llama.txt
+COPY src/install_libs.sh /app/install_libs.sh
+
+# 스크립트 실행 권한 부여
+RUN chmod +x /app/install_libs.sh
+
+# 볼륨 마운트 포인트
+VOLUME ["/opt/python-libs"]
+
+# python 3.11에 맞는 transformers 라이브러리 설치
+RUN pip install --target=/opt/python-libs/lib/python3.11/site-packages transformers==4.41.2
+
+# 기본 명령어
+CMD ["/app/install_libs.sh"]

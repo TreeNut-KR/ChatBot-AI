@@ -1,177 +1,135 @@
 # 🤖 ChatBot-AI Project
 
-> AI 기반 챗봇 API 프로젝트입니다.
-> FastAPI를 활용한 백엔드 서버와 Llama 기반 AI 모델을 통합하여 구현되었습니다.
+> AI 기반 챗봇 API 프로젝트입니다.  
+> FastAPI 기반의 Office/Character API 서버와 Llama 기반 AI 모델을 Docker로 통합 운영합니다.
 
-작업자 
-| 구성원 | 업무 | 사용 기술 |
-|--------|--------|------------|
-| [서정훈 (CutTheWire)](https://github.com/CutTheWire) | AI API 구축 | FastAPI, llama_cpp_cuda, OpenAI, transformers |
+---
 
+## 🏗️ 전체 아키텍처
 
-# 웹서버 리포지토리
-[➡️ TreeNut-KR/ChatBot](https://github.com/TreeNut-KR/ChatBot)
+- **office**: 업무용 챗봇 API (FastAPI, 8002)
+- **character**: 캐릭터 챗봇 API (FastAPI, 8003)
+- **nginx**: API Gateway (8001, reverse proxy, 커스텀 404 지원)
+- **python-libs-init**: 공통 Python 라이브러리 볼륨 초기화
 
-[➡️ Treenut 웹사이트](https://treenut.ddns.net)
-![alt text](https://lh3.googleusercontent.com/d/1H62LOQ8yeql3HQ5OZT4fIzdydTdMhbiw)
+---
 
-## 📋 프로젝트 구조
+## 📂 주요 폴더 구조
+
 ```
 ChatBot-AI/
 ├── fastapi/
-│   ├── ai_model/         # AI 모델 관련 파일
-│   ├── batch/            # 환경 설정 배치 파일
-│   ├── certificates/     # http .pem 파일
-│   ├── datasets/         # 학습 데이터셋
-│   └── src/              # API 서버 코드 파일
-│       ├── docs/         # API 명세서
-|       ├── logs/         # 에러 및 경고 log 파일일
-│       ├── utils/        # 유틸리티, 핸들러, 서비스, 스키마 등 서버 기능 코드 파일
-│       │   ├── ai_models/
-|       |   |   ├── shared/
-|       |   |   |   └──shared_configs.py
-│       │   │   ├── llama_character_model.py
-│       │   │   ├── llama_office_model.py
-│       │   │   ├── openai_character_model.py
-│       │   │   └── openai_office_model.py
-│       │   ├── handlers/
-│       │   │   ├── error_handler.py
-│       │   │   ├── language_handler.py
-│       │   │   └── mongodb_handler.py
-│       │   ├── schemas/
-│       │   │   └── chat_schema.py
-│       │   ├── services/
-│       │   │   └── search_service.py
-│       │   ├── app_state.py
-│       │   └── __init__.py
-│       ├── .env
-│       ├── bot.yaml
-│       └── server.py     # 서버 구동 코드 파일
+│   ├── ai_model/           # AI 모델 파일 (볼륨 마운트)
+│   ├── logs/               # 로그 파일 (공유 볼륨)
+│   ├── prompt/             # 프롬프트 설정
+│   ├── src/
+│   │   ├── server-office/  # Office API 서버 코드
+│   │   └── server-character/ # Character API 서버 코드
+│   ├── .env                # 환경 변수
+│   └── bot.yaml            # 봇 설정
+├── nginx/
+│   ├── nginx.conf          # nginx 리버스 프록시 설정
+│   └── 404.html            # 커스텀 404 페이지
+├── docker-compose.yml
+└── README.md
 ```
 
-## 📋 UML 클래스 다이어그램 
-### 📑 ChatBot-AI/fastapi/src/utils/ai_models 클래스 다이어그램 
-![image](https://lh3.googleusercontent.com/d/11BO1kgmcn_I0N-gAegB8p36-PrAm4IHn)
+---
 
-### 📑 ChatBot-AI/fastapi/src/utils/handlers 클래스 다이어그램 
-![image](https://lh3.googleusercontent.com/d/10s3xwUFxnmfKb8WBEvU3jqQhJgExNa28)
+## 🚀 빠른 시작 (Docker 기반)
 
-### 📑 ChatBot-AI/fastapi/src/utils/schemas 클래스 다이어그램
-![image](https://lh3.googleusercontent.com/d/1Az97lKerSOJltMPWEMeAW6G72axCdIii)
+### 1. **필수 요구사항**
+- Docker, docker-compose
+- NVIDIA GPU 및 드라이버 (CUDA 12.1 이상)
+- (선택) 호스트 시간대가 Asia/Seoul로 설정되어 있으면 nginx 로그도 한국 시간으로 기록됨
 
-## 📋 UML 패키지 다이어그램 
-![image](https://lh3.googleusercontent.com/d/1_fifSzf7YFoEMQd80hUQGgF0rI0vsYtm)
+### 2. **AI 모델 파일 준비**
+- `fastapi/ai_model/MLP-KTLim/`, `fastapi/ai_model/QuantFactory/` 등  
+  필요한 모델 파일을 Hugging Face 등에서 다운로드 후 해당 폴더에 위치시킵니다.
+- `.dockerignore`에 의해 모델 파일은 이미지에 포함되지 않고,  
+  반드시 **볼륨 마운트**로만 사용됩니다.
 
-## 🚀 주요 기능
+### 3. **환경 변수 파일 준비**
+- `fastapi/src/.env` 파일에 필요한 환경 변수(OPENAI_API_KEY 등) 입력
 
-- **AI 모델**:
-  - Llama
-    - Bllossom-8B
-    - DarkIdol-Llama-3.1-8B
-  - OpenAI 
-    - GPT4o-mini
-    - GPT4.1
-    - GPT4.1-mini
+### 4. **커스텀 404 페이지 준비**
+- `nginx/404.html` 파일을 원하는 디자인으로 작성
 
-## ⚙️ 환경 설정
+### 5. **컨테이너 빌드 및 실행**
+```bash
+docker compose up --build
+```
 
-### 필수 요구사항
-- Python 3.11
-- CUDA 지원 GPU
-- Windows 10 이상 운영체제
+---
 
-### 설치 방법
-1. 환경 구성
-    #### ① CUDA Toolkit
+## 🌐 API Gateway (nginx) 구조
 
-    - Version : 11.8
-    - Download : [CUDA Toolkit 11.8 Downloads](https://developer.download.nvidia.com/compute/cuda/11.8.0/network_installers/cuda_11.8.0_windows_network.exe)
+- **8001 포트**에서 모든 API를 통합 제공
+- `/office/` → office 서버(8002)로 프록시
+- `/character/` → character 서버(8003)로 프록시
+- 존재하지 않는 경로는 `/404.html` 커스텀 페이지 반환
 
-    - Version : 12.8
-    - Download : [CUDA Toolkit 12.8 Downloads](https://developer.download.nvidia.com/compute/cuda/12.8.0/network_installers/cuda_12.8.0_windows_network.exe)
+---
 
-    #### ② cuDNN
+## 📝 주요 nginx 설정
 
-    - Version : 8.7.0
-    - Download : [Local Installers for Windows](https://developer.nvidia.com/downloads/c118-cudnn-windows-8664-87084cuda11-archivezip)
-    - cuDNN directory location
-        ```
-        C:/tools/cuda/
-        ```
+```nginx
+server {
+    listen 8001;
 
-    #### ③ Python
+    location ^~ /office/ {
+        proxy_pass http://office_backend/;
+        # ...헤더 설정 생략...
+    }
+    location ^~ /character/ {
+        proxy_pass http://character_backend/;
+        # ...헤더 설정 생략...
+    }
+    error_page 404 /404.html;
+    location = /404.html {
+        root /etc/nginx/html;
+        internal;
+    }
+    location / {
+        return 404;
+    }
+}
+```
 
-    - Version : 3.11.x
-    - Download : [Python 3.11.4 - June 6, 2023](https://www.python.org/ftp/python/3.11.4/python-3.11.4-amd64.exe)
+---
 
+## 📦 도커 볼륨/마운트 구조
 
-    #### ④ Visual C++ 재배포 가능 패키지 설치
-    - Download : [ Latest Microsoft Visual C++ Downloads](https://download.visualstudio.microsoft.com/download/pr/1754ea58-11a6-44ab-a262-696e194ce543/3642E3F95D50CC193E4B5A0B0FFBF7FE2C08801517758B4C8AEB7105A091208A/VC_redist.x64.exe)
-    - Download : [ Visual Studio 2013 (VC++ 12.0) Downloads](https://download.visualstudio.microsoft.com/download/pr/10912041/cee5d6bca2ddbcd039da727bf4acb48a/vcredist_x64.exe)
-    - Download : [ Visual Studio 2012 (VC++ 11.0) Downloads](https://download.microsoft.com/download/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU_4/vcredist_x64.exe)
-    - Download : [ Visual Studio 2010 (VC++ 10.0) Downloads](https://download.microsoft.com/download/1/6/5/165255E7-1014-4D0A-B094-B6A430A6BFFC/vcredist_x64.exe)
-    - Download : [ Visual Studio 2008 (VC++ 9.0) Downloads](https://download.microsoft.com/download/5/D/8/5D8C65CB-C849-4025-8E95-C3966CAFD8AE/vcredist_x64.exe)
-    - Download : [ Visual Studio 2005 (VC++ 8.0) Downloads](https://download.microsoft.com/download/8/B/4/8B42259F-5D70-43F4-AC2E-4B208FD8D66A/vcredist_x64.EXE)
+- **공통 라이브러리**: `python-libs` 볼륨 (컨테이너간 공유)
+- **모델 파일**: 호스트의 `fastapi/ai_model/` → 컨테이너 내부 `/app/fastapi/ai_model/`
+- **로그**: 호스트의 `fastapi/logs/` → 컨테이너 내부 `/app/logs/`
+- **nginx 404.html**: 호스트의 `nginx/404.html` → 컨테이너 `/etc/nginx/html/404.html`
 
-    #### ⑤ PyTorch
+---
 
-    - Run this Commandpip
+## 🛠️ 개발/운영 팁
 
-        ```
-        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-        ```
+- FastAPI 서버의 docs/redoc/openapi 경로는  
+  각각 `/office/docs`, `/character/docs` 등으로 prefix를 다르게 설정해야  
+  nginx 프록시 환경에서 충돌이 없습니다.
+- 라우터 등록 시 prefix는 빈 문자열로 두고,  
+  nginx에서 prefix를 붙여주는 구조가 권장됩니다.
+- 모델 파일은 반드시 완전히 다운로드되어야 하며,  
+  파일 크기/해시가 공식 배포본과 일치해야 합니다.
 
-    #### ⑥ 환경 변수 설정
-    
-    - 시스템 변수 추가
-
-    | 변수 이름 | 변수 값 |
-    | --- | --- |
-    | CUDA_HOME | C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8 |
-    | CUDNN_HOME | C:/tools/cuda |
-
-    - Path 환경 변수 추가
-
-    | Set | | Path |
-    | --- | --- | --- |
-    |SET PATH | = |C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8/bin|
-    |SET PATH | = |C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8/extras/CUPTI/lib64|
-    |SET PATH | = |C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.8/include|
-    |SET PATH | = |C:/tools/cuda/bin|
-
-2. 가상환경 생성
-
-   - [venv_setup.bat](./fastapi/batch/venv_setup.bat)
-   ```bash
-   ./fastapi/batch/venv_setup.bat
-   ```
-
-3. 필요 패키지 설치
-
-   - [venv_setup.bat](./fastapi/batch/venv_install.bat)
-    ```bash
-    ./fastapi/batch/venv_install.bat
-    ```
-
-4. 서버 실행
-   - [server.py](./fastapi/src/server.py)
-    ```bash
-    ./.venv/Scripts/python.exe ./fastapi/src/server.py
-    ``` 
-
-## 📚 사용된 주요 CUDA 패키지
-
-- torch (CUDA 11.8)
-- llama-cpp-python (CUDA 12.8)
+---
 
 ## 🔑 라이선스
 
 - **AI 모델**: Meta AI 라이선스
 
-## 📌 참고사항
+---
 
-자세한 모델 및 데이터셋 정보는 각 폴더의 README.md를 참고해주세요:
--  **⚠️중요** → [AI 모델 정보](./fastapi/ai_model/README.md)
+## 📌 참고
+
+- [AI 모델 정보](./fastapi/ai_model/README.md)
 - [데이터셋 정보](./fastapi/datasets/README.md)
-- [도메인 설정](./fastapi/certificates/DNS_README.md)
-- [.pem 파일 생성](./fastapi/certificates/PEM_README.md)
+- [도메인/SSL 설정](./fastapi/certificates/DNS_README.md)
+- [pem 파일 생성](./fastapi/certificates/PEM_README.md)
+
+---

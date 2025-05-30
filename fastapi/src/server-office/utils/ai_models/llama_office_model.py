@@ -21,6 +21,9 @@ from datetime import datetime
 
 from .shared.shared_configs import OfficePrompt, LlamaGenerationConfig, BaseConfig
 
+GREEN = "\033[32m"
+RED = "\033[31m"
+YELLOW = "\033[33m"
 BLUE = "\033[34m"
 RESET = "\033[0m"
 
@@ -80,13 +83,13 @@ class LlamaOfficeModel:
         LlamaOfficeModel 클레스 초기화 메소드
         """
         self.model_id = 'MLP-KTLim/llama-3-Korean-Bllossom-8B-gguf-Q4_K_M'
-        self.model_path = "fastapi/ai_model/llama-3-Korean-Bllossom-8B-Q4_K_M.gguf"
-        self.file_path = './prompt/config-Llama.json'
+        self.model_path = "/app/fastapi/ai_model/MLP-KTLim/llama-3-Korean-Bllossom-8B-Q4_K_M.gguf"
+        self.file_path = '/app/prompt/config-Llama.json'
         self.loading_text = f"{BLUE}LOADING{RESET}:    {self.model_id} 로드 중..."
         self.gpu_layers: int = 70
         self.character_info: Optional[OfficePrompt] = None
         self.config: Optional[LlamaGenerationConfig] = None
-
+        
         print("\n"+ f"{BLUE}LOADING{RESET}:  " + "="*len(self.loading_text))
         print(f"{BLUE}LOADING{RESET}:    {__class__.__name__} 모델 초기화 시작...")
 
@@ -107,16 +110,6 @@ class LlamaOfficeModel:
     def _load_model(self) -> Llama:
         """
         GGUF 포맷의 Llama 모델을 로드하고 GPU 가속을 설정합니다.
-        
-        Args:
-            gpu_layers (int): GPU에 오프로드할 레이어 수 (기본값: 50)
-            
-        Returns:
-            Llama: 초기화된 Llama 모델 인스턴스
-            
-        Raises:
-            RuntimeError: GPU 메모리 부족 또는 CUDA 초기화 실패 시
-            OSError: 모델 파일을 찾을 수 없거나 손상된 경우
         """
         print(f"{self.loading_text}")
         try:
@@ -139,19 +132,21 @@ class LlamaOfficeModel:
                 model = Llama(
                     model_path = self.model_path,
                     n_gpu_layers = self.gpu_layers,
-                    main_gpu = 1,
+                    main_gpu = -1,
                     n_ctx = 8191,
                     n_batch = 512,
                     verbose = False,
                     offload_kqv = True,
                     use_mmap = False,
                     use_mlock = True,
-                    n_threads = 8
+                    n_threads = 8,
+                    tensor_split = [1.0],  # 단일 GPU 사용
                 )
             return model
         except Exception as e:
-            print(f"❌ 모델 로드 중 오류 발생")
-            
+            print(f"❌ 모델 로드 중 오류 발생: {e}")
+            raise e
+
     def _stream_completion(self, config: LlamaGenerationConfig) -> None:
         """
         텍스트 생성을 위한 내부 스트리밍 메서드입니다.
@@ -252,8 +247,12 @@ class LlamaOfficeModel:
                 prompt = prompt,
                 max_tokens = 2048,
                 temperature = 0.5,
-                top_p = 0.80,
-                stop = ["<|eot_id|>"]
+                top_p = 0.8,
+                min_p = 0.05,
+                tfs_z = 1.0,
+                repeat_penalty = 1.1,
+                frequency_penalty = 0.2,
+                presence_penalty = 0.2,
             )
 
             chunks = []
