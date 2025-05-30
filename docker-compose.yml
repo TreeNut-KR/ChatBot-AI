@@ -33,7 +33,7 @@ services:
       - "8002:8002"
     volumes:
       - python-libs:/opt/python-libs:ro
-      - ${PWD}/fastapi/ai_model/MLP-KTLim:/app/fastapi/ai_model/MLP-KTLim:ro
+      - ${PWD}/fastapi/ai_model/MLP-KTLim:/app/fastapi/ai_model/MLP-KTLim:rw
       - ${PWD}/fastapi/logs:/app/logs:rw
       - ${PWD}/fastapi/src/.env:/app/src/.env:ro
       - ${PWD}/fastapi/src/bot.yaml:/bot.yaml:ro
@@ -65,7 +65,7 @@ services:
       - "8003:8003"
     volumes:
       - python-libs:/opt/python-libs:ro
-      - ${PWD}/fastapi/ai_model/QuantFactory:/app/fastapi/ai_model/QuantFactory:ro
+      - ${PWD}/fastapi/ai_model/QuantFactory:/app/fastapi/ai_model/QuantFactory:rw
       - ${PWD}/fastapi/logs:/app/logs:rw
       - ${PWD}/fastapi/src/.env:/app/src/.env:ro
       - ${PWD}/fastapi/src/bot.yaml:/bot.yaml:ro
@@ -95,6 +95,8 @@ services:
       - "8001:8001"
     volumes:
       - ${PWD}/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ${PWD}/nginx/404.html:/etc/nginx/html/404.html:ro
     depends_on:
       - office
       - character

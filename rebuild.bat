@@ -82,19 +82,14 @@ if /i "%libs_choice%"=="y" (
 )
 echo.
 
-REM 6. 로그 폴더 정리
-echo [INFO] 이전 로그 폴더 삭제...
-IF EXIST .\fastapi\logs rmdir /s /q .\fastapi\logs
-echo.
-
-REM 7. __pycache__ 폴더 정리
+REM 6. __pycache__ 폴더 정리
 echo [INFO] __pycache__ 폴더 삭제...
 FOR /d /r .\fastapi\ %%i IN (__pycache__) DO (
     if exist "%%i" rmdir /s /q "%%i"
 )
 echo.
 
-REM 8. 베이스 이미지 빌드 (캐시 옵션 제거)
+REM 7. 베이스 이미지 빌드 (캐시 옵션 제거)
 echo [INFO] chatbotai-base 베이스 이미지 빌드...
 docker build -f fastapi/src/Dockerfile.base -t chatbotai-base:latest .
 if errorlevel 1 (
@@ -103,7 +98,7 @@ if errorlevel 1 (
 )
 echo.
 
-REM 9. Python 라이브러리 초기화 (필요시에만)
+REM 8. Python 라이브러리 초기화 (필요시에만)
 if "%REBUILD_LIBS%"=="true" (
     echo [INFO] Python 라이브러리 초기화 중...
     docker-compose up python-libs-init
@@ -118,7 +113,7 @@ if "%REBUILD_LIBS%"=="true" (
     echo.
 )
 
-REM 10. 애플리케이션 서비스 빌드 (병렬)
+REM 9. 애플리케이션 서비스 빌드 (병렬)
 echo [INFO] 애플리케이션 서비스 빌드...
 docker-compose build office character nginx --parallel
 if errorlevel 1 (
@@ -127,7 +122,7 @@ if errorlevel 1 (
 )
 echo.
 
-REM 11. 서비스 실행
+REM 10. 서비스 실행
 echo [INFO] 애플리케이션 서비스 실행...
 docker-compose up -d office character nginx
 if errorlevel 1 (
@@ -136,7 +131,7 @@ if errorlevel 1 (
 )
 echo.
 
-REM 12. 서비스 상태 확인
+REM 11. 서비스 상태 확인
 echo [INFO] 서비스 상태 확인...
 docker-compose ps
 echo.

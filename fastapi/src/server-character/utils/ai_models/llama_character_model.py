@@ -85,8 +85,8 @@ class LlamaCharacterModel:
         """
         LlamaCharacterModel 클레스 초기화 메소드
         """
-        self.model_id = "DarkIdol-Llama-3.1-8B-Instruct-1.2-Uncensored.Q5_0"
-        self.model_path = "/app/fastapi/ai_model/QuantFactory/DarkIdol-Llama-3.1-8B-Instruct-1.2-Uncensored.Q5_0.gguf"
+        self.model_id = "Meta-Llama-3.1-8B-Claude.Q5_0"
+        self.model_path = "/app/fastapi/ai_model/QuantFactory/Meta-Llama-3.1-8B-Claude.Q5_0.gguf"
         self.file_path = '/app/prompt/config-Llama.json'
         self.loading_text = f"{BLUE}LOADING{RESET}:    {self.model_id} 로드 중..."
         self.gpu_layers: int = 40

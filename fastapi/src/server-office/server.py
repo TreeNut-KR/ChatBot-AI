@@ -62,7 +62,9 @@ async def lifespan(app: FastAPI):
     AppState.LlamaOffice_model = None
     print(f"{GREEN}INFO{RESET}:     모델 해제 완료")
 
-app = FastAPI(lifespan = lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+)
 
 def custom_openapi():
     """
@@ -150,21 +152,9 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
     except Exception as e:
         raise ChatError.InternalServerErrorException(detail = "Internal server error occurred.")
 
-@app.get("/")
-async def root(request: Request):
-    """
-    API 루트 엔드포인트입니다.
-    
-    Returns:
-        dict: 환영 메시지를 포함한 응답
-    """
-    return {
-        "message": "Welcome to ChatBot-AI `/office` API. Access from IP: " + request.client.host
-    }
-
 app.include_router(
     OfficeController.office_router,
-    prefix = "/office",
+    prefix = "",
     tags = ["office Router"],
     responses = {500: {"description": "Internal Server Error"}}
 )

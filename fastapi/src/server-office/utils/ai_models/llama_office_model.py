@@ -140,7 +140,6 @@ class LlamaOfficeModel:
                     use_mmap = False,
                     use_mlock = True,
                     n_threads = 8,
-                    # GPU 사용 제한 추가
                     tensor_split = [1.0],  # 단일 GPU 사용
                 )
             return model
