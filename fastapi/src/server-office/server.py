@@ -52,13 +52,12 @@ async def lifespan(app: FastAPI):
     """    
     try:
         assert AppState.LlamaOffice_model is not None, "LlamaOffice_model is not initialized"
+        if AppState.mongo_handler is not None:
+            await AppState.mongo_handler.init()
     except AssertionError as e:
         print(f"{RED}ERROR{RESET}:    {str(e)}")
     print(f"{GREEN}INFO{RESET}:     LlamaOffice 모델 로드 완료")
-
     yield
-
-    # 모델 메모리 해제
     AppState.LlamaOffice_model = None
     print(f"{GREEN}INFO{RESET}:     모델 해제 완료")
 

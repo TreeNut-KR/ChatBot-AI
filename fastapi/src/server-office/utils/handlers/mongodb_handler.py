@@ -66,27 +66,33 @@ class MongoDBHandler:
                 "&socketTimeoutMS=6000"   # 네 번째 옵션
             )
             
-            # 이벤트 루프 가져오기
-            self.loop = asyncio.get_event_loop()
+            # 클라이언트와 데이터베이스 초기화
+            self.client = None
+            self.db = None
             
-            # MongoDB 클라이언트 초기화 (이벤트 루프 지정)
-            self.client = AsyncIOMotorClient(
-                self.mongo_uri,
-                io_loop = self.loop,
-                serverSelectionTimeoutMS = 500,
-                connectTimeoutMS = 1000,
-                socketTimeoutMS = 6000
-            )
+            print(f"{GREEN}INFO{RESET}:     MongoDBHandler 초기화 완료")
+                
+        except Exception as e:
+            raise InternalServerErrorException(detail = f"MongoDBHandler 초기화 오류: {str(e)}")
+    
+    async def init(self):
+        """
+        MongoDB 클라이언트를 초기화하고 데이터베이스에 연결합니다.
+
+        Raises:
+            InternalServerErrorException: MongoDB 연결 중 오류 발생 시
+        """
+        try:
+            # MongoDB 클라이언트 초기화
+            self.client = AsyncIOMotorClient(self.mongo_uri)
             
-            # 연결 테스트는 비동기로 수행
-            async def test_connection():
-                await self.client.admin.command('ping')
-                
-            # 연결 테스트 실행
-            self.loop.run_until_complete(test_connection())
-            self.db = self.client[mongo_db]
-            print(f"{GREEN}INFO{RESET}:     MongoDB 연결 성공: {mongo_host}:{mongo_port}")\
-                
+            # 연결 테스트
+            await self.client.admin.command('ping')
+            
+            # 데이터베이스 선택
+            self.db = self.client[os.getenv("MONGO_DATABASE")]
+            print(f"{GREEN}INFO{RESET}:     MongoDB 연결 성공")
+        
         except PyMongoError as e:
             print(f"{RED}ERROR{RESET}:    MongoDB 연결 실패")
             raise InternalServerErrorException(detail = f"MongoDB 연결 오류 - 호스트: {mongo_host}, 포트: {mongo_port}")
@@ -96,16 +102,6 @@ class MongoDBHandler:
     async def get_office_log(self, user_id: str, document_id: str, router: str) -> List[Dict]:
         try:
             collection = self.db[f'{router}_log_{user_id}']
-            
-            # 이벤트 루프 확인 및 설정
-            if self.loop !=  asyncio.get_event_loop():
-                self.loop = asyncio.get_event_loop()
-                self.client = AsyncIOMotorClient(
-                    self.mongo_uri,
-                    io_loop = self.loop
-                )
-                self.db = self.client[os.getenv("MONGO_DATABASE")]
-                collection = self.db[f'{router}_log_{user_id}']
 
             document = await collection.find_one({"id": document_id})
 
@@ -114,7 +110,7 @@ class MongoDBHandler:
 
             value_list = document.get("value", [])
             sorted_value_list = sorted(value_list, key = lambda x: x.get("index", 0))
-            
+
             # 최신 8개만 선택
             latest_messages = sorted_value_list[-8:] if len(sorted_value_list) > 8 else sorted_value_list
 
@@ -123,69 +119,8 @@ class MongoDBHandler:
             for chat in latest_messages:
                 formatted_chat = {
                     "index": chat.get("index"),
-                    "input_data": chat.get("input_data"),  # input_data 직접 사용
-                    "output_data": chat.get("output_data") # output_data 직접 사용
-                }
-                formatted_chat_list.append(formatted_chat)
-
-            return formatted_chat_list
-
-        except PyMongoError as e:
-            raise InternalServerErrorException(detail = f"Error retrieving chatlog value: {str(e)}")
-        except Exception as e:
-            raise InternalServerErrorException(detail = f"Unexpected error: {str(e)}")
-    
-    async def get_character_log(self, user_id: str, document_id: str, router: str) -> List[Dict]:
-        """
-        최신 10개의 대화 기록을 가져와서 Llama 프롬프트 형식으로 변환합니다.
-
-        Args:
-            user_id (str): 사용자 ID
-            document_id (str): 문서 ID
-            router (str): 라우터 이름
-
-        Returns:
-            List[Dict]: Llama 프롬프트 형식의 대화 기록 리스트. 대화 기록이 없으면 빈 리스트 반환.
-        """
-        try:
-            collection = self.db[f'{router}_log_{user_id}']
-            
-            # 이벤트 루프 확인 및 설정
-            if self.loop !=  asyncio.get_event_loop():
-                self.loop = asyncio.get_event_loop()
-                self.client = AsyncIOMotorClient(
-                    self.mongo_uri,
-                    io_loop = self.loop
-                )
-                self.db = self.client[os.getenv("MONGO_DATABASE")]
-                collection = self.db[f'{router}_log_{user_id}']
-            
-            document = await collection.find_one({"id": document_id})
-
-            # 문서가 없거나 value 리스트가 비어있는 경우 빈 리스트 반환
-            if document is None or not document.get("value", []):
-                return []
-
-            value_list = document.get("value", [])
-            
-            # index 기준으로 정렬
-            sorted_value_list = sorted(value_list, key = lambda x: x.get("index", 0))
-            
-            # 최신 10개만 선택 (마지막 10개)
-            latest_messages = sorted_value_list[-10:] if len(sorted_value_list) > 10 else sorted_value_list
-
-            # 대화 기록 변환 수행
-            formatted_chat_list = []
-            for chat in latest_messages:
-                formatted_chat = {
-                    "index": chat.get("index"),
-                    "img_url": chat.get("img_url"),
-                    "dialogue": (
-                        f"<|start_header_id|>user<|end_header_id|>\n"
-                        f"{chat.get('input_data')}<|eot_id|>"
-                        f"<|start_header_id|>assistant<|end_header_id|>\n"
-                        f"{chat.get('output_data')}<|eot_id|>"
-                    )
+                    "input_data": chat.get("input_data"),
+                    "output_data": chat.get("output_data")
                 }
                 formatted_chat_list.append(formatted_chat)
 

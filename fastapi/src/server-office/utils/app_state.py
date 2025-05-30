@@ -7,11 +7,11 @@ RED = "\033[31m"
 RESET = "\033[0m"
 
 LlamaOffice_model: Optional[LlamaOfficeModel] = None
+mongo_handler: Optional[MongoDBHandler] = None
 
 try:
-    # Office 서버는 GPU 0 사용
     LlamaOffice_model = LlamaOfficeModel()
-    mongo_handler: Optional[MongoDBHandler] = MongoDBHandler()
+    mongo_handler = MongoDBHandler()
 except ChatError.InternalServerErrorException as e:
     mongo_handler = None
     print(f"{RED}ERROR{RESET}:    MongoDB 초기화 오류 발생: {str(e)}")
