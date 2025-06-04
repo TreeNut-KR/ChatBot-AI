@@ -55,7 +55,7 @@ async def office_llama(request: ChatModel.office_Request, req: Request):
     search_context = ""
 
     # MongoDB에서 채팅 기록 가져오기
-    if AppState.mongo_handler or request.db_id:
+    if AppState.mongo_handler and request.db_id:
         try:
             chat_list = await AppState.mongo_handler.get_office_log(
                 user_id = request.user_id,
@@ -149,7 +149,7 @@ async def office_gpt(
     search_context = ""
 
     # MongoDB에서 채팅 기록 가져오기
-    if AppState.mongo_handler or request.db_id:
+    if AppState.mongo_handler and request.db_id:
         try:
             chat_list = await AppState.mongo_handler.get_office_log(
                 user_id = request.user_id,

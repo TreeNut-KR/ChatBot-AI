@@ -77,7 +77,7 @@ def custom_openapi():
 
     openapi_schema = get_openapi(
         title = "ChatBot-AI FastAPI Office",
-        version = "v1.6.*",
+        version = "v1.7.*",
         routes = app.routes,
         description = (
             "이 API는 다음과 같은 기능을 제공합니다:\n\n"
@@ -159,4 +159,10 @@ app.include_router(
 )
 
 if __name__  ==  "__main__":
-    uvicorn.run(app, host = "0.0.0.0", port = 8002)
+    uvicorn.run(
+        app,
+        host = "0.0.0.0",
+        port = 8002,
+        http = "h11",
+        loop="asyncio"
+    )

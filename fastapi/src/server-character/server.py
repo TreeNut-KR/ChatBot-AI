@@ -51,18 +51,26 @@ async def lifespan(app: FastAPI):
         None: 애플리케이션 컨텍스트를 생성하고 종료할 때까지 대기
     """    
     try:
-        assert AppState.LlamaCharacter_model is not None, "LlamaCharacter_model is not initialized"
+        assert AppState.llama_queue_handler is not None, "LlamaQueueHandler is not initialized"
+        
+        # 큐 핸들러 초기화 및 시작
+        await AppState.llama_queue_handler.init()
+        await AppState.llama_queue_handler.start()
+        
         if AppState.mongo_handler is not None:
             await AppState.mongo_handler.init()
+            
     except AssertionError as e:
         print(f"{RED}ERROR{RESET}:    {str(e)}")
-    print(f"{GREEN}INFO{RESET}:     LlamaCharacter 모델 로드 완료")
+    print(f"{GREEN}INFO{RESET}:     큐 핸들러 로드 완료")
 
     yield
 
-    # 모델 메모리 해제
-    AppState.LlamaCharacter_model = None
-    print(f"{GREEN}INFO{RESET}:     모델 해제 완료")
+    # 큐 핸들러 정지
+    if AppState.llama_queue_handler:
+        await AppState.llama_queue_handler.stop()
+    AppState.llama_queue_handler = None
+    print(f"{GREEN}INFO{RESET}:     큐 핸들러 정지 완료")
 
 app = FastAPI(
     lifespan=lifespan,
@@ -171,4 +179,10 @@ app.include_router(
 )
 
 if __name__  ==  "__main__":
-    uvicorn.run(app, host = "0.0.0.0", port = 8003)
+    uvicorn.run(
+        app,
+        host = "0.0.0.0",
+        port = 8003,
+        http = "h11",
+        loop="asyncio"
+    )

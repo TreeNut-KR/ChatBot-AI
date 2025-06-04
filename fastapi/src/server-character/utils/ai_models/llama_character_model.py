@@ -9,7 +9,10 @@ from llama_cpp_cuda import (
     LlamaGrammar,    # 문법 제어
     LogitsProcessor,  # 로짓 처리
 )
+import warnings
+import sys
 import json
+import time  # time 모듈 추가
 from queue import Queue
 from threading import Thread
 import os
@@ -43,7 +46,7 @@ def build_llama3_prompt(character_info: CharacterPrompt) -> str:
         f"- 설정을 벗어나거나 현실적 설명(예: '나는 AI야')을 하지 마십시오.\n"
         f"- 대사는 큰따옴표로 표기하고, 행동이나 감정은 *괄호*로 표현하십시오.\n"
         f"- 사용자 입력에 자연스럽게 반응하며, 대화가 이어지도록 무분별한 질문은 배제한체 대화를 유도한다.\n"
-        f"- 풍부한 상황 설명을 통해 1000words 유지하십시오.\n"
+        f"- 풍부한 상황 설명을 포함\n"
     )
     
     # 기본 프롬프트 시작
@@ -89,7 +92,6 @@ class LlamaCharacterModel:
         self.model_path = "/app/fastapi/ai_model/QuantFactory/Meta-Llama-3.1-8B-Claude.Q5_0.gguf"
         self.file_path = '/app/prompt/config-Llama.json'
         self.loading_text = f"{BLUE}LOADING{RESET}:    {self.model_id} 로드 중..."
-        self.gpu_layers: int = 40
         self.character_info: Optional[CharacterPrompt] = None
         self.config: Optional[LlamaGenerationConfig] = None
         
@@ -110,20 +112,16 @@ class LlamaCharacterModel:
 
     def _load_model(self) -> Llama:
         """
-        GGUF 포맷의 Llama 모델을 로드하고 GPU 가속을 설정합니다.
+        GGUF 포맷의 Llama 모델을 로드하고 GPU 가속을 최대화합니다.
         """
         print(f"{self.loading_text}")
         try:
-            # 경고 메시지 필터링
-            import warnings
-            import sys
             from contextlib import contextmanager
             
             warnings.filterwarnings("ignore")
             
             @contextmanager
             def suppress_stdout():
-                # 표준 출력 리다이렉션
                 with open(os.devnull, "w") as devnull:
                     old_stdout = sys.stdout
                     sys.stdout = devnull
@@ -132,22 +130,29 @@ class LlamaCharacterModel:
                     finally:
                         sys.stdout = old_stdout
 
-            # 모델 로드 시 로그 출력 억제
+            # GPU 사용량 극대화를 위한 설정
             with suppress_stdout():
                 model = Llama(
-                    model_path = self.model_path,
-                    n_gpu_layers = self.gpu_layers,      # 40개 레이어를 GPU에 로드
-                    main_gpu = -1,                       # 기본 GPU 사용
-                    rope_scaling_type = 2,               # RoPE 스케일링
-                    rope_freq_scale = 2.0,
-                    n_ctx = 8191,                        # 컨텍스트 크기 (모델 최대보다 작게 설정)
-                    n_batch = 512,
-                    verbose = False,
-                    offload_kqv = True,                  # KQV 캐시를 GPU에 오프로드
-                    use_mmap = False,                    # 메모리 매핑 비활성화
-                    use_mlock = True,                    # 메모리 잠금 활성화
-                    n_threads = 6,                       # 스레드 수 제한
-                    tensor_split = [1.0],                # 단일 GPU 사용
+                    model_path = self.model_path,       # GGUF 모델 파일 경로
+                    n_gpu_layers = -1,                  # 모든 레이어를 GPU에 로드
+                    main_gpu = 0,                       # 0번 GPU 사용
+                    rope_scaling_type = 2,              # RoPE 스케일링 방식 (2 = linear) 
+                    rope_freq_scale = 2.0,              # RoPE 주파수 스케일 → 긴 문맥 지원   
+                    n_ctx = 8191,                       # 최대 context length (4096 토큰까지)
+                    n_batch = 2048,                     # 배치 크기 (VRAM 제한 고려한 중간 값)
+                    verbose = False,                    # 디버깅 로그 비활성화  
+                    offload_kqv = True,                 # K/Q/V 캐시를 CPU로 오프로드하여 VRAM 절약
+                    use_mmap = False,                   # 메모리 매핑 비활성화 
+                    use_mlock = True,                   # 메모리 잠금으로 메모리 페이지 스왑 방지
+                    n_threads = 12,                     # CPU 스레드 수 (코어 12개 기준 적절한 값)
+                    tensor_split = [1.0],               # 단일 GPU에서 모든 텐서 로딩
+                    split_mode = 1,                     # 텐서 분할 방식 (1 = 균등 분할)
+                    flash_attn = True,                  # FlashAttention 사용 (속도 향상)
+                    cont_batching = True,               # 연속 배칭 활성화 (멀티 사용자 처리에 효율적)
+                    numa = False,                       # NUMA 비활성화 (단일 GPU 시스템에서 불필요)
+                    f16_kv = True,                      # 16bit KV 캐시 사용
+                    logits_all = False,                 # 마지막 토큰만 logits 계산
+                    embedding = False,                  # 임베딩 비활성화
                 )
             return model
         except Exception as e:
@@ -156,27 +161,40 @@ class LlamaCharacterModel:
 
     def _stream_completion(self, config: LlamaGenerationConfig) -> None:
         """
-        별도 스레드에서 실행되어 응답을 큐에 넣는 메서드
+        별도 스레드에서 실행되어 응답을 큐에 넣는 메서드 (최적화)
 
         Args:
             config (LlamaGenerationConfig): 생성 파라미터 객체
         """
         try:
+            # mirostat 파라미터 제거하고 안정적인 설정 사용
             stream = self.model.create_completion(
                 prompt = config.prompt,
                 max_tokens = config.max_tokens,
                 temperature = config.temperature,
                 top_p = config.top_p,
+                min_p = config.min_p,
+                typical_p = config.typical_p,
+                tfs_z = config.tfs_z,
+                repeat_penalty = config.repeat_penalty,
+                frequency_penalty = config.frequency_penalty,
+                presence_penalty = config.presence_penalty,
                 stop = config.stop or ["<|eot_id|>"],
-                stream = True
+                stream = True,
+                seed = config.seed,
+                top_k = config.top_k,
             )
             
+            token_count = 0
             for output in stream:
                 if 'choices' in output and len(output['choices']) > 0:
                     text = output['choices'][0].get('text', '')
                     if text:
                         self.response_queue.put(text)
-            self.response_queue.put(None) # 스트림 종료를 알리는 None 추가
+                        token_count += 1
+                        
+            print(f"    생성된 토큰 수: {token_count}")
+            self.response_queue.put(None)  # 스트림 종료 신호
             
         except Exception as e:
             print(f"스트리밍 중 오류 발생: {e}")
@@ -192,6 +210,10 @@ class LlamaCharacterModel:
         Returns:
             Generator[str, None, None]: 생성된 텍스트 조각들을 반환하는 제너레이터
         """
+        # 큐 초기화 (이전 응답이 남아있을 수 있음)
+        while not self.response_queue.empty():
+            self.response_queue.get()
+            
         # 스트리밍 스레드 시작
         thread = Thread(
             target = self._stream_completion,
@@ -200,11 +222,17 @@ class LlamaCharacterModel:
         thread.start()
 
         # 응답 스트리밍
+        token_count = 0
         while True:
             text = self.response_queue.get()
             if text is None:  # 스트림 종료
                 break
+            token_count += 1
             yield text
+            
+        # 스레드가 완료될 때까지 대기
+        thread.join()
+        print(f"    스트리밍 완료: {token_count}개 토큰 수신")
 
     def create_completion(self, config: LlamaGenerationConfig) -> str:
         """
@@ -231,15 +259,16 @@ class LlamaCharacterModel:
 
     def generate_response(self, input_text: str, character_settings: dict) -> str:
         """
-        API 호환을 위한 스트리밍 응답 생성 메서드
+        API 호환을 위한 최적화된 응답 생성 메서드
 
         Args:
             input_text (str): 사용자 입력 텍스트
             character_settings (dict): 캐릭터 설정 딕셔너리
 
         Returns:
-            str: 생성된 텍스트을 반환하는 제너레이터
+            str: 생성된 텍스트
         """
+        start_time = time.time()
         try:
             chat_list = character_settings.get("chat_list", None)
 
@@ -264,37 +293,75 @@ class LlamaCharacterModel:
             )
 
             prompt = build_llama3_prompt(character_info = self.character_info)
+            print(f"    프롬프트 길이: {len(prompt)} 문자")
 
+            # 균형 잡힌 설정으로 수정
             self.config = LlamaGenerationConfig(
                 prompt = prompt,
-                max_tokens = 8224,
-                temperature = 1.3,
-                top_p = 0.9,
-                min_p = 0.1,
-                tfs_z = 1.1,
-                repeat_penalty = 1.08,
-                frequency_penalty = 0.1,
-                presence_penalty = 0.1,
+                max_tokens = 256,                   # 적절한 토큰 수
+                temperature = 0.8,                  # 온도 적절히 조정
+                top_p = 0.9,                        # top_p 복원
+                min_p = 0.1,                        # min_p 복원
+                typical_p = 1.0,                    # typical_p 추가
+                tfs_z = 1.1,                        # tfs_z 복원
+                repeat_penalty = 1.05,              # repeat_penalty 복원
+                frequency_penalty = 0,              # frequency_penalty 복원
+                presence_penalty = 0,               # presence_penalty 복원
+                seed = None,                        # 시드 없음 (다양성 확보)
+                top_k = 40,                         # top_k 복원
             )
+            
+            print(f"    텍스트 생성 시작...")
             chunks = []
             for text_chunk in self.create_streaming_completion(config = self.config):
                 chunks.append(text_chunk)
-            return "".join(chunks)
+            
+            result = "".join(chunks)
+            generation_time = time.time() - start_time
+            
+            print(f"    생성 완료: {len(result)} 문자, {generation_time:.2f}초")
+            
+            if not result or len(result.strip()) < 10:
+                print(f"    경고: 응답이 너무 짧습니다. 백업 방식 시도...")
+                # 백업: 스트리밍 없이 직접 생성
+                return self._generate_fallback_response(prompt)
+            
+            return result
 
         except Exception as e:
-            print(f"응답 생성 중 오류 발생: {e}")
+            generation_time = time.time() - start_time
+            print(f"응답 생성 중 오류 발생: {e} (소요 시간: {generation_time:.2f}초)")
             return f"오류: {str(e)}"
 
-    def _normalize_escape_chars(self, text: str) -> str:
+    def _generate_fallback_response(self, prompt: str) -> str:
         """
-        이스케이프 문자가 중복된 문자열을 정규화합니다
-        """
-        if not text:
-            return ""
+        스트리밍 실패 시 백업 응답 생성 메서드
         
-        # 이스케이프된 개행문자 등을 정규화
-        result = text.replace("\\n", "\n")
-        result = result.replace("\\\\n", "\n")
-        result = result.replace('\\"', '"')
-        result = result.replace("\\\\", "\\")
-        return result
+        Args:
+            prompt (str): 생성할 프롬프트
+            
+        Returns:
+            str: 생성된 응답
+        """
+        try:
+            print(f"    백업 방식으로 응답 생성 중...")
+            output = self.model.create_completion(
+                prompt = prompt,
+                max_tokens = 512,
+                temperature = 0.8,
+                top_p = 0.9,
+                repeat_penalty = 1.08,
+                stop = ["<|eot_id|>"],
+                stream = False  # 스트리밍 비활성화
+            )
+            
+            if 'choices' in output and len(output['choices']) > 0:
+                result = output['choices'][0].get('text', '').strip()
+                print(f"    백업 방식 성공: {len(result)} 문자")
+                return result
+            else:
+                return "응답을 생성할 수 없습니다. 다시 시도해 주세요."
+                
+        except Exception as e:
+            print(f"    백업 방식도 실패: {e}")
+            return "응답 생성에 실패했습니다. 잠시 후 다시 시도해 주세요."

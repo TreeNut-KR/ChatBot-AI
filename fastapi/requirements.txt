@@ -61,3 +61,5 @@ deep-translator>=1.11.4
 Pillow
 pytesseract
 
+# test 및 개발 도구
+locust
