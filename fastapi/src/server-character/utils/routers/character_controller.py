@@ -43,12 +43,12 @@ def calculate_estimated_time(queue_size: int) -> int:
     """
     큐 크기와 워커 2개 기준으로 예상 처리 시간 계산 (초 단위)
     - 홀수 대기번호: 20초 처리 (워커1)
-    - 짝수 대기번호: 5초 처리 (워커2)
+    - 짝수 대기번호: 10초 처리 (워커2)
     - 워커 2개 병렬 처리
     
     각 워커가 독립적으로 누적 처리:
     홀수 워커: 20초, 40초, 60초, 80초, 100초, 120초...
-    짝수 워커: 25초, 50초, 75초, 100초, 125초, 150초...
+    짝수 워커: 210초, 50초, 710초, 100초, 1210초, 150초...
     """
     if queue_size == 0:
         # 큐가 비어있으면 첫 번째 요청 (Position 1: 20초)
@@ -111,7 +111,7 @@ async def character_llama(request: ChatModel.character_Request, req: Request):
         # 큐 크기 (단일 큐로 변경)
         total_queue_size = queue_status_before['queue_size']
         
-        # 예상 처리 시간 계산 (워커 2개, 홀수 20초/짝수 5초)
+        # 예상 처리 시간 계산 (워커 2개, 홀수 20초/짝수 10초)
         estimated_time_seconds = calculate_estimated_time(total_queue_size)
         
         # 예상 처리 시간이 180초(3분) 이상이면 미리 429 반환
@@ -120,7 +120,7 @@ async def character_llama(request: ChatModel.character_Request, req: Request):
             retry_after_seconds = RETRY_AFTER_MINUTES * 60 + 10
             
             current_position = total_queue_size + 1
-            worker_type = "홀수(20초)" if current_position % 2 == 1 else "짝수(5초)"
+            worker_type = "홀수(20초)" if current_position % 2 == 1 else "짝수(10초)"
             
             print(
                 f"{YELLOW}⏰ PRE-TIMEOUT{RESET}: Character: {request.character_name} | User: {request.user_id} | "
@@ -150,7 +150,7 @@ async def character_llama(request: ChatModel.character_Request, req: Request):
             )
 
         current_position = total_queue_size + 1
-        worker_type = "홀수(20초)" if current_position % 2 == 1 else "짝수(5초)"
+        worker_type = "홀수(20초)" if current_position % 2 == 1 else "짝수(10초)"
         
         print(
             f"🔄 큐에 요청 추가: Character: {request.character_name} | User: {request.user_id} | "
@@ -168,34 +168,13 @@ async def character_llama(request: ChatModel.character_Request, req: Request):
         
         processing_time = time.time() - start_time
         
-        # 처리 시간과 응답 길이에 따른 상태 분류
-        response_len = len(full_response) if full_response else 0
-        if processing_time < 5 and response_len < 50:
-            status_emoji = "🔴"  # 문제 있음
-            status_text = "ERROR"
-        elif processing_time < 30 and response_len > 100:
-            status_emoji = "🟢"  # 정상
-            status_text = "NORMAL"
-        elif processing_time < 60:
-            status_emoji = "🟡"  # 느림
-            status_text = "SLOW"
-        else:
-            status_emoji = "🔴"  # 매우 느림
-            status_text = "VERY_SLOW"
-        
-        print(
-            f"✅ {status_emoji} Character-Llama | Character: {request.character_name} | "
-            f"User: {request.user_id} | Time: {processing_time:.3f}s | "
-            f"Status: {status_text} | ResponseLen: {response_len} chars | HTTP: 200"
-        )
-        
         response_data = {
             "result": full_response,
             "processing_info": {
                 "processing_time": f"{processing_time:.3f}s",
                 "queue_position_before": total_queue_size,
                 "your_position": total_queue_size + 1,
-                "worker_type": "홀수(20초)" if (total_queue_size + 1) % 2 == 1 else "짝수(5초)",
+                "worker_type": "홀수(20초)" if (total_queue_size + 1) % 2 == 1 else "짝수(10초)",
                 "estimated_wait_time": f"{estimated_time_seconds}s",
                 "processing_mode": "dual_worker_odd_even"
             },
