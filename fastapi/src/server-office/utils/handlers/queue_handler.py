@@ -82,8 +82,13 @@ class LlamaQueueHandler:
             self.worker_models[i] = None
         print(f"{YELLOW}INFO{RESET}:     Office LlamaQueueHandler 정지 완료")
 
-    async def add_request(self, input_text: str, search_text: str, chat_list: list, 
-                         user_id: str = "") -> str:
+    async def add_request(
+        self,
+        input_text: str,
+        search_text: str,
+        chat_list: list, 
+        user_id: str = ""
+    ) -> str:
         """
         새 요청을 큐에 추가하고 결과를 기다림
         
@@ -116,8 +121,10 @@ class LlamaQueueHandler:
         await self.request_queue.put(request)
         
         queue_size = self.request_queue.qsize()
-        print(f"🔄 Office 요청 추가: {request_id[:8]} | "
-              f"User: {user_id} | Queue: {queue_size}")
+        print(
+            f"🔄 Office 요청 추가: {request_id[:8]} | "
+            f"User: {user_id} | Queue: {queue_size}"
+        )
         
         # 결과 대기 (타임아웃 설정)
         try:
@@ -152,8 +159,10 @@ class LlamaQueueHandler:
                 
                 actual_start_time = time.time()
                 
-                print(f"🔄 Office Worker-{worker_id}: Processing {request.id[:8]} | "
-                      f"User: {request.user_id}")
+                print(
+                    f"🔄 Office Worker-{worker_id}: Processing {request.id[:8]} | "
+                    f"User: {request.user_id}"
+                )
                 
                 # 실제 처리 (CPU 집약적 작업을 스레드풀에서 실행)
                 loop = asyncio.get_event_loop()
@@ -178,11 +187,13 @@ class LlamaQueueHandler:
                 actual_processing_time = time.time() - actual_start_time
                 total_time = time.time() - request.created_at
                 
-                print(f"✅ Office Worker-{worker_id}: Completed {request.id[:8]} | "
-                      f"User: {request.user_id} | "
-                      f"ProcessTime: {actual_processing_time:.3f}s | "
-                      f"TotalTime: {total_time:.3f}s | "
-                      f"ResponseLen: {len(result)} chars")
+                print(
+                    f"✅ Office Worker-{worker_id}: Completed {request.id[:8]} | "
+                    f"User: {request.user_id} | "
+                    f"ProcessTime: {actual_processing_time:.3f}s | "
+                    f"TotalTime: {total_time:.3f}s | "
+                    f"ResponseLen: {len(result)} chars"
+                )
                 
             except asyncio.TimeoutError:
                 # 타임아웃 - 계속 대기

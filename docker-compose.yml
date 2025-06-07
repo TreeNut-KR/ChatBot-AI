@@ -41,7 +41,11 @@ services:
       - python-libs-init
     deploy:
       resources:
+        limits:
+          memory: 8G      # 메모리 제한 추가
+          cpus: '4.0'     # CPU 제한 추가
         reservations:
+          memory: 4G      # 최소 메모리 보장
           devices:
             - driver: nvidia
               device_ids: [GPU-4c150f7a-f33e-829b-fed0-21c080a21e96]
