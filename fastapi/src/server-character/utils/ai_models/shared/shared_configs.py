@@ -50,6 +50,7 @@ class LlamaGenerationConfig:
     presence_penalty: float = 0.1
     stop: Optional[List[str]] = field(default_factory=lambda: ["<|eot_id|>"])
     seed: Optional[int] = None
+    top_k: int = 40
     
 @dataclass(kw_only = True)
 class OpenAIGenerationConfig:

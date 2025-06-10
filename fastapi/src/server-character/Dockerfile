@@ -20,4 +20,4 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # server-character 디렉토리로 이동
 WORKDIR /app/src/server-character
 
-CMD ["python", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8003"]
+CMD ["python", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8003", "--http", "h11", "--loop", "asyncio"]

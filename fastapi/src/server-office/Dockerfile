@@ -20,4 +20,4 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # server-office 디렉토리로 이동
 WORKDIR /app/src/server-office
 
-CMD ["python3", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8002"]
+CMD ["python3", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8002", "--http", "h11", "--loop", "asyncio"]

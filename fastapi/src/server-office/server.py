@@ -51,15 +51,26 @@ async def lifespan(app: FastAPI):
         None: 애플리케이션 컨텍스트를 생성하고 종료할 때까지 대기
     """    
     try:
-        assert AppState.LlamaOffice_model is not None, "LlamaOffice_model is not initialized"
+        assert AppState.llama_queue_handler is not None, "LlamaQueueHandler is not initialized"
+        
+        # 큐 핸들러 초기화 및 시작
+        await AppState.llama_queue_handler.init()
+        await AppState.llama_queue_handler.start()
+        
         if AppState.mongo_handler is not None:
             await AppState.mongo_handler.init()
+            
     except AssertionError as e:
         print(f"{RED}ERROR{RESET}:    {str(e)}")
-    print(f"{GREEN}INFO{RESET}:     LlamaOffice 모델 로드 완료")
+    print(f"{GREEN}INFO{RESET}:     Office 큐 핸들러 로드 완료")
+
     yield
-    AppState.LlamaOffice_model = None
-    print(f"{GREEN}INFO{RESET}:     모델 해제 완료")
+
+    # 큐 핸들러 정지
+    if AppState.llama_queue_handler:
+        await AppState.llama_queue_handler.stop()
+    AppState.llama_queue_handler = None
+    print(f"{GREEN}INFO{RESET}:     Office 큐 핸들러 정지 완료")
 
 app = FastAPI(
     lifespan=lifespan,
@@ -109,21 +120,31 @@ app.openapi = custom_openapi
 async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
     """
     IP 제한과 봇 차단을 처리하는 미들웨어입니다.
+    
+    Args:
+        request (Request): 들어오는 HTTP 요청
+        call_next (callable): 다음 미들웨어나 라우트 핸들러를 호출하는 함수
+        
+    Returns:
+        Response: HTTP 응답 객체
+        
+    Raises:
+        ChatError.IPRestrictedException: 허용되지 않은 IP 주소
+        ChatError.BadRequestException: 봇 접근 시도
     """
     def load_bot_list(file_path: str) -> list:
         """
         YAML 파일에서 봇 리스트를 불러오는 함수입니다.
+        
+        Args:
+            file_path (str): 봇 목록이 저장된 YAML 파일의 경로
+            
+        Returns:
+            list: 소문자로 변환된 봇 이름 리스트
         """
-        try:
-            with open(file_path, 'r', encoding = 'utf-8') as file:
-                data = yaml.safe_load(file)
-                return [bot['name'].lower() for bot in data.get('bot_user_agents', [])]
-        except FileNotFoundError:
-            print(f"WARNING: Bot list file not found: {file_path}, using empty list")
-            return []
-        except Exception as e:
-            print(f"ERROR: Failed to load bot list: {e}, using empty list")
-            return []
+        with open(file_path, 'r', encoding = 'utf-8') as file:
+            data = yaml.safe_load(file)
+            return [bot['name'].lower() for bot in data.get('bot_user_agents', [])]
 
     bot_user_agents = load_bot_list("/bot.yaml") # Docker 컨테이너 내 절대 경로로 수정
     user_agent = request.headers.get("User-Agent", "").lower()
@@ -139,7 +160,6 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
     except ValidationError as e:
         raise ChatError.BadRequestException(detail = str(e))
     except ChatError.IPRestrictedException as e:
-        # 올바른 함수명 사용
         return await ChatError.ExceptionHandlerFactory.generic_handler(request, e)
     except ChatError.BadRequestException as e:
         # 올바른 함수명 사용
@@ -159,4 +179,10 @@ app.include_router(
 )
 
 if __name__  ==  "__main__":
-    uvicorn.run(app, host = "0.0.0.0", port = 8002)
+    uvicorn.run(
+        app,
+        host = "0.0.0.0",
+        port = 8002,
+        http = "h11",
+        loop="asyncio"
+    )
