@@ -6,7 +6,7 @@ SETLOCAL
 python.exe -m pip install --upgrade pip
 
 :: numpy 먼저 설치 (버전 제한)
-pip install "numpy>= 1.22.4,<2.0.0"
+pip install "numpy>=1.22.4,<2.0.0"
 
 :: CUDA 관련 패키지 설치
 pip install torch == 2.3.1+cu118 torchvision == 0.18.1+cu118 torchaudio == 2.3.1+cu118 -f https://download.pytorch.org/whl/torch_stable.html
