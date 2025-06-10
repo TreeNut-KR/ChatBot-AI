@@ -41,7 +41,6 @@ from .routers import character_controller as CharacterController
 
 __all__ = [
     # AI Models
-    'OpenAiOffice',
     'OpenAiCharacter',
     
     # Handlers

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character 성능 분석</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        canvas { margin: 30px 0; }
+        .stats { font-size: 16px; margin-bottom: 20px; }
+        .table-container { max-height: 300px; overflow-y: auto; margin-top: 30px;}
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ccc; padding: 4px 8px; font-size: 13px; }
+        th { background: #f0f0f0; }
+        .chart-container { display: flex; gap: 40px; align-items: flex-start; }
+    </style>
+</head>
+<body>
+    <h1>Character-Llama 성능 시각화</h1>
+    <label for="csvFile">CSV 파일 선택:</label>
+    <input type="file" id="csvFile" accept=".csv">
+    <div class="stats" id="userStats"></div>
+    <canvas id="bubbleChart" width="900" height="400"></canvas>
+    <canvas id="processTimeHist" width="900" height="300"></canvas>
+    <canvas id="responseSizeHist" width="900" height="300"></canvas>
+    <div class="ct-container">
+        <canvas id="userOutcomeChart" width="900" height="300"></canvas>
+    </div>
+    <div class="table-container" id="failureTableContainer"></div>
+
+    <script>
+        function parseCSV(text) {
+            const lines = text.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            
+            return lines.slice(1).map(line => {
+                const values = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                values.push(current.trim());
+                
+                const obj = {};
+                headers.forEach((h, i) => {
+                    let value = values[i] || '';
+                    
+                    // Boolean 값들 처리
+                    if (['success', 'is_retry_record', 'is_final_failure', 'is_final_success', 'error'].includes(h)) {
+                        if (value === 'True' || value === 'true') {
+                            value = true;
+                        } else if (value === 'False' || value === 'false') {
+                            value = false;
+                        }
+                    }
+                    
+                    // 숫자 값들 처리
+                    if (['response_time', 'retry_count', 'retry_after_seconds', 'response_size', 'process_time'].includes(h)) {
+                        value = value === '' ? 0 : Number(value);
+                    }
+                    
+                    obj[h] = value;
+                });
+                return obj;
+            });
+        }
+
+        document.getElementById('csvFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const data = parseCSV(evt.target.result);
+                debugData(data); // 디버깅 함수 호출
+                drawBubbleChart(data);
+                drawUserOutcomeChart(data);
+                drawFailureTable(data);
+                showUserStats(data);
+                drawProcessTimeHist(data);
+                drawResponseSizeHist(data);
+            };
+            reader.readAsText(file, 'utf-8');
+        });
+
+        function drawBubbleChart(data) {
+            data.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            const chartData = data.map(row => ({
+                x: new Date(row.timestamp),
+                y: Number(row.response_time),
+                user_id: row.user_id,
+                status_code: row.status_code,
+                success: row.success
+            }));
+            new Chart(document.getElementById('bubbleChart').getContext('2d'), {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: '응답 시간',
+                        data: chartData,
+                        backgroundColor: chartData.map(d =>
+                            d.status_code === '200' ? '#4caf50' :
+                            d.status_code === '429' ? '#f44336' :
+                            d.status_code === '500' ? '#ff9800' : '#2196f3'
+                        ),
+                        pointRadius: 5,
+                        borderColor: '#333'
+                    }]
+                },
+                options: {
+                    responsive: false,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => {
+                                    const d = ctx.raw;
+                                    return [
+                                        `user_id: ${d.user_id}`,
+                                        `응답시간: ${d.y}초`,
+                                        `성공: ${d.success}`,
+                                        `상태코드: ${d.status_code}`
+                                    ];
+                                }
+                            }
+                        },
+                        title: { display: true, text: '시간별 응답 성능 (Scatter Plot)' }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            title: { display: true, text: '시각' }
+                        },
+                        y: { title: { display: true, text: '응답 시간(초)' } }
+                    }
+                }
+            });
+        }
+
+        function drawUserOutcomeChart(data) {
+            const userMap = {};
+            data.forEach(row => {
+                if (!userMap[row.user_id]) userMap[row.user_id] = [];
+                userMap[row.user_id].push(row);
+            });
+
+            let finalFailure = 0, retrySuccess = 0, directSuccess = 0;
+            Object.values(userMap).forEach(logs => {
+                const sorted = logs.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                const last = sorted[sorted.length - 1];
+                
+                // 상태코드 기준으로 분류
+                const lastStatusCode = parseInt(last.status_code);
+                
+                if (lastStatusCode >= 500 && lastStatusCode < 600) {
+                    finalFailure++; // 5xx: 서버 오류 (최종 실패)
+                } else if (sorted.some(r => r.retry_count > 0)) {
+                    retrySuccess++; // 4xx: 재시도 후 성공
+                } else {
+                    directSuccess++; // 2xx: 바로 성공
+                }
+            });
+
+            new Chart(document.getElementById('userOutcomeChart').getContext('2d'), {
+                type: 'pie',
+                data: {
+                    labels: ['5xx (서버 오류)', '4xx (재시도 후 성공)', '2xx (바로 성공)'],
+                    datasets: [{
+                        data: [finalFailure, retrySuccess, directSuccess],
+                        backgroundColor: ['#f44336', '#2196f3', '#4caf50'] // 5xx: 빨강, 4xx: 파랑, 2xx: 녹색
+                    }]
+                },
+                options: {
+                    responsive: false,
+                    plugins: {
+                        title: { display: true, text: 'User 결과 분포 (상태코드 기준)' }
+                    }
+                }
+            });
+
+            document.getElementById('userStats').innerHTML = `
+                ✅ 전체 유저 수: <b>${Object.keys(userMap).length}</b><br>
+                ❌ 5xx (서버 오류): <b>${finalFailure}</b>명<br>
+                🔁 4xx (재시도 후 성공): <b>${retrySuccess}</b>명<br>
+                ✔️ 2xx (바로 성공): <b>${directSuccess}</b>명
+            `;
+        }
+
+        function drawFailureTable(data) {
+            const cols = [
+                'user_id','test_type','endpoint','character_name','status_code','response_time','success',
+                'failure_reason','retry_count','retry_after_seconds','timestamp','response_size',
+                'is_retry_record','is_final_failure','is_final_success','process_time'
+            ];
+            
+            // 실패(성공이 아니거나), 재시도(retry_count > 0), 또는 error가 true인 행만 추출
+            // success가 false이거나, retry_count > 0이거나, is_final_failure가 true인 경우
+            const failures = data.filter(row => 
+                row.success === false || 
+                Number(row.retry_count) > 0 || 
+                row.is_final_failure === true ||
+                row.error === true  // error=true인 경우도 포함 (현재는 없음)
+            );
+            
+            if (failures.length === 0) {
+                document.getElementById('failureTableContainer').innerHTML = '<b>실패/재시도 내역 없음</b>';
+                return;
+            }
+
+            let html = `<h3>실패/재시도 상세 내역 (총 ${failures.length}건)</h3><table><thead><tr>`;
+            cols.forEach(h => html += `<th>${h}</th>`);
+            html += '</tr></thead><tbody>';
+            failures.forEach(row => {
+                html += '<tr>';
+                cols.forEach(h => {
+                    let cellValue = row[h];
+                    // Boolean 값들을 문자열로 표시
+                    if (typeof cellValue === 'boolean') {
+                        cellValue = cellValue.toString();
+                    } else if (cellValue === null) {
+                        cellValue = 'null';
+                    }
+                    html += `<td>${cellValue !== undefined && cellValue !== null ? cellValue : ''}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            document.getElementById('failureTableContainer').innerHTML = html;
+        }
+
+        function showUserStats(data) {
+            // 이 함수는 drawUserOutcomeChart에서 처리됩니다.
+        }
+
+        function drawProcessTimeHist(data) {
+            // status_code가 200인 데이터만 사용, 컬럼명 수정
+            const values = data
+                .filter(row => row.status_code === '200')
+                .map(row => Number(row.process_time)) // Process_time -> process_time으로 수정
+                .filter(v => !isNaN(v) && v > 0);
+
+            console.log('Process time values:', values.slice(0, 10)); // 디버깅용
+
+            new Chart(document.getElementById('processTimeHist').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: getBins(values, 20).labels,
+                    datasets: [{
+                        label: 'Process Time (초) 분포 (200만)',
+                        data: getBins(values, 20).counts,
+                        backgroundColor: '#2196f3'
+                    }]
+                },
+                options: {
+                    responsive: false,
+                    plugins: {
+                        title: { display: true, text: 'Process Time 분포 (status_code=200, 0초 제외)' }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'process_time (초)' } },
+                        y: { title: { display: true, text: '빈도' }, beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function drawResponseSizeHist(data) {
+            // status_code가 200인 데이터만 사용
+            const values = data
+                .filter(row => row.status_code === '200')
+                .map(row => Number(row.response_size))
+                .filter(v => !isNaN(v) && v > 0);
+
+            new Chart(document.getElementById('responseSizeHist').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: getBins(values, 20).labels,
+                    datasets: [{
+                        label: 'Response Size (bytes) 분포 (200만)',
+                        data: getBins(values, 20).counts,
+                        backgroundColor: '#4caf50'
+                    }]
+                },
+                options: {
+                    responsive: false,
+                    plugins: {
+                        title: { display: true, text: 'Response Size 분포 (status_code=200, 0 제외)' }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'response_size (bytes)' } },
+                        y: { title: { display: true, text: '빈도' }, beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        // 히스토그램 bin 계산 함수
+        function getBins(values, binCount) {
+            if (values.length === 0) return { labels: [], counts: [] };
+            const min = Math.min(...values);
+            const max = Math.max(...values);
+            const step = (max - min) / binCount;
+            const bins = Array(binCount).fill(0);
+            values.forEach(v => {
+                let idx = Math.floor((v - min) / step);
+                if (idx === binCount) idx = binCount - 1;
+                bins[idx]++;
+            });
+            const labels = Array(binCount).fill(0).map((_, i) =>
+                `${(min + i * step).toFixed(1)}~${(min + (i + 1) * step).toFixed(1)}`
+            );
+            return { labels, counts: bins };
+        }
+
+        // 디버깅을 위한 추가 함수
+        function debugData(data) {
+            console.log('=== 데이터 디버깅 정보 ===');
+            console.log('총 데이터 수:', data.length);
+            console.log('첫 번째 행:', data[0]);
+            console.log('컬럼명들:', Object.keys(data[0]));
+            
+            // Success 분석
+            const successStats = data.reduce((acc, row) => {
+                if (row.success === true) acc.true++;
+                else if (row.success === false) acc.false++;
+                else acc.other++;
+                return acc;
+            }, { true: 0, false: 0, other: 0 });
+            console.log('Success 통계:', successStats);
+            
+            // Error 분석
+            const errorStats = data.reduce((acc, row) => {
+                if (row.error === true) acc.true++;
+                else if (row.error === false) acc.false++;
+                else if (row.error === null) acc.null++;
+                else acc.other++;
+                return acc;
+            }, { true: 0, false: 0, null: 0, other: 0 });
+            console.log('Error 통계:', errorStats);
+            
+            // Status code 분석
+            const statusStats = {};
+            data.forEach(row => {
+                statusStats[row.status_code] = (statusStats[row.status_code] || 0) + 1;
+            });
+            console.log('Status Code 통계:', statusStats);
+            
+            // Retry 분석
+            const retryStats = {};
+            data.forEach(row => {
+                const retryCount = Number(row.retry_count);
+                retryStats[retryCount] = (retryStats[retryCount] || 0) + 1;
+            });
+            console.log('Retry Count 통계:', retryStats);
+            
+            // Process time 분석
+            const processTimeValues = data
+                .map(row => Number(row.process_time))
+                .filter(v => !isNaN(v) && v > 0);
+            console.log('Process time 유효 값 수:', processTimeValues.length, '/ 전체:', data.length);
+            console.log('Process time 샘플:', processTimeValues.slice(0, 5));
+            
+            // Final failure 분석
+            const finalFailureCount = data.filter(row => row.is_final_failure === true).length;
+            console.log('최종 실패(is_final_failure=true) 수:', finalFailureCount);
+        }
+    </script>
+</body>
+</html>

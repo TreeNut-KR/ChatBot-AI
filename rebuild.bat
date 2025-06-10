@@ -2,6 +2,10 @@
 chcp 65001
 SETLOCAL
 
+REM 명령줄 인자 처리
+set AUTO_DELETE_IMAGES=%1
+set AUTO_REBUILD_LIBS=%2
+
 REM 1. 환경변수 검증
 echo [INFO] 환경변수 검증 중...
 if not exist ".env" (
@@ -56,7 +60,16 @@ echo.
 
 REM 4. 빌드 캐시 최적화를 위한 선택적 정리
 echo [INFO] 필요시에만 이미지 정리...
-set /p choice="기존 이미지를 삭제하시겠습니까? (y/N): "
+if /i "%AUTO_DELETE_IMAGES%"=="-y" (
+    set choice=y
+    echo [AUTO] 기존 이미지를 자동으로 삭제합니다.
+) else if /i "%AUTO_DELETE_IMAGES%"=="-n" (
+    set choice=n
+    echo [AUTO] 기존 이미지를 유지합니다.
+) else (
+    set /p choice="기존 이미지를 삭제하시겠습니까? (y/N): "
+)
+
 if /i "%choice%"=="y" (
     echo [INFO] 기존 이미지 삭제 중...
     FOR /F "tokens=*" %%i IN ('docker images -q -f "dangling=true"') DO (
@@ -70,7 +83,16 @@ echo.
 
 REM 5. Python 라이브러리 볼륨 초기화 여부 확인
 echo [INFO] Python 라이브러리 볼륨 상태 확인...
-set /p libs_choice="Python 라이브러리를 재설치하시겠습니까? (y/N): "
+if /i "%AUTO_REBUILD_LIBS%"=="-y" (
+    set libs_choice=y
+    echo [AUTO] Python 라이브러리를 자동으로 재설치합니다.
+) else if /i "%AUTO_REBUILD_LIBS%"=="-n" (
+    set libs_choice=n
+    echo [AUTO] 기존 Python 라이브러리를 유지합니다.
+) else (
+    set /p libs_choice="Python 라이브러리를 재설치하시겠습니까? (y/N): "
+)
+
 if /i "%libs_choice%"=="y" (
     echo [INFO] Python 라이브러리 볼륨 삭제 및 재생성...
     docker volume rm chatbot-ai_python-libs 2>nul
@@ -143,5 +165,9 @@ echo [INFO] - Character Server: http://localhost:8003
 echo [INFO] - Nginx Proxy: http://localhost:8001
 echo.
 
+REM 자동 모드일 때는 pause 생략
+if "%AUTO_DELETE_IMAGES%"=="" if "%AUTO_REBUILD_LIBS%"=="" (
+    pause
+)
+
 ENDLOCAL
-pause

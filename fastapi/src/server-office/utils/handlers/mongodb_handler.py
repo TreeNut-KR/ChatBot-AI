@@ -3,7 +3,6 @@ MongoDBHandler 클래스는 MongoDB에 연결하고 데이터베이스, 컬렉�
 '''
 
 import os
-import asyncio
 from pathlib import Path
 from typing import List, Dict
 from dotenv import load_dotenv
@@ -51,15 +50,15 @@ class MongoDBHandler:
             load_dotenv(env_file_path)
             
             # 환경 변수에서 MongoDB 연결 정보 가져오기
-            mongo_host = os.getenv("MONGO_HOST")
-            mongo_port = os.getenv("MONGO_PORT")
+            self.mongo_host = os.getenv("MONGO_HOST")
+            self.mongo_port = os.getenv("MONGO_PORT")
             mongo_user = os.getenv("MONGO_ADMIN_USER")
             mongo_password = os.getenv("MONGO_ADMIN_PASSWORD")
             mongo_db = os.getenv("MONGO_DATABASE")
             
             # MongoDB URI 생성 - URI 옵션 형식 수정
             self.mongo_uri = (
-                f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}:{mongo_port}/{mongo_db}"
+                f"mongodb://{mongo_user}:{mongo_password}@{self.mongo_host}:{self.mongo_port}/{mongo_db}"
                 "?authSource=admin"  # 첫 번째 옵션
                 "&serverSelectionTimeoutMS=500"  # 두 번째 옵션
                 "&connectTimeoutMS=1000"  # 세 번째 옵션
@@ -95,7 +94,7 @@ class MongoDBHandler:
         
         except PyMongoError as e:
             print(f"{RED}ERROR{RESET}:    MongoDB 연결 실패")
-            raise InternalServerErrorException(detail = f"MongoDB 연결 오류 - 호스트: {mongo_host}, 포트: {mongo_port}")
+            raise InternalServerErrorException(detail = f"MongoDB 연결 오류 - 호스트: {self.mongo_host}, 포트: {self.mongo_port}")
         except Exception as e:
             raise InternalServerErrorException(detail = f"MongoDBHandler 초기화 오류: {str(e)}")
     

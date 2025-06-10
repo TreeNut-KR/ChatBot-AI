@@ -132,7 +132,7 @@ class LlamaOfficeModel:
                 model = Llama(
                     model_path = self.model_path,
                     n_gpu_layers = self.gpu_layers,
-                    main_gpu = -1,
+                    main_gpu = 1,
                     n_ctx = 8191,
                     n_batch = 512,
                     verbose = False,
