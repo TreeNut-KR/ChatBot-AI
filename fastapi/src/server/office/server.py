@@ -23,10 +23,12 @@ from fastapi import (
     Request,
 )
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# 프로젝트 루트를 PYTHONPATH에 추가
+project_root = Path(__file__).parent.parent  # /app/src
+sys.path.insert(0, str(project_root))
 
-from core import character_app_state as AppState
-from domain  import error_tools as ChatError
+from core import office_app_state as AppState
+from domain import error_tools as ChatError
 from api import office_llm_router
 
 env_file_path = Path(__file__).resolve().parents[1] / ".env"

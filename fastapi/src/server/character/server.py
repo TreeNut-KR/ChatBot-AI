@@ -4,10 +4,20 @@
 import os
 import yaml
 import sys
+from pathlib import Path
+
+# 프로젝트 루트를 PYTHONPATH에 추가
+project_root = Path(__file__).parent.parent  # /app/src
+sys.path.insert(0, str(project_root))
+
+# 이제 정상적으로 import 가능
+from core import character_app_state as AppState
+from domain import error_tools as ChatError
+from api import character_llm_router
+
 import uvicorn
 import ipaddress
 
-from pathlib import Path
 from dotenv import load_dotenv
 from pydantic import ValidationError
 from contextlib import asynccontextmanager
@@ -22,12 +32,6 @@ from fastapi import (
     HTTPException,
     Request,
 )
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from core import character_app_state as AppState
-from domain  import error_tools as ChatError
-from api import character_llm_router
 
 env_file_path = Path(__file__).resolve().parents[1] / ".env"
 load_dotenv(env_file_path)

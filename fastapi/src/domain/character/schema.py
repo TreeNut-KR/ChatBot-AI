@@ -131,43 +131,6 @@ class CommonField:
         title = "character 답변"
     )
 
-class office_Request(BaseModel):
-    """
-    office 모델에 대한 요청 데이터를 정의하는 Pydantic 모델입니다.
-    
-    Attributes:
-        input_data (str): 사용자의 입력 텍스트
-        google_access (bool): 검색 기능 사용 여부
-        db_id (uuid.UUID): 캐릭터의 DB ID
-        user_id (str): 유저 id
-    """
-    input_data: str = CommonField.office_input_data_set
-    google_access: bool = CommonField.google_access_set
-    db_id: str | None = CommonField.db_id_set
-    user_id: str | None = CommonField.user_id_set
-
-    
-    @model_validator(mode = "after")
-    def validate_db_id_and_user_id(self):
-        if self.db_id is None and self.user_id is None:
-            return self
-
-        if self.db_id is not None and self.user_id is not None:
-            Validators.validate_uuid(self.db_id)
-            return self
-
-        missing_field  =  'db_id' if self.db_id is None else 'user_id'
-        raise ValueError(f"{missing_field}가 누락되었습니다. 두 필드 모두 제공해야 합니다.")
-
-class office_Response(BaseModel):
-    """
-    office 모델의 응답 데이터를 정의하는 Pydantic 모델입니다.
-    
-    Attributes:
-        output_data (str): 모델이 생성한 응답 텍스트
-    """
-    output_data: str = CommonField.office_output_data_set
-
 class character_Request(BaseModel):
     """
     character 모델에 대한 요청 데이터를 정의하는 Pydantic 모델입니다.

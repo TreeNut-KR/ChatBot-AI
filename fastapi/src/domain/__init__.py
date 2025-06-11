@@ -1,11 +1,6 @@
-from .character import(
-    config as character_config,
-    schema as character_schema,
-)
-from .office import(
-    config as office_config,
-    schema as office_schema,
-)
+import os
+APP_MODE = os.getenv("APP_MODE", "")  # 기본값: 빈 문자열
+
 from .shared import (
     base_config,
     error_tools,
@@ -13,17 +8,44 @@ from .shared import (
     queue_tools,
     search_adapter,
 )
-__all__ = [
-    "character_config",
-    "character_schema",
 
-    "office_config",
-    "office_schema",
+if APP_MODE == "character":
+    from .character import (
+        config as character_config,
+        schema as character_schema,
+    )
+    __all__ = [
+        "character_config",
+        "character_schema",
+        
+        "base_config",
+        "error_tools",
+        "mongodb_client",
+        "queue_tools",
+        "search_adapter",
+    ]
     
-    # shared
-    "base_config",
-    "error_tools",
-    "mongodb_client",
-    "queue_tools",
-    "search_adapter",
-]
+elif APP_MODE == "office":
+    from .office import (
+        config as office_config,
+        schema as office_schema,
+    )
+    __all__ = [
+        "office_config",
+        "office_schema",
+        
+        "base_config",
+        "error_tools",
+        "mongodb_client",
+        "queue_tools",
+        "search_adapter",
+    ]
+    
+else:
+    __all__ = [
+        "base_config",
+        "error_tools",
+        "mongodb_client",
+        "queue_tools",
+        "search_adapter",
+    ]

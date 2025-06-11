@@ -4,6 +4,7 @@ FastAPI 애플리케이션에서 발생하는 예외를 처리하는 모듈입�
 import uuid
 import os
 import logging
+import logging.handlers  # 이 줄을 추가
 import traceback
 from pathlib import Path
 from datetime import datetime
@@ -19,7 +20,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 # ==========================
 # 1. 로그 디렉토리 및 설정
 # ==========================
-BASE_DIR = Path(__file__).resolve().parents[4]
+BASE_DIR = Path(__file__).resolve().parents[3]
 LOG_DIR = os.path.join(BASE_DIR, "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 
@@ -236,6 +237,6 @@ class ExceptionManager:
         app.add_exception_handler(RequestValidationError, ExceptionHandlerFactory.validation_handler)
         app.add_exception_handler(SQLAlchemyError, ExceptionHandlerFactory.database_handler)
         app.add_exception_handler(RouteNotFoundException, ExceptionHandlerFactory.generic_handler)
-
         app.add_middleware(ErrorLoggingMiddleware)
+        app.add_middleware(RouteLoggingMiddleware)
         app.add_middleware(RouteLoggingMiddleware)

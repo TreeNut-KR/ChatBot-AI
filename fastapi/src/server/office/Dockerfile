@@ -12,17 +12,21 @@ ENV TZ=Asia/Seoul
 # 새로운 구조에 맞춰 애플리케이션 코드 복사
 COPY src/api/office/ /app/src/api/office/
 COPY src/core/office/ /app/src/core/office/
+COPY src/core/__init__.py /app/src/core/__init__.py
 COPY src/domain/office/ /app/src/domain/office/
 COPY src/domain/shared/ /app/src/domain/shared/
+COPY src/domain/__init__.py /app/src/domain/__init__.py
 COPY src/llm/ /app/src/llm/
-COPY src/server-office /app/src/server-office
+COPY src/api/__init__.py /app/src/api/__init__.py
+COPY src/server/office /app/src/server/office
 COPY prompt/ /app/prompt/
 
-ENV PYTHONPATH="/opt/python-libs/lib/python3.11/site-packages:${PYTHONPATH}:/app:/app/src"
+ENV PYTHONPATH="/opt/python-libs/lib/python3.11/site-packages:/app:/app/src"
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# server-office 디렉토리로 이동
-WORKDIR /app/src/server-office
+# src 디렉토리에서 실행하도록 변경
+WORKDIR /app/src
 
-CMD ["python3", "-m", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8002", "--http", "h11", "--loop", "asyncio"]
+# 애플리케이션 파일을 직접 실행하도록 변경
+CMD ["python", "server/office/server.py"]
