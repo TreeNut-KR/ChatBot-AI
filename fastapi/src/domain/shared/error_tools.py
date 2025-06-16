@@ -133,21 +133,20 @@ def log_error(
         pass
     client_ip = request.client.host if request.client else "Unknown"
     query_params = dict(request.query_params)
-    # 포맷터에 맡기고, 메시지는 본문만 작성
+    # traceback을 detail에 추가
+    tb = traceback.format_exc()
     log_msg = (
         f"{'='*80}\n"
         f"Error Type: {type(exc).__name__}\n"
         f"Status: {status_code}\n"
         f"Detail: {detail}\n"
+        f"Traceback: {tb}\n"
         f"URL: {request.url}\n"
         f"Method: {request.method}\n"
         f"Client IP: {client_ip}\n"
         f"Body: {body}\n"
         f"Query: {query_params}\n"
     )
-    # traceback이 extra에 있으면 별도로 추가
-    if extra and "traceback" in extra:
-        log_msg += f"Traceback:\n{extra['traceback']}\n"
     if extra:
         log_msg += f"Extra: {extra}\n"
     log_msg += f"{'='*80}"

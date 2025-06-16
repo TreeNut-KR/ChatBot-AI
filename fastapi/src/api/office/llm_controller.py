@@ -175,7 +175,7 @@ async def office_llama(request: ChatModel.office_Request, req: Request):
             f"InputLen: {len(request.input_data)} chars"
         )
         
-        full_response = await AppState.llama_queue_handler.add_request(
+        full_response = await AppState.llama_queue_handler.add_office_request(
             input_text=request.input_data,
             search_text=search_context,
             chat_list=chat_list,

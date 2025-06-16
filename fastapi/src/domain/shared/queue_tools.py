@@ -280,9 +280,9 @@ class LlamaQueueHandler:
                 break
             except Exception as e:
                 self.total_errors += 1
-                if 'request' in locals() and not request.future.cancelled():
-                    request.future.set_exception(e)
+                import traceback
                 print(f"❌ {self.service_type.value.title()} Worker-{worker_id}: Error processing request {request.id[:8]}: {e}")
+                print(traceback.format_exc())  # 추가: 상세 스택트레이스 출력
 
     def get_queue_status(self) -> Dict[str, Any]:
         """현재 큐 상태 반환"""
