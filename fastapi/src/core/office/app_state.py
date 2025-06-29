@@ -19,7 +19,7 @@ try:
         service_type=queue_tools.ServiceType.OFFICE,
         model_class=office_llama.LlamaOfficeModel,
         processing_request_class=office_config.ProcessingRequest,
-        max_concurrent=2
+        max_concurrent=1
     )
     mongo_handler = mongodb_client.MongoDBHandler()  # 비동기 초기화는 lifespan에서!
 except error_tools.InternalServerErrorException as e:
