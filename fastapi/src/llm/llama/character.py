@@ -79,17 +79,17 @@ class LlamaCharacterModel:
     GGUF 포맷으로 경량화된 DarkIdol-Llama-3.1-8B 모델을 로드하고, 주어진 입력 프롬프트에 대한 응답을 생성하는 클래스입니다.
     
     모델 정보: 
-    - 모델명: DarkIdol-Llama-3.1-8B
+    - 모델명: Meta-Llama-3.1-8B-Claude
     - 유형: GGUF 포맷 (압축, 경량화)
-    - 제작자: Lewdiculous
-    - 소스: [Hugging Face 모델 허브](https://huggingface.co/QuantFactory/DarkIdol-Llama-3.1-8B-Instruct-1.2-Uncensored-GGUF)
+    - 제작자: aashish1904
+    - 소스: [Hugging Face 모델 허브](https://huggingface.co/QuantFactory/Meta-Llama-3.1-8B-Claude-GGUF/blob/main/Meta-Llama-3.1-8B-Claude.Q4_1.gguf)
     """
     def __init__(self) -> None:  # 기본값을 1로 수정
         """
         LlamaCharacterModel 클레스 초기화 메소드
         """
-        self.model_id = "Meta-Llama-3.1-8B-Claude.Q5_0"
-        self.model_path = "/app/fastapi/ai_model/QuantFactory/Meta-Llama-3.1-8B-Claude.Q5_0.gguf"
+        self.model_id = "Meta-Llama-3.1-8B-Claude.Q4_0"
+        self.model_path = "/app/fastapi/ai_model/QuantFactory/Meta-Llama-3.1-8B-Claude.Q4_0.gguf"
         self.file_path = '/app/prompt/config-Llama.json'
         self.loading_text = f"{BLUE}LOADING{RESET}:    {self.model_id} 로드 중..."
         self.character_info: Optional[character_config.CharacterPrompt] = None
@@ -134,7 +134,7 @@ class LlamaCharacterModel:
             with suppress_stdout():
                 model = Llama(
                     model_path = self.model_path,       # GGUF 모델 파일 경로
-                    n_gpu_layers = -1,                  # 모든 레이어를 GPU에 로드
+                    n_gpu_layers = 50,                  # 모든 레이어를 GPU에 로드
                     main_gpu = 0,                       # 0번 GPU 사용
                     rope_scaling_type = 2,              # RoPE 스케일링 방식 (2 = linear) 
                     rope_freq_scale = 2.0,              # RoPE 주파수 스케일 → 긴 문맥 지원   

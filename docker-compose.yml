@@ -33,7 +33,7 @@ services:
       - "8002:8002"
     volumes:
       - python-libs:/opt/python-libs:ro
-      - ${PWD}/fastapi/ai_model/MLP-KTLim:/app/fastapi/ai_model/MLP-KTLim:rw
+      - ${PWD}/fastapi/ai_model/QuantFactory:/app/fastapi/ai_model/QuantFactory:rw
       - ${PWD}/fastapi/logs:/app/logs:rw
       - ${PWD}/fastapi/src/.env:/app/.env:ro
       - ${PWD}/fastapi/src/bot.yaml:/bot.yaml:ro
