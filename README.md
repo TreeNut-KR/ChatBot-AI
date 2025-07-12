@@ -1,9 +1,21 @@
-# 🤖 ChatBot-AI Project
+# ChatBot-AI 프로젝트
 
-> AI 기반 챗봇 API 프로젝트입니다.  
-> FastAPI 기반의 Office/Character API 서버와 Llama 기반 AI 모델을 Docker로 통합 운영합니다.
+[![alt text](https://lh3.googleusercontent.com/d/1H62LOQ8yeql3HQ5OZT4fIzdydTdMhbiw)](https://treenut.ddns.net)
+
+<div align="center">
+  <a href="https://github.com/TreeNut-KR/ChatBot-AI">
+    <img src="https://github-readme-stats.vercel.app/api/pin/?username=TreeNut-KR&repo=ChatBot-AI&theme=dark&show_owner=true" alt="ChatBot Repository"/>
+  </a>
+</div>
+
+<br>
 
 ---
+# 프로젝트 구성원
+
+| 구성원 | 업무 | 사용 기술 |  
+|--------|--------|------------|  
+| 서정훈 (CutTheWire) | 프로젝트 매니저, 백엔드 | FastAPI, Llama CPP CUDA |  
 
 ## 🏗️ 전체 아키텍처
 
@@ -12,70 +24,11 @@
 - **nginx**: API Gateway (8001, reverse proxy, 커스텀 404 지원)
 - **python-libs-init**: 공통 Python 라이브러리 볼륨 초기화
 
----
+## 📋 시스템 아키텍처 다이어그램
+![System-Architecture-Diagram-ChatBot](https://cutwire.myddns.me/images/System-Architecture-Diagram-ChatBot.webp)
 
-## 📂 주요 폴더 구조
-
-```
-ChatBot-AI/
-├── fastapi/
-│   ├── ai_model/           # AI 모델 파일 (볼륨 마운트)
-│   ├── logs/               # 로그 파일 (공유 볼륨)
-│   ├── prompt/             # 프롬프트 설정
-│   ├── src/
-│   │   ├── server-office/  # Office API 서버 코드
-│   │   └── server-character/ # Character API 서버 코드
-│   ├── .env                # 환경 변수
-│   └── bot.yaml            # 봇 설정
-├── nginx/
-│   ├── nginx.conf          # nginx 리버스 프록시 설정
-│   └── 404.html            # 커스텀 404 페이지
-├── docker-compose.yml
-└── README.md
-```
-
----
-
-## 📋 UML 클래스 다이어그램 
-### 📑 ChatBot-AI/fastapi/src/utils/ai_models 클래스 다이어그램 
-![image](https://lh3.googleusercontent.com/d/11BO1kgmcn_I0N-gAegB8p36-PrAm4IHn)
-
-### 📑 ChatBot-AI/fastapi/src/utils/handlers 클래스 다이어그램 
-![image](https://lh3.googleusercontent.com/d/10s3xwUFxnmfKb8WBEvU3jqQhJgExNa28)
-
-### 📑 ChatBot-AI/fastapi/src/utils/schemas 클래스 다이어그램
-![image](https://lh3.googleusercontent.com/d/1Az97lKerSOJltMPWEMeAW6G72axCdIii)
-
-## 📋 UML 패키지 다이어그램 
-![image](https://lh3.googleusercontent.com/d/1_fifSzf7YFoEMQd80hUQGgF0rI0vsYtm)
-
----
-
-## 🚀 빠른 시작 (Docker 기반)
-
-### 1. **필수 요구사항**
-- Docker, docker-compose
-- NVIDIA GPU 및 드라이버 (CUDA 12.1 이상)
-- (선택) 호스트 시간대가 Asia/Seoul로 설정되어 있으면 nginx 로그도 한국 시간으로 기록됨
-
-### 2. **AI 모델 파일 준비**
-- `fastapi/ai_model/MLP-KTLim/`, `fastapi/ai_model/QuantFactory/` 등  
-  필요한 모델 파일을 Hugging Face 등에서 다운로드 후 해당 폴더에 위치시킵니다.
-- `.dockerignore`에 의해 모델 파일은 이미지에 포함되지 않고,  
-  반드시 **볼륨 마운트**로만 사용됩니다.
-
-### 3. **환경 변수 파일 준비**
-- `fastapi/src/.env` 파일에 필요한 환경 변수(OPENAI_API_KEY 등) 입력
-
-### 4. **커스텀 404 페이지 준비**
-- `nginx/404.html` 파일을 원하는 디자인으로 작성
-
-### 5. **컨테이너 빌드 및 실행**
-```bash
-docker compose up --build
-```
-
----
+## 📋 패키지 다이어그램 
+![Package-Diagram-ChatBot(AI)](https://cutwire.myddns.me/images/Package-Diagram-ChatBot(AI).webp)
 
 ## 🌐 API Gateway (nginx) 구조
 
@@ -84,67 +37,117 @@ docker compose up --build
 - `/character/` → character 서버(8003)로 프록시
 - 존재하지 않는 경로는 `/404.html` 커스텀 페이지 반환
 
----
 
-## 📝 주요 nginx 설정
+## 📊 요청 성능
+- **v1.7.4** 버전 기준
+- **측정 일자**: 2025-07-12 (토) 15:08:57 GMT+0900 (한국 표준시)
 
-```nginx
-server {
-    listen 8001;
+<div align="left">
+    <a href="/visualization/chatbot-ai">
+        <img src="https://img.shields.io/badge/성능차트-상세보기-green?style=for-the-badge&logo=chartdotjs" alt="성능차트 상세보기"/>
+    </a>
+</div>
 
-    location ^~ /office/ {
-        proxy_pass http://office_backend/;
-        # ...헤더 설정 생략...
-    }
-    location ^~ /character/ {
-        proxy_pass http://character_backend/;
-        # ...헤더 설정 생략...
-    }
-    error_page 404 /404.html;
-    location = /404.html {
-        root /etc/nginx/html;
-        internal;
-    }
-    location / {
-        return 404;
-    }
-}
-```
 
----
+## 📅 개발 로드맵 및 버전 릴리즈 일정
 
-## 📦 도커 볼륨/마운트 구조
+### 간트 차트 (ChatBot AI 버전 릴리즈)
+![Gantt-Chart-ChatBot(AI)](https://cutwire.myddns.me/images/Gantt-Chart-ChatBot(AI).webp)
 
-- **공통 라이브러리**: `python-libs` 볼륨 (컨테이너간 공유)
-- **모델 파일**: 호스트의 `fastapi/ai_model/` → 컨테이너 내부 `/app/fastapi/ai_model/`
-- **로그**: 호스트의 `fastapi/logs/` → 컨테이너 내부 `/app/logs/`
-- **nginx 404.html**: 호스트의 `nginx/404.html` → 컨테이너 `/etc/nginx/html/404.html`
+### 주요 마일스톤
 
----
+| 버전 | 기간 | 주요 성과 | 아키텍처 변화 |
+|------|------|-----------|---------------|
+| **v1.0.x** | 2024.09-2024.10 | 단일 Llama 모델, 스트리밍 지원 | Transformers 기반 스트리밍 |
+| **v1.1.x** | 2024.10-2025.01 | 듀얼 GPU 구성, Bllossom 모델 추가 | Llama + Bllossom 멀티모델 |
+| **v1.2.x** | 2025.01-2025.02 | Lumimaid GGUF 전환 | 성능 최적화 (GGUF) |
+| **v1.3.x** | 2025.02 | DuckDuckGo 검색 API 연동 | 외부 검색 통합 |
+| **v1.4.x** | 2025.02-2025.03 | SSL/TLS 보안, 인증서 관리 | HTTPS 프로덕션 환경 |
+| **v1.5.x** | 2025.03-2025.04 | 라우터 분리, OpenAI 모델 추가 | 하이브리드 API 아키텍처 |
+| **v1.6.x** | 2025.04-2025.05 | MVC 구조, GitHub Actions | 체계적인 개발 파이프라인 |
+| **v1.7.x** | 2025.05-2025.06 | Docker 컨테이너화, nginx 게이트웨이 | 마이크로서비스 완성 |
 
-## 🛠️ 개발/운영 팁
+### 개발 통계
 
-- FastAPI 서버의 docs/redoc/openapi 경로는  
-  각각 `/office/docs`, `/character/docs` 등으로 prefix를 다르게 설정해야  
-  nginx 프록시 환경에서 충돌이 없습니다.
-- 라우터 등록 시 prefix는 빈 문자열로 두고,  
-  nginx에서 prefix를 붙여주는 구조가 권장됩니다.
-- 모델 파일은 반드시 완전히 다운로드되어야 하며,  
-  파일 크기/해시가 공식 배포본과 일치해야 합니다.
+- **총 개발 기간**: 9개월 (2024.09 ~ 2025.06)
+- **메이저 버전**: 8개 (v1.0.x ~ v1.7.x)
+- **릴리즈 횟수**: 20회
+- **주요 기술 전환**: 4회 (단일→듀얼→GGUF→마이크로서비스)
 
----
+### 📄 v1.0.x
+<div align="left">
+    <a href="https://cutwire.myddns.me/portfolio/reference/chatbot-ai/version(1.0.x).md">
+        <img src="https://img.shields.io/badge/명세-상세보기-blue?style=for-the-badge&logo=markdown" alt="명세 상세보기"/>
+    </a>
+</div>
 
-## 🔑 라이선스
+- `First Commit Days` : 2024-10-19 (토) 23:02:45 GMT+0900 (한국 표준시)
+- `Last Commit Days` : 2024-12-16 (월) 18:22:23 GMT+0900 (한국 표준시)
 
-- **AI 모델**: Meta AI 라이선스
+### 📄 v1.1.x
+<div align="left">
+    <a href="https://cutwire.myddns.me/portfolio/reference/chatbot-ai/version(1.1.x).md">
+        <img src="https://img.shields.io/badge/명세-상세보기-blue?style=for-the-badge&logo=markdown" alt="명세 상세보기"/>
+    </a>
+</div>
 
----
+- `First Commit Days` : 2025-01-15 (수) 15:40:49 GMT+0900 (한국 표준시)
 
-## 📌 참고
+### 📄 v1.2.x
+<div align="left">
+    <a href="https://cutwire.myddns.me/portfolio/reference/chatbot-ai/version(1.2.x).md">
+        <img src="https://img.shields.io/badge/명세-상세보기-blue?style=for-the-badge&logo=markdown" alt="명세 상세보기"/>
+    </a>
+</div>
 
-- [AI 모델 정보](./fastapi/ai_model/README.md)
-- [데이터셋 정보](./fastapi/datasets/README.md)
-- [도메인/SSL 설정](./fastapi/certificates/DNS_README.md)
-- [pem 파일 생성](./fastapi/certificates/PEM_README.md)
+- `First Commit Days` : 2025-02-18 (화) 10:42:34 GMT+0900 (한국 표준시)
 
----
+### 📄 v1.3.x
+<div align="left">
+    <a href="https://cutwire.myddns.me/portfolio/reference/chatbot-ai/version(1.3.x).md">
+        <img src="https://img.shields.io/badge/명세-상세보기-blue?style=for-the-badge&logo=markdown" alt="명세 상세보기"/>
+    </a>
+</div>
+
+- `First Commit Days` : 2025-02-18 (화) 11:26:36 GMT+0900 (한국 표준시)
+- `Last Commit Days` : 2024-03-15 (토) 15:44:49 GMT+0900 (한국 표준시)
+
+### 📄 v1.4.x
+<div align="left">
+    <a href="https://cutwire.myddns.me/portfolio/reference/chatbot-ai/version(1.4.x).md">
+        <img src="https://img.shields.io/badge/명세-상세보기-blue?style=for-the-badge&logo=markdown" alt="명세 상세보기"/>
+    </a>
+</div>
+
+- `First Commit Days` : 2024-03-15 (토) 15:47:20 GMT+0900 (한국 표준시)
+- `Last Commit Days` : 2024-03-16 (일) 18:24:02 GMT+0900 (한국 표준시)
+
+### 📄 v1.5.x
+<div align="left">
+    <a href="https://cutwire.myddns.me/portfolio/reference/chatbot-ai/version(1.5.x).md">
+        <img src="https://img.shields.io/badge/명세-상세보기-blue?style=for-the-badge&logo=markdown" alt="명세 상세보기"/>
+    </a>
+</div>
+
+- `First Commit Days` : 2024-03-21 (금) 15:41:35 GMT+0900 (한국 표준시)
+- `Last Commit Days` : 2024-05-03 (토) 18:56:29 GMT+0900 (한국 표준시)
+
+### 📄 v1.6.x
+<div align="left">
+    <a href="https://cutwire.myddns.me/portfolio/reference/chatbot-ai/version(1.6.x).md">
+        <img src="https://img.shields.io/badge/명세-상세보기-blue?style=for-the-badge&logo=markdown" alt="명세 상세보기"/>
+    </a>
+</div>
+
+- `First Commit Days` : 2024-05-10 (토) 04:43:23 GMT+0900 (한국 표준시)
+- `Last Commit Days` : 2024-05-16 (금) 01:30:44 GMT+0900 (한국 표준시)
+
+### 📄 v1.7.x
+<div align="left">
+    <a href="https://cutwire.myddns.me/portfolio/reference/chatbot-ai/version(1.7.x).md">
+        <img src="https://img.shields.io/badge/명세-상세보기-blue?style=for-the-badge&logo=markdown" alt="명세 상세보기"/>
+    </a>
+</div>
+
+- `First Commit Days` : 2024-05-30 (금) 19:19:05 GMT+0900 (한국 표준시)
+- `Last Commit Days` : 2024-06-16 (월) 16:36:43 GMT+0900 (한국 표준시)
