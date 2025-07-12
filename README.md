@@ -43,7 +43,7 @@
 - **측정 일자**: 2025-07-12 (토) 15:08:57 GMT+0900 (한국 표준시)
 
 <div align="left">
-    <a href="/visualization/chatbot-ai">
+    <a href="https://cutwire.myddns.me/visualization/chatbot-ai">
         <img src="https://img.shields.io/badge/성능차트-상세보기-green?style=for-the-badge&logo=chartdotjs" alt="성능차트 상세보기"/>
     </a>
 </div>
