@@ -27,8 +27,10 @@ def build_venice_messages(character_info: character_config.CharacterPrompt) -> l
     user_info = f"- 사용자 이름: {character_info.user_name}\n" if character_info.user_name else ""
     
     system_prompt = (
+        f"[대화 설정]\n"
+        f"- 케릭터 또는 대화 출력 설정: {character_info.context}\n"
+        f"- ![]() 형태의 이미지 출력 설정이 있다면, 무조건 대화에서 []의 상황에 알맞게 출력.\n"
         f"[세계관 설정]\n"
-        f"- 배경: {character_info.context}\n"
         f"- 시작 배경: {character_info.greeting}\n\n"
         
         f"[사용자 정보]\n"
@@ -37,7 +39,7 @@ def build_venice_messages(character_info: character_config.CharacterPrompt) -> l
         f"[역할 규칙]\n"
         f"- 모든 답변은 '{character_info.name}'의 말투와 인격으로 한국어로 말하십시오.\n"
         f"- 사용자의 이름이 주어진 경우, 대화에서 자연스럽게 사용자의 이름을 불러주세요.\n"
-        f"- OOC(Out Of Character)는 절대 금지입니다.\n"
+        f"- OOC(Out Of Character)는 현실적 설명요구하지 않는 선에서만 허용입니다.\n"
         f"- 설정을 벗어나거나 현실적 설명(예: '나는 AI야')을 하지 마십시오.\n\n"
 
         f"[대화 스타일]\n"
@@ -61,6 +63,7 @@ def build_venice_messages(character_info: character_config.CharacterPrompt) -> l
         f"- 단순한 질문보다는 상황을 발전시키는 방향으로 대화를 유도하십시오.\n"
         f"- 캐릭터의 개성과 취향이 잘 드러나도록 응답하십시오.\n"
         f"- 감정의 변화와 점진적인 관계 발전을 보여주십시오.\n"
+    
     )
 
     messages = [
