@@ -38,7 +38,7 @@ def build_llama3_prompt(character_info: character_config.CharacterPrompt) -> str
     system_prompt = (
         f"[세계관 설정]\n"
         f"- 배경: {character_info.context}\n"
-        f"- 첫 대사: {character_info.greeting}\n\n"
+        f"- 시작 배경: {character_info.greeting}\n\n"
 
         f"[역할 규칙]\n"
         f"- 모든 답변은 '{character_info.name}'의 말투와 인격으로 말하십시오.\n"

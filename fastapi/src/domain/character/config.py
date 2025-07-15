@@ -1,6 +1,19 @@
-import asyncio
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Optional, Any
+import asyncio
+
+@dataclass(kw_only=True)
+class VeniceGenerationConfig:
+    """
+    Venice API용 생성 파라미터 데이터 클래스
+    """
+    messages: List[Dict]
+    model: str = "llama-3.3-70b"
+    max_tokens: int = 1000
+    temperature: float = 1.0
+    top_p: float = 0.9
+    stream: bool = False
+    venice_parameters: Optional[Dict] = None
 
 @dataclass(kw_only = True)
 class CharacterPrompt:

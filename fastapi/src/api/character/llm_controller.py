@@ -8,7 +8,7 @@ from domain import (
     character_schema as ChatModel,
     error_tools as ChatError,
 )
-from llm import character_openai
+from llm import character_openai, character_venice 
 
 GREEN = "\033[32m"
 RED = "\033[31m"
@@ -30,6 +30,18 @@ OPENAI_MODEL_MAP = {
     },
 }
 
+VENICE_MODEL_MAP = {
+    "venice_mistral": {
+        "id": "mistral-31-24b",
+        "type": "post",
+    },
+    "venice_uncensored": {
+        "id": "venice-uncensored",
+        "type": "post",
+    },
+}
+
+
 def get_openai_links(base_url: str, path: str) -> dict:
     """
     OPENAI_MODEL_MAP을 기준으로 _links용 링크 딕셔너리 생성
@@ -41,6 +53,19 @@ def get_openai_links(base_url: str, path: str) -> dict:
             "type": OPENAI_MODEL_MAP[k]["type"],
         }
         for k in OPENAI_MODEL_MAP.keys() if k != path
+    ]
+
+def get_venice_links(base_url: str, current_model: str) -> list:
+    """
+    VENICE_MODEL_MAP을 기준으로 _links용 링크 딕셔너리 생성
+    """
+    return [
+        {
+            "href": f"{base_url}character/Venice/{k}",
+            "rel": f"venice_{k}",
+            "type": VENICE_MODEL_MAP[k]["type"],
+        }
+        for k in VENICE_MODEL_MAP.keys() if k != current_model
     ]
 
 def calculate_estimated_time(queue_size: int) -> int:
@@ -70,6 +95,7 @@ def calculate_estimated_time(queue_size: int) -> int:
         estimated_time = 30 * worker_order
     
     return int(estimated_time)
+
 
 character_router = APIRouter()
 
@@ -351,7 +377,94 @@ async def character_gpt4o_mini(
             )
         else:
             raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
+
+@character_router.post("/Venice/{venice_set}", summary="Venice 성인용 캐릭터 챗 생성 (모델 선택)")
+async def character_venice_adult(
+    request: ChatModel.character_Request,
+    req: Request,
+    venice_set: str = Path(
+        ..., title="Venice 모델명", description=f"사용할 Venice 모델의 별칭 (예: {list(VENICE_MODEL_MAP.keys())})"
+    )
+):
+    """
+    Venice.ai API 모델에 질문을 입력하고 캐릭터 설정을 반영하여 답변을 JSON 방식으로 반환합니다.
+
+    Args:
+        request (ChatModel.character_Request): 사용자 요청 데이터 포함
+
+    Returns:
+        JSONResponse: JSON 방식으로 모델 응답
+    """
+    if venice_set not in VENICE_MODEL_MAP:
+        return JSONResponse(status_code=400, content={
+            "error": "Invalid Venice model name.",
+            "available_models": list(VENICE_MODEL_MAP.keys()),
+            "model_details": {
+                "venice_mistral": "mistral-31-24b - 일반 대화용",
+                "venice_uncensored": "Venice Uncensored 1.1 - 성인용 무검열"
+            }
+        })
+    
+    model_id = VENICE_MODEL_MAP[venice_set]["id"]
+    chat_list = []
+    
+    try:
+        character_settings = {
+            "character_name": request.character_name,
+            "greeting": request.greeting,
+            "context": request.context,
+            "chat_list": chat_list,
+        }
         
+        VeniceCharacter_model = character_venice.VeniceCharacterModel(model_id=model_id)
+        result = VeniceCharacter_model.generate_response(request.input_data, character_settings)
+        
+        response_data = {
+            "result": result,
+            "processing_info": {
+                "model_used": model_id,
+                "model_type": "venice_uncensored" if venice_set == "venice_uncensored" else "standard",
+                "content_policy": "uncensored" if venice_set == "venice_uncensored" else "standard"
+            },
+            "_links": [
+                {
+                    "href": str(req.url),
+                    "rel": "_self",
+                    "type": str(req.method).lower(),
+                },
+                # 다른 Venice 모델들 링크
+                *get_venice_links(
+                    base_url = str(req.base_url),
+                    current_model = venice_set
+                )
+            ]
+        }
+        return JSONResponse(content=response_data)
+        
+    except TimeoutError as te:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": "Too Many Requests",
+                "message": "Venice API 처리 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.",
+                "code": "VENICE_TIMEOUT_ERROR",
+                "retry_after": 60,
+                "model_used": model_id
+            },
+            headers={"Retry-After": "60"}
+        )
+    except ValidationError as ve:
+        raise ChatError.BadRequestException(detail=str(ve))
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Internal Server Error",
+                "message": str(e),
+                "model_used": model_id
+            }
+        )
+
 @character_router.get("/performance", summary="성능 통계 조회")
 async def get_performance():
     """
