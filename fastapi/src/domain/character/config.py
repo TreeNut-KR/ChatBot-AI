@@ -30,6 +30,7 @@ class CharacterPrompt:
     name: str
     greeting: str
     context: str
+    user_name: str
     user_input: str
     chat_list: List[Dict] = None
 
@@ -79,6 +80,7 @@ class ProcessingRequest:
         created_at (float): 요청 생성 시간 (타임스탬프)
         user_id (str): 사용자 ID
         character_name (str): 캐릭터 이름
+        user_name (str): 사용자 이름
     """
     id: str
     input_text: str
@@ -87,3 +89,4 @@ class ProcessingRequest:
     created_at: float
     user_id: str
     character_name: str
+    user_name: str = ""

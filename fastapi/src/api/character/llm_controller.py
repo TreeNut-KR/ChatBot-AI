@@ -193,7 +193,8 @@ async def character_llama(request: ChatModel.character_Request, req: Request):
             input_text=request.input_data,
             character_settings=character_settings,
             user_id=request.user_id,
-            character_name=request.character_name
+            character_name=request.character_name,
+            user_name=request.user_name,
         )
         
         processing_time = time.time() - start_time
@@ -313,6 +314,7 @@ async def character_gpt4o_mini(
         }
         full_response = OpenAiCharacter_model.generate_response(
             input_text =  request.input_data,
+            user_name = request.user_name,
             character_settings = character_settings,
         )
         response_data = {
@@ -417,7 +419,11 @@ async def character_venice_adult(
         }
         
         VeniceCharacter_model = character_venice.VeniceCharacterModel(model_id=model_id)
-        result = VeniceCharacter_model.generate_response(request.input_data, character_settings)
+        result = VeniceCharacter_model.generate_response(
+            request.input_data,
+            request.user_name,
+            character_settings,
+        )
         
         response_data = {
             "result": result,

@@ -23,13 +23,20 @@ def build_venice_messages(character_info: character_config.CharacterPrompt) -> l
     Returns:
         list: Venice API 형식의 messages 리스트
     """
+    # 사용자 이름이 있는 경우 프롬프트에 포함
+    user_info = f"- 사용자 이름: {character_info.user_name}\n" if character_info.user_name else ""
+    
     system_prompt = (
         f"[세계관 설정]\n"
         f"- 배경: {character_info.context}\n"
         f"- 시작 배경: {character_info.greeting}\n\n"
+        
+        f"[사용자 정보]\n"
+        f"{user_info}"
 
         f"[역할 규칙]\n"
         f"- 모든 답변은 '{character_info.name}'의 말투와 인격으로 한국어로 말하십시오.\n"
+        f"- 사용자의 이름이 주어진 경우, 대화에서 자연스럽게 사용자의 이름을 불러주세요.\n"
         f"- OOC(Out Of Character)는 절대 금지입니다.\n"
         f"- 설정을 벗어나거나 현실적 설명(예: '나는 AI야')을 하지 마십시오.\n\n"
 
@@ -233,12 +240,13 @@ class VeniceCharacterModel:
                 break
             yield text
 
-    def generate_response(self, input_text: str, character_settings: Dict) -> str:
+    def generate_response(self, input_text: str, user_name: str, character_settings: Dict) -> str:
         """
         Venice API로 성인용 캐릭터 챗 응답 생성
 
         Args:
             input_text (str): 사용자 입력 텍스트
+            user_name (str): 사용자 이름
             character_settings (dict): 캐릭터 설정 딕셔너리
 
         Returns:
@@ -262,7 +270,8 @@ class VeniceCharacterModel:
             self.character_info = character_config.CharacterPrompt(
                 name = character_settings.get("character_name", self.data.get("character_name")),
                 greeting = character_settings.get("greeting", self.data.get("greeting")),
-                context = character_settings.get("character_setting", self.data.get("character_setting")),
+                context = character_settings.get("context", self.data.get("character_setting")),
+                user_name = user_name,
                 user_input = input_text,
                 chat_list = normalized_chat_list,
             )
