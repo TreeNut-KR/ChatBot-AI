@@ -70,7 +70,7 @@ office_router = APIRouter()
 @office_router.post("/Llama", summary = "Llama 모델이 검색 결과를 활용하여 답변 생성")
 async def office_llama(request: ChatModel.office_Request, req: Request):
     """
-    Llama-3-Bllossom-8B 모델에 질문을 입력하고 검색 결과를 활용하여 답변을 JSON 방식으로 반환합니다.
+    Llama 모델에 질문을 입력하고 검색 결과를 활용하여 답변을 JSON 방식으로 반환합니다.
 
     Args:
         request (ChatModel.office_Request): 사용자 요청 데이터 포함

@@ -8,9 +8,13 @@ if APP_MODE == "character":
     from .openai import (
         character as character_openai,
     )
+    from .venice import (
+        character as character_venice,
+    )
     __all__ = [
         "character_llama",
         "character_openai",
+        "character_venice",
     ]
 
 elif APP_MODE == "office":
@@ -24,6 +28,5 @@ elif APP_MODE == "office":
         "office_llama",
         "office_openai",
     ]
-
 else:
     __all__ = []

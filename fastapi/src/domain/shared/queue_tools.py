@@ -95,7 +95,8 @@ class LlamaQueueHandler:
         input_text: str,
         character_settings: Dict[str, Any], 
         user_id: str = "",
-        character_name: str = ""
+        character_name: str = "",
+        user_name: str = "",
     ) -> str:
         """
         Character 요청을 큐에 추가하고 결과를 기다림
@@ -114,9 +115,10 @@ class LlamaQueueHandler:
             input_text=input_text,
             character_settings=character_settings,
             character_name=character_name,
+            user_name=user_name,
             future=future,
             created_at=time.time(),
-            user_id=user_id
+            user_id=user_id,
         )
         
         # 단일 큐에 요청 추가
@@ -219,6 +221,7 @@ class LlamaQueueHandler:
                         None,
                         self.worker_models[worker_id].generate_response,
                         request.input_text,
+                        request.user_name,
                         request.character_settings
                     )
                     
