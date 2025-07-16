@@ -35,14 +35,23 @@ def build_llama3_prompt(character_info: character_config.CharacterPrompt) -> str
     Returns:
         str: Lumimaid GGUF 형식의 프롬프트 문자열
     """
+    # 사용자 이름이 있는 경우 프롬프트에 포함
+    user_info = f"- 사용자 이름: {character_info.user_name}\n" if character_info.user_name else ""
+    
     system_prompt = (
+        f"[대화 설정]\n"
+        f"- 케릭터 또는 대화 출력 설정: {character_info.context}\n"
+        f"- ![]() 형태의 이미지 출력 설정이 있다면, 무조건 대화에서 []의 상황에 알맞게 출력.\n"
         f"[세계관 설정]\n"
-        f"- 배경: {character_info.context}\n"
-        f"- 첫 대사: {character_info.greeting}\n\n"
+        f"- 시작 배경: {character_info.greeting}\n\n"
+        
+        f"[사용자 정보]\n"
+        f"{user_info}"
 
         f"[역할 규칙]\n"
         f"- 모든 답변은 '{character_info.name}'의 말투와 인격으로 말하십시오.\n"
-        f"- OOC(Out Of Character)는 절대 금지입니다.\n"
+        f"- 사용자의 이름이 주어진 경우, 대화에서 자연스럽게 사용자의 이름을 불러주세요.\n"
+        f"- OOC(Out Of Character)는 현실적 설명요구하지 않는 선에서만 허용입니다.\n"
         f"- 설정을 벗어나거나 현실적 설명(예: '나는 AI야')을 하지 마십시오.\n"
         f"- 대사는 큰따옴표로 표기하고, 행동이나 감정은 *괄호*로 표현하십시오.\n"
         f"- 사용자 입력에 자연스럽게 반응하며, 대화가 이어지도록 무분별한 질문은 배제한체 대화를 유도한다.\n"
@@ -257,12 +266,13 @@ class LlamaCharacterModel:
             print(f"응답 생성 중 오류 발생: {e}")
             return ""
 
-    def generate_response(self, input_text: str, character_settings: dict) -> str:
+    def generate_response(self, input_text: str, user_name: str, character_settings: dict) -> str:
         """
         API 호환을 위한 최적화된 응답 생성 메서드
 
         Args:
             input_text (str): 사용자 입력 텍스트
+            user_name (str): 사용자 이름
             character_settings (dict): 캐릭터 설정 딕셔너리
 
         Returns:
@@ -287,7 +297,8 @@ class LlamaCharacterModel:
             self.character_info = character_config.CharacterPrompt(
                 name = character_settings.get("character_name", self.data.get("character_name")),
                 greeting = character_settings.get("greeting", self.data.get("greeting")),
-                context = character_settings.get("character_setting", self.data.get("character_setting")),
+                context = character_settings.get("context", self.data.get("character_setting")),
+                user_name = user_name,
                 user_input = input_text,
                 chat_list = normalized_chat_list,
             )
@@ -365,3 +376,18 @@ class LlamaCharacterModel:
         except Exception as e:
             print(f"    백업 방식도 실패: {e}")
             return "응답 생성에 실패했습니다. 잠시 후 다시 시도해 주세요."
+
+    def _normalize_escape_chars(self, text: str) -> str:
+        """
+        이스케이프 문자가 중복된 문자열을 정규화합니다
+        """
+        if not text:
+            return ""
+            
+        # 이스케이프된 개행문자 등을 정규화
+        result = text.replace("\\n", "\n")
+        result = result.replace("\\\\n", "\n")
+        result = result.replace('\\"', '"')
+        result = result.replace("\\\\", "\\")
+        
+        return result

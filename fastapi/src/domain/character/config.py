@@ -1,6 +1,19 @@
-import asyncio
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Optional, Any
+import asyncio
+
+@dataclass(kw_only=True)
+class VeniceGenerationConfig:
+    """
+    Venice API용 생성 파라미터 데이터 클래스
+    """
+    messages: List[Dict]
+    model: str = "llama-3.3-70b"
+    max_tokens: int = 1000
+    temperature: float = 1.0
+    top_p: float = 0.9
+    stream: bool = False
+    venice_parameters: Optional[Dict] = None
 
 @dataclass(kw_only = True)
 class CharacterPrompt:
@@ -17,6 +30,7 @@ class CharacterPrompt:
     name: str
     greeting: str
     context: str
+    user_name: str
     user_input: str
     chat_list: List[Dict] = None
 
@@ -66,6 +80,7 @@ class ProcessingRequest:
         created_at (float): 요청 생성 시간 (타임스탬프)
         user_id (str): 사용자 ID
         character_name (str): 캐릭터 이름
+        user_name (str): 사용자 이름
     """
     id: str
     input_text: str
@@ -74,3 +89,4 @@ class ProcessingRequest:
     created_at: float
     user_id: str
     character_name: str
+    user_name: str = ""

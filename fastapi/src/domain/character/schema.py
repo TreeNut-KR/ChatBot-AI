@@ -33,8 +33,14 @@ class CommonField:
     user_id_set = Field(
             examples = ["shaa97102"],
             title = "유저 id",
-            min_length = 1, max_length = 50,
-            description = "유저 id 길이 제약"
+            description = "유저 id 길이 제약",
+            min_length = 1, max_length = 50
+    )
+    user_name_set = Field(
+        examples = ["리트넛"],
+        title = "유저 이름",
+        description = "유저의 이름입니다. 봇과의 대화에서 사용자의 정체성을 나타냅니다.",
+        min_length = 1, max_length = 50
     )
     office_input_data_set = Field(
         examples = ["Llama AI 모델의 출시일과 버전들을 각각 알려줘."],
@@ -149,6 +155,7 @@ class character_Request(BaseModel):
     context: str = CommonField.context_set
     db_id: str | None = CommonField.db_id_set
     user_id: str | None = CommonField.user_id_set
+    user_name: str = CommonField.user_name_set
 
     @model_validator(mode = "after")
     def validate_db_id_and_user_id(self):

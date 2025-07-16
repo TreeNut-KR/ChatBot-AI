@@ -8,7 +8,7 @@ set AUTO_REBUILD_LIBS=%2
 
 REM 1. 환경변수 검증
 echo [INFO] 환경변수 검증 중...
-if not exist ".env" (
+if not exist "./fastapi/src/.env" (
     echo [ERROR] .env 파일이 존재하지 않습니다.
     echo [INFO] .env 파일을 생성하거나 확인해주세요.
     pause
