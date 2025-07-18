@@ -34,6 +34,15 @@ class CharacterPrompt:
     user_input: str
     chat_list: List[Dict] = None
 
+    def __post_init__(self):
+        """
+        greeting과 context에서 {{user}}를 user_name으로 치환
+        """
+        if self.greeting:
+            self.greeting = self.greeting.replace("{{user}}", self.user_name)
+        if self.context:
+            self.context = self.context.replace("{{user}}", self.user_name)
+
 @dataclass(kw_only = True)
 class LlamaGenerationConfig:
     """

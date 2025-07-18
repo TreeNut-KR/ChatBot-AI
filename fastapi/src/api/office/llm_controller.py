@@ -67,191 +67,191 @@ def calculate_estimated_time(queue_size: int) -> int:
 
 office_router = APIRouter()
 
-@office_router.post("/Llama", summary = "Llama 모델이 검색 결과를 활용하여 답변 생성")
-async def office_llama(request: ChatModel.office_Request, req: Request):
-    """
-    Llama 모델에 질문을 입력하고 검색 결과를 활용하여 답변을 JSON 방식으로 반환합니다.
+# @office_router.post("/Llama", summary = "Llama 모델이 검색 결과를 활용하여 답변 생성")
+# async def office_llama(request: ChatModel.office_Request, req: Request):
+#     """
+#     Llama 모델에 질문을 입력하고 검색 결과를 활용하여 답변을 JSON 방식으로 반환합니다.
 
-    Args:
-        request (ChatModel.office_Request): 사용자 요청 데이터 포함
+#     Args:
+#         request (ChatModel.office_Request): 사용자 요청 데이터 포함
 
-    Returns:
-        JSONResponse: JSON 방식으로 모델 응답
-    """
-    chat_list = []
-    search_context = ""
-    start_time = time.time()
-    queue_status_before = None
-    performance_stats = None
+#     Returns:
+#         JSONResponse: JSON 방식으로 모델 응답
+#     """
+#     chat_list = []
+#     search_context = ""
+#     start_time = time.time()
+#     queue_status_before = None
+#     performance_stats = None
 
-    # MongoDB에서 채팅 기록 가져오기
-    if AppState.mongo_handler and request.db_id:
-        try:
-            chat_list = await AppState.mongo_handler.get_office_log(
-                user_id = request.user_id,
-                document_id = request.db_id,
-                router = "office",
-            )
-        except Exception as e:
-            print(f"{YELLOW}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
+#     # MongoDB에서 채팅 기록 가져오기
+#     if AppState.mongo_handler and request.db_id:
+#         try:
+#             chat_list = await AppState.mongo_handler.get_office_log(
+#                 user_id = request.user_id,
+#                 document_id = request.db_id,
+#                 router = "office",
+#             )
+#         except Exception as e:
+#             print(f"{YELLOW}WARNING{RESET}:  채팅 기록을 가져오는 데 실패했습니다: {str(e)}")
 
-    # DuckDuckGo 검색 결과 가져오기
-    if request.google_access: # 검색 옵션이 활성화된 경우
-        try:
-            duck_results = await ChatSearch.fetch_duck_search_results(query = request.input_data)
-        except Exception:
-            print(f"{YELLOW}WARNING{RESET}:  검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
+#     # DuckDuckGo 검색 결과 가져오기
+#     if request.google_access: # 검색 옵션이 활성화된 경우
+#         try:
+#             duck_results = await ChatSearch.fetch_duck_search_results(query = request.input_data)
+#         except Exception:
+#             print(f"{YELLOW}WARNING{RESET}:  검색의 한도 초과로 DuckDuckGo 검색 결과를 가져올 수 없습니다.")
 
-        if duck_results:
-            # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
-            formatted_results = []
-            for idx, item in enumerate(duck_results[:10], 1): # 상위 10개 결과만 사용
-                formatted_result = (
-                    f"[검색결과 {idx}]\n"
-                    f"제목: {item.get('title', '제목 없음')}\n"
-                    f"내용: {item.get('snippet', '내용 없음')}\n"
-                    f"출처: {item.get('link', '링크 없음')}\n"
-                )
-                formatted_results.append(formatted_result)
-            # 모든 결과를 하나의 문자열로 결합
-            search_context = (
-                "다음은 검색에서 가져온 관련 정보입니다:\n\n" +
-                "\n".join(formatted_results)
-            )
+#         if duck_results:
+#             # 검색 결과를 AI가 이해하기 쉬운 형식으로 변환
+#             formatted_results = []
+#             for idx, item in enumerate(duck_results[:10], 1): # 상위 10개 결과만 사용
+#                 formatted_result = (
+#                     f"[검색결과 {idx}]\n"
+#                     f"제목: {item.get('title', '제목 없음')}\n"
+#                     f"내용: {item.get('snippet', '내용 없음')}\n"
+#                     f"출처: {item.get('link', '링크 없음')}\n"
+#                 )
+#                 formatted_results.append(formatted_result)
+#             # 모든 결과를 하나의 문자열로 결합
+#             search_context = (
+#                 "다음은 검색에서 가져온 관련 정보입니다:\n\n" +
+#                 "\n".join(formatted_results)
+#             )
 
-    try:
-        # 큐 상태 확인 및 예상 대기 시간 계산
-        queue_status_before = AppState.llama_queue_handler.get_queue_status()
-        performance_stats = AppState.llama_queue_handler.get_performance_stats()
+#     try:
+#         # 큐 상태 확인 및 예상 대기 시간 계산
+#         queue_status_before = AppState.llama_queue_handler.get_queue_status()
+#         performance_stats = AppState.llama_queue_handler.get_performance_stats()
 
-        # 큐 크기 (단일 큐로 변경)
-        total_queue_size = queue_status_before['queue_size']
+#         # 큐 크기 (단일 큐로 변경)
+#         total_queue_size = queue_status_before['queue_size']
         
-        # 예상 처리 시간 계산 (워커 2개, 홀수 20초/짝수 30초)
-        estimated_time_seconds = calculate_estimated_time(total_queue_size)
+#         # 예상 처리 시간 계산 (워커 2개, 홀수 20초/짝수 30초)
+#         estimated_time_seconds = calculate_estimated_time(total_queue_size)
         
-        # 예상 처리 시간이 180초(3분) 이상이면 미리 429 반환
-        if estimated_time_seconds > MAX_PROCESSING_TIME:
-            estimated_minutes = estimated_time_seconds // 60
-            retry_after_seconds = RETRY_AFTER_MINUTES * 60 + 10
+#         # 예상 처리 시간이 180초(3분) 이상이면 미리 429 반환
+#         if estimated_time_seconds > MAX_PROCESSING_TIME:
+#             estimated_minutes = estimated_time_seconds // 60
+#             retry_after_seconds = RETRY_AFTER_MINUTES * 60 + 10
             
-            current_position = total_queue_size + 1
-            worker_type = "홀수(20초)" if current_position % 2 == 1 else "짝수(30초)"
+#             current_position = total_queue_size + 1
+#             worker_type = "홀수(20초)" if current_position % 2 == 1 else "짝수(30초)"
             
-            print(
-                f"{YELLOW}⏰ PRE-TIMEOUT{RESET}: Office | User: {request.user_id} | "
-                f"Queue: {total_queue_size} | Position: {current_position}({worker_type}) | "
-                f"Estimated: {estimated_time_seconds}s ({estimated_minutes}분) | "
-                f"Threshold: {MAX_PROCESSING_TIME}s | HTTP: 429"
-            )
+#             print(
+#                 f"{YELLOW}⏰ PRE-TIMEOUT{RESET}: Office | User: {request.user_id} | "
+#                 f"Queue: {total_queue_size} | Position: {current_position}({worker_type}) | "
+#                 f"Estimated: {estimated_time_seconds}s ({estimated_minutes}분) | "
+#                 f"Threshold: {MAX_PROCESSING_TIME}s | HTTP: 429"
+#             )
         
-            return JSONResponse(
-                status_code=429,
-                content={
-                    "error": "Too Many Requests",
-                    "message": f"현재 서버 이용자가 많아 예상 처리 시간이 {estimated_minutes}분입니다. {RETRY_AFTER_MINUTES}분 후 다시 요청해 주세요.",
-                    "code": "QUEUE_OVERLOADED",
-                    "retry_after": retry_after_seconds,
-                    "queue_info": {
-                        "current_queue_size": total_queue_size,
-                        "your_position": current_position,
-                        "worker_type": worker_type,
-                        "estimated_wait_time_seconds": estimated_time_seconds,
-                        "estimated_wait_time_minutes": estimated_minutes,
-                        "max_allowed_time_seconds": MAX_PROCESSING_TIME,
-                        "processing_model": "dual_worker_odd_even"
-                    }
-                },
-                headers={"Retry-After": str(retry_after_seconds)}
-            )
+#             return JSONResponse(
+#                 status_code=429,
+#                 content={
+#                     "error": "Too Many Requests",
+#                     "message": f"현재 서버 이용자가 많아 예상 처리 시간이 {estimated_minutes}분입니다. {RETRY_AFTER_MINUTES}분 후 다시 요청해 주세요.",
+#                     "code": "QUEUE_OVERLOADED",
+#                     "retry_after": retry_after_seconds,
+#                     "queue_info": {
+#                         "current_queue_size": total_queue_size,
+#                         "your_position": current_position,
+#                         "worker_type": worker_type,
+#                         "estimated_wait_time_seconds": estimated_time_seconds,
+#                         "estimated_wait_time_minutes": estimated_minutes,
+#                         "max_allowed_time_seconds": MAX_PROCESSING_TIME,
+#                         "processing_model": "dual_worker_odd_even"
+#                     }
+#                 },
+#                 headers={"Retry-After": str(retry_after_seconds)}
+#             )
 
-        current_position = total_queue_size + 1
-        worker_type = "홀수(20초)" if current_position % 2 == 1 else "짝수(30초)"
+#         current_position = total_queue_size + 1
+#         worker_type = "홀수(20초)" if current_position % 2 == 1 else "짝수(30초)"
         
-        print(
-            f"🔄 Office 큐에 요청 추가: User: {request.user_id} | "
-            f"Queue: {total_queue_size} | Position: {current_position}({worker_type}) | "
-            f"예상 대기: {estimated_time_seconds}s ({estimated_time_seconds//60}분 {estimated_time_seconds%60}초) | "
-            f"InputLen: {len(request.input_data)} chars"
-        )
+#         print(
+#             f"🔄 Office 큐에 요청 추가: User: {request.user_id} | "
+#             f"Queue: {total_queue_size} | Position: {current_position}({worker_type}) | "
+#             f"예상 대기: {estimated_time_seconds}s ({estimated_time_seconds//60}분 {estimated_time_seconds%60}초) | "
+#             f"InputLen: {len(request.input_data)} chars"
+#         )
         
-        full_response = await AppState.llama_queue_handler.add_office_request(
-            input_text=request.input_data,
-            search_text=search_context,
-            chat_list=chat_list,
-            user_id=request.user_id
-        )
+#         full_response = await AppState.llama_queue_handler.add_office_request(
+#             input_text=request.input_data,
+#             search_text=search_context,
+#             chat_list=chat_list,
+#             user_id=request.user_id
+#         )
         
-        processing_time = time.time() - start_time
+#         processing_time = time.time() - start_time
         
-        response_data = {
-            "result": full_response,
-            "processing_info": {
-                "processing_time": f"{processing_time:.3f}s",
-                "queue_position_before": total_queue_size,
-                "your_position": total_queue_size + 1,
-                "worker_type": "홀수(20초)" if (total_queue_size + 1) % 2 == 1 else "짝수(30초)",
-                "estimated_wait_time": f"{estimated_time_seconds}s",
-                "processing_mode": "dual_worker_odd_even"
-            },
-            "_links": [
-                {   
-                    "href": str(req.url),
-                    "rel": "_self",
-                    "type": str(req.method).lower(),
-                },
-                *get_openai_links(
-                    base_url = str(req.base_url),
-                    path = "Llama",
-                ),
-            ]
-        }
-        return JSONResponse(content=response_data)
+#         response_data = {
+#             "result": full_response,
+#             "processing_info": {
+#                 "processing_time": f"{processing_time:.3f}s",
+#                 "queue_position_before": total_queue_size,
+#                 "your_position": total_queue_size + 1,
+#                 "worker_type": "홀수(20초)" if (total_queue_size + 1) % 2 == 1 else "짝수(30초)",
+#                 "estimated_wait_time": f"{estimated_time_seconds}s",
+#                 "processing_mode": "dual_worker_odd_even"
+#             },
+#             "_links": [
+#                 {   
+#                     "href": str(req.url),
+#                     "rel": "_self",
+#                     "type": str(req.method).lower(),
+#                 },
+#                 *get_openai_links(
+#                     base_url = str(req.base_url),
+#                     path = "Llama",
+#                 ),
+#             ]
+#         }
+#         return JSONResponse(content=response_data)
 
-    except TimeoutError as te:
-        return JSONResponse(
-            status_code=429,
-            content={
-                "error": "Too Many Requests", 
-                "message": "서버 이용자가 많아 처리 시간이 초과되었습니다. 잠시 후 다시 요청해 주세요.",
-                "code": "EXPLICIT_TIMEOUT_ERROR",
-                "retry_after": RETRY_AFTER_MINUTES * 60,
-                "queue_info": {
-                    "current_queue_size": queue_status_before.get('queue_size', 0) if queue_status_before else 0,
-                    "estimated_wait_time": performance_stats.get('estimated_wait_time', '알 수 없음') if performance_stats else '알 수 없음'
-                }
-            },
-            headers={"Retry-After": str(RETRY_AFTER_MINUTES * 60)}
-        )
-    except ValidationError as ve:
-        raise ChatError.BadRequestException(detail=str(ve))
-    except Exception as e:
-        error_str = str(e)
-        timeout_keywords = [
-            "시간 초과", "timeout", "요청 처리 시간 초과", "5분", "4분",
-            "TimeoutError", "asyncio.TimeoutError", "concurrent.futures.TimeoutError",
-            "처리 시간이 초과", "time limit exceeded", "request timeout", "500:", "504:"
-        ]
-        is_timeout = any(keyword in error_str.lower() for keyword in [kw.lower() for kw in timeout_keywords])
+#     except TimeoutError as te:
+#         return JSONResponse(
+#             status_code=429,
+#             content={
+#                 "error": "Too Many Requests", 
+#                 "message": "서버 이용자가 많아 처리 시간이 초과되었습니다. 잠시 후 다시 요청해 주세요.",
+#                 "code": "EXPLICIT_TIMEOUT_ERROR",
+#                 "retry_after": RETRY_AFTER_MINUTES * 60,
+#                 "queue_info": {
+#                     "current_queue_size": queue_status_before.get('queue_size', 0) if queue_status_before else 0,
+#                     "estimated_wait_time": performance_stats.get('estimated_wait_time', '알 수 없음') if performance_stats else '알 수 없음'
+#                 }
+#             },
+#             headers={"Retry-After": str(RETRY_AFTER_MINUTES * 60)}
+#         )
+#     except ValidationError as ve:
+#         raise ChatError.BadRequestException(detail=str(ve))
+#     except Exception as e:
+#         error_str = str(e)
+#         timeout_keywords = [
+#             "시간 초과", "timeout", "요청 처리 시간 초과", "5분", "4분",
+#             "TimeoutError", "asyncio.TimeoutError", "concurrent.futures.TimeoutError",
+#             "처리 시간이 초과", "time limit exceeded", "request timeout", "500:", "504:"
+#         ]
+#         is_timeout = any(keyword in error_str.lower() for keyword in [kw.lower() for kw in timeout_keywords])
         
-        if is_timeout or "시간 초과" in error_str:
-            return JSONResponse(
-                status_code=429,
-                content={
-                    "error": "Too Many Requests",
-                    "message": "서버 이용자가 많아 처리 시간이 초과되었습니다. 잠시 후 다시 요청해 주세요.",
-                    "code": "TIMEOUT_DUE_TO_HIGH_LOAD",
-                    "retry_after": RETRY_AFTER_MINUTES * 60,
-                    "debug_info": {
-                        "original_error": error_str,
-                        "detected_as": "timeout_error",
-                        "detection_method": "keyword_matching"
-                    }
-                },
-                headers={"Retry-After": str(RETRY_AFTER_MINUTES * 60)}
-            )
-        else:
-            raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
+#         if is_timeout or "시간 초과" in error_str:
+#             return JSONResponse(
+#                 status_code=429,
+#                 content={
+#                     "error": "Too Many Requests",
+#                     "message": "서버 이용자가 많아 처리 시간이 초과되었습니다. 잠시 후 다시 요청해 주세요.",
+#                     "code": "TIMEOUT_DUE_TO_HIGH_LOAD",
+#                     "retry_after": RETRY_AFTER_MINUTES * 60,
+#                     "debug_info": {
+#                         "original_error": error_str,
+#                         "detected_as": "timeout_error",
+#                         "detection_method": "keyword_matching"
+#                     }
+#                 },
+#                 headers={"Retry-After": str(RETRY_AFTER_MINUTES * 60)}
+#             )
+#         else:
+#             raise ChatError.InternalServerErrorException(detail="내부 서버 오류가 발생했습니다.")
 
 @office_router.post("/{gpt_set}", summary = "gpt 모델이 검색 결과를 활용하여 답변 생성")
 async def office_gpt(

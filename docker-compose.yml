@@ -33,10 +33,10 @@ services:
       - "8002:8002"
     volumes:
       - python-libs:/opt/python-libs:ro
-      - ${PWD}/fastapi/ai_model/QuantFactory:/app/fastapi/ai_model/QuantFactory:rw
-      - ${PWD}/fastapi/logs:/app/logs:rw
-      - ${PWD}/fastapi/src/.env:/app/.env:ro
-      - ${PWD}/fastapi/src/bot.yaml:/bot.yaml:ro
+      # - ./fastapi/ai_model/QuantFactory:/app/fastapi/ai_model/QuantFactory:rw
+      - ./fastapi/logs:/app/logs:rw
+      - ./fastapi/src/.env:/app/.env:ro
+      - ./fastapi/src/bot.yaml:/bot.yaml:ro
     depends_on:
       - python-libs-init
     deploy:
@@ -44,12 +44,12 @@ services:
         limits:
           memory: 8G      # 메모리 제한 추가
           cpus: '4.0'     # CPU 제한 추가
-        reservations:
-          memory: 4G      # 최소 메모리 보장
-          devices:
-            - driver: nvidia
-              device_ids: [GPU-4c150f7a-f33e-829b-fed0-21c080a21e96]
-              capabilities: [gpu]
+        # reservations:
+        #   memory: 4G      # 최소 메모리 보장
+        #   devices:
+        #     - driver: nvidia
+        #       device_ids: [GPU-4c150f7a-f33e-829b-fed0-21c080a21e96]
+        #       capabilities: [gpu]
     environment:
       - TZ=Asia/Seoul
       - NVIDIA_VISIBLE_DEVICES=1
@@ -57,7 +57,6 @@ services:
       - PYTHONPATH=/opt/python-libs/lib/python3.11/site-packages:/app:/app/src
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - MONGO_URL=${MONGO_URL:-mongodb://root:1234@192.168.3.145:27017/chatbot?authSource=admin}
       - UVICORN_HTTP=h11  # HTTP/1.1 강제
       - APP_MODE=office
@@ -71,10 +70,10 @@ services:
       - "8003:8003"
     volumes:
       - python-libs:/opt/python-libs:ro
-      - ${PWD}/fastapi/ai_model/QuantFactory:/app/fastapi/ai_model/QuantFactory:rw
-      - ${PWD}/fastapi/logs:/app/logs:rw
-      - ${PWD}/fastapi/src/.env:/app/.env:ro
-      - ${PWD}/fastapi/src/bot.yaml:/bot.yaml:ro
+      # - ./fastapi/ai_model/QuantFactory:/app/fastapi/ai_model/QuantFactory:rw
+      - ./fastapi/logs:/app/logs:rw
+      - ./fastapi/src/.env:/app/.env:ro
+      - ./fastapi/src/bot.yaml:/bot.yaml:ro
 
     depends_on:
       - python-libs-init
@@ -83,12 +82,12 @@ services:
         limits:
           memory: 8G      # 메모리 제한 추가
           cpus: '4.0'     # CPU 제한 추가
-        reservations:
-          memory: 4G      # 최소 메모리 보장
-          devices:
-            - driver: nvidia
-              device_ids: [GPU-eeda57d0-cf83-ba04-0355-41d7d20ffd54]
-              capabilities: [gpu]
+        # reservations:
+        #   memory: 4G      # 최소 메모리 보장
+        #   devices:
+        #     - driver: nvidia
+        #       device_ids: [GPU-eeda57d0-cf83-ba04-0355-41d7d20ffd54]
+        #       capabilities: [gpu]
     environment:
       - TZ=Asia/Seoul
       - NVIDIA_VISIBLE_DEVICES=0
@@ -96,19 +95,18 @@ services:
       - PYTHONPATH=/opt/python-libs/lib/python3.11/site-packages:/app:/app/src
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - MONGO_URL=${MONGO_URL:-mongodb://root:1234@192.168.3.145:27017/chatbot?authSource=admin}
       - UVICORN_HTTP=h11  # HTTP/1.1 강제
       - APP_MODE=character
 
   nginx:
-    image: nginx:latest
+    image: nginx:alpine
     container_name: nginx
     ports:
       - "8001:8001"
     volumes:
-      - ${PWD}/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ${PWD}/nginx/404.html:/etc/nginx/html/404.html:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/404.html:/etc/nginx/html/404.html:ro
     depends_on:
       - office
       - character

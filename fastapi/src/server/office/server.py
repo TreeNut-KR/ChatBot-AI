@@ -51,11 +51,11 @@ async def lifespan(app: FastAPI):
         None: 애플리케이션 컨텍스트를 생성하고 종료할 때까지 대기
     """    
     try:
-        assert AppState.llama_queue_handler is not None, "LlamaQueueHandler is not initialized"
+        # assert AppState.llama_queue_handler is not None, "LlamaQueueHandler is not initialized"
         
-        # 큐 핸들러 초기화 및 시작
-        await AppState.llama_queue_handler.init()
-        await AppState.llama_queue_handler.start()
+        # # 큐 핸들러 초기화 및 시작
+        # await AppState.llama_queue_handler.init()
+        # await AppState.llama_queue_handler.start()
         
         if AppState.mongo_handler is not None:
             await AppState.mongo_handler.init()
@@ -66,10 +66,10 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # 큐 핸들러 정지
-    if AppState.llama_queue_handler:
-        await AppState.llama_queue_handler.stop()
-    AppState.llama_queue_handler = None
+    # # 큐 핸들러 정지
+    # if AppState.llama_queue_handler:
+    #     await AppState.llama_queue_handler.stop()
+    # AppState.llama_queue_handler = None
     print(f"{GREEN}INFO{RESET}:     Office 큐 핸들러 정지 완료")
 
 app = FastAPI(
@@ -142,11 +142,18 @@ async def ip_restrict_and_bot_blocking_middleware(request: Request, call_next):
         Returns:
             list: 소문자로 변환된 봇 이름 리스트
         """
-        with open(file_path, 'r', encoding = 'utf-8') as file:
-            data = yaml.safe_load(file)
-            return [bot['name'].lower() for bot in data.get('bot_user_agents', [])]
+        try:
+            with open(file_path, 'r', encoding = 'utf-8') as file:
+                data = yaml.safe_load(file)
+                return [bot['name'].lower() for bot in data.get('bot_user_agents', [])]
+        except FileNotFoundError:
+            print(f"{YELLOW}WARNING{RESET}: {file_path} 파일을 찾을 수 없습니다.")
+            return []
+        except Exception as e:
+            print(f"{RED}ERROR{RESET}: 봇 리스트 로드 실패: {str(e)}")
+            return []
 
-    bot_user_agents = load_bot_list("/bot.yaml") # Docker 컨테이너 내 절대 경로로 수정
+    bot_user_agents = load_bot_list("/bot.yaml") or []
     user_agent = request.headers.get("User-Agent", "").lower()
 
     try:
